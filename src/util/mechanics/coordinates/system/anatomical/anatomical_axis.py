@@ -1,5 +1,12 @@
-from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import AnatomicalCoordinateSystem
+from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
+    AnatomicalCoordinateSystem,
+)
 
-class AnatomicalAxis():
+
+class AnatomicalAxis:
     def __init__(self, name: AnatomicalCoordinateSystem):
-        self.name = name
+        self._name = name
+
+    @property
+    def name(self) -> AnatomicalCoordinateSystem:
+        return self._name
