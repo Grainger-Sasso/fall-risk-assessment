@@ -9,5 +9,7 @@ from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
 
 @dataclass
 class IMUMetadata:
+    # TODO: properly implement hashable data id
+    data_id: str
     imu_identifier: IMUIdentifier
     imu_orientation_map: dict[SensorAxis:AnatomicalAxis]
