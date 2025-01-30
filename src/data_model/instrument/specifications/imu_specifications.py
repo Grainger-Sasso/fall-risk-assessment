@@ -9,6 +9,8 @@ from src.data_model.instrument.specifications.sensor_specifications import (
 
 @dataclass
 class IMUSpecifications:
+    # TODO: properly implement hashable id
+    specification_id: str
     imu_name: str
     sensor_types = List[SensorTypes]
     sensor_specifications: dict[SensorTypes:SensorSpecifications]
