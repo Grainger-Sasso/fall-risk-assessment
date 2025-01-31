@@ -10,5 +10,6 @@ from src.data_model.data.imu.imu_data import IMUData
 class Entry:
     date: datetime
     administrator: str
-    user_data: UserData
-    imu_data_segments = List[IMUData]
+    user_data_id: str
+    imu_data_id = str
+ 
