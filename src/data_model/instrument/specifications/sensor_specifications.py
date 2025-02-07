@@ -6,8 +6,10 @@ from src.data_model.instrument.types.sensor_types import SensorTypes
 
 @dataclass
 class SensorSpecifications:
-    # TODO: properly implement hashable id
-    specification_id: str
+    """
+    Specifications of an IMU sensor
+    """
+
     # Sensor type
     sensor_type: SensorTypes
     # Sensor name
