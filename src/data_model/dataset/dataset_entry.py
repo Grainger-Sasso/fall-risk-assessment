@@ -7,7 +7,7 @@ from src.data_model.data.imu.imu_data import IMUData
 
 
 @dataclass
-class Entry:
+class DatasetEntry:
     date: datetime
     administrator: str
     user_data_id: str

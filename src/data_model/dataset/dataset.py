@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from src.data_model.dataset.entry import Entry
+from data_model.dataset.dataset_entry import Entry
 
 
 @dataclass
