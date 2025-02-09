@@ -1,9 +1,9 @@
-from src.data_model.identifiers.feature.feature_identifier import FeatureIdentifier
+from src.data_model.identifiers.identifier import Identifier
 
 
-class AggregateFeatureIdentifier(FeatureIdentifier):
+class FeatureIdentifier(Identifier):
     """
-    Represents unique aggregate feature identifiers.
+    Represents unique raw feature identifiers.
     """
 
     def __init__(self, value: str):

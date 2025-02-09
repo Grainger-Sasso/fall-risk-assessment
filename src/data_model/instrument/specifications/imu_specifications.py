@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from src.data_model.identifiers.instrument_specification.instrument_specification_identifier import (
     InstrumentSpecificationIdentifier,
 )
-from src.data_model.instrument.types.sensor_types import SensorTypes
+from data_model.instrument.types.sensor_type import SensorType
 from src.data_model.instrument.specifications.sensor_specifications import (
     SensorSpecifications,
 )
@@ -18,5 +18,5 @@ class IMUSpecifications:
 
     specification_id: InstrumentSpecificationIdentifier
     imu_name: str
-    sensor_types = List[SensorTypes]
-    sensor_specifications: dict[SensorTypes:SensorSpecifications]
+    sensor_types = List[SensorType]
+    sensor_specifications: dict[SensorType:SensorSpecifications]

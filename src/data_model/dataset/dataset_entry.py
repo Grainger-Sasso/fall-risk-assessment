@@ -1,15 +1,10 @@
 from dataclasses import dataclass
-from datetime import datetime
-from typing import List
 
-from src.data_model.data.user.user_data import UserData
-from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.identifiers.user.user_identifier import UserIdentifier
+from src.data_model.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 
 
 @dataclass
 class DatasetEntry:
-    date: datetime
-    administrator: str
-    user_data_id: str
-    imu_data_id = str
- 
+    user_data_id: UserIdentifier
+    imu_data_id = IMUDataIdentifier

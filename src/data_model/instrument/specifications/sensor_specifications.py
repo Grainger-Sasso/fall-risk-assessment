@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from src.util.mechanics.units.unit import Unit
-from src.data_model.instrument.types.sensor_types import SensorTypes
+from data_model.instrument.types.sensor_type import SensorType
 
 
 @dataclass
@@ -11,7 +11,7 @@ class SensorSpecifications:
     """
 
     # Sensor type
-    sensor_type: SensorTypes
+    sensor_type: SensorType
     # Sensor name
     sensor_name: str
     # Native units

@@ -1,7 +1,7 @@
-from src.data_model.identifiers.identifier import Identifier
+from src.data_model.identifiers.feature.feature_identifier import FeatureIdentifier
 
 
-class RawFeatureIdentifier(Identifier):
+class RawFeatureIdentifier(FeatureIdentifier):
     """
     Represents unique raw feature identifiers.
     """
