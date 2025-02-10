@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-from src.data_model.data.imu.sensor.sensor_data import SensorData
+from data_model.data.imu.sensor_data import SensorData
 from data_model.instrument.types.sensor_type import SensorType
 
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-from src.data_model.data.imu.sensor.uniaxial_sensor_data import UniaxialSensorData
+from data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
 from src.data_model.data.imu.sensor.sensor_metadata import SensorMetadata
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
@@ -17,6 +17,8 @@ class SensorData:
 
     data: List[UniaxialSensorData]
     metadata: SensorMetadata
+    start_time: float
+    end_time: float
     _anatomical_axis_map: Dict[AnatomicalAxis, UniaxialSensorData] = field(
         init=False, repr=False
     )
@@ -28,6 +30,13 @@ class SensorData:
         # Create the axis maps during initialization
         self._anatomical_axis_map = {axis.anatomical_axis: axis for axis in self.data}
         self._sensor_axis_map = {axis.sensor_axis: axis for axis in self.data}
+
+    @property
+    def timestamps(self) -> List[float]:
+        """
+        Returns the start and end time as a list.
+        """
+        return [self.start_time, self.end_time]
 
     def _get_data_by_axis(self, axis_map: Dict, axis_value) -> UniaxialSensorData:
         """
