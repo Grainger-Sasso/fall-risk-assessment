@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from data_model.instrument.types.sensor_type import SensorType
+from src.data_types.instrument.sensor_type import SensorType
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
 )

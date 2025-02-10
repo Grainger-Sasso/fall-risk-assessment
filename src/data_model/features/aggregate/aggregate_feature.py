@@ -1,9 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from src.data_model.features.aggregate.descriptive_statistic import DescriptiveStatistic
 
-from src.data_model.features.types.raw_feature_type import RawFeatureType
-from src.data_model.features.types.descriptive_statistic_type import (
+from data_types.feature.raw_feature_type import RawFeatureType
+from data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from src.data_model.features.types.descriptive_statistic_type import (
+from data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
 

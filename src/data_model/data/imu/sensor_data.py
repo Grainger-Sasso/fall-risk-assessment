@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 
 from data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
-from src.data_model.data.imu.sensor.sensor_metadata import SensorMetadata
+from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
 )

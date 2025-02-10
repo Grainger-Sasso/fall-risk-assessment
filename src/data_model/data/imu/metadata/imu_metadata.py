@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict
 
-from src.data_model.identifiers.imu.imu_data_identifier import IMUDataIdentifier
-from src.data_model.identifiers.instrument.instrument_identifier import (
+from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument.instrument_identifier import (
     InstrumentIdentifier,
 )
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
