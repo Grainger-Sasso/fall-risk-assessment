@@ -7,4 +7,4 @@ from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 @dataclass
 class DatasetEntry:
     user_data_id: UserIdentifier
-    imu_data_id = IMUDataIdentifier
+    imu_data_id: IMUDataIdentifier

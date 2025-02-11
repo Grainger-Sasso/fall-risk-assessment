@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import numpy as np
 from typing import List, Dict
 
 from data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
@@ -16,6 +17,7 @@ class SensorData:
     """
 
     data: List[UniaxialSensorData]
+    time: np.ndarray
     metadata: SensorMetadata
     _anatomical_axis_map: Dict[AnatomicalAxis, UniaxialSensorData] = field(
         init=False, repr=False

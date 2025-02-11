@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from dataclasses import dataclass
 
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
@@ -18,5 +18,5 @@ class IMUSpecifications:
 
     specification_id: InstrumentSpecificationIdentifier
     imu_name: str
-    sensor_types = List[SensorType]
-    sensor_specifications: dict[SensorType:SensorSpecifications]
+    sensor_types: List[SensorType]
+    sensor_specifications: Dict[SensorType:SensorSpecifications]
