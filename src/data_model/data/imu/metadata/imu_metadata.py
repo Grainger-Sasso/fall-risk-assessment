@@ -15,4 +15,3 @@ from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
 class IMUMetadata:
     imu_data_identifier: IMUDataIdentifier
     instument_identifier: InstrumentIdentifier
-    imu_orientation_map: Dict[SensorAxis:AnatomicalAxis]

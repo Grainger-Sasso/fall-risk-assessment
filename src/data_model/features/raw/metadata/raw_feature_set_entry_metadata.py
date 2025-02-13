@@ -12,4 +12,5 @@ class RawFeatureSetEntryMetadata:
     raw_feature_identifier: RawFeatureIdentifier
     user_identifier: UserIdentifier
     imu_data_identifier: IMUDataIdentifier
+    start_time: float
     epoch_length: float

@@ -14,9 +14,6 @@ class RawFeatureSetEntry:
     """
 
     raw_epoch_features: List[RawEpochFeatures]
-    start_time: float
-    end_time: float
-    epoch_length: float
     metadata: RawFeatureSetEntryMetadata
 
     @property

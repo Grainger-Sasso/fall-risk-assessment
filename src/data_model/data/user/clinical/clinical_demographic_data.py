@@ -16,7 +16,7 @@ class ClinicalDemographicData:
     """
 
     name: str
-    age: int
+    age: float
     sex: Sex
     weight: Kilogram
     height: Meter

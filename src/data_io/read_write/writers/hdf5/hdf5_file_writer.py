@@ -2,8 +2,8 @@ import h5py
 from pathlib import Path
 from typing import Any, Tuple
 
-from src.data_io.formats.hdf5.group import Group
-from src.data_io.formats.hdf5.dataset import Dataset
+from data_io.formats.hdf5.hdf5_group import HDF5Group
+from data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.read_write.writers.file_writer import FileWriter
 
 
@@ -12,7 +12,7 @@ class JHDF5FileWriter(FileWriter):
     HDF5 file writer.
     """
 
-    def write(self, path: Path, group: Group, **kwargs) -> Tuple[bool, str]:
+    def write(self, path: Path, group: HDF5Group, **kwargs) -> Tuple[bool, str]:
         """Writes data and attributes from Group and Dataset objects to an HDF5 file.
 
         Args:
@@ -28,7 +28,7 @@ class JHDF5FileWriter(FileWriter):
                 f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}.",
             )
 
-        def recursively_write_hdf5(target: Group, h5_group: h5py.Group) -> None:
+        def recursively_write_hdf5(target: HDF5Group, h5_group: h5py.Group) -> None:
             """Recursively writes a Group object to an HDF5 group.
 
             Args:
@@ -41,12 +41,12 @@ class JHDF5FileWriter(FileWriter):
 
             # Write items
             for item in target.items:
-                if isinstance(item, Dataset):
+                if isinstance(item, HDF5Dataset):
                     # Create a dataset and write its data and attributes
                     dataset = h5_group.create_dataset(item.name, data=item.data)
                     for key, val in item.attributes.items():
                         dataset.attrs[key] = val
-                elif isinstance(item, Group):
+                elif isinstance(item, HDF5Group):
                     # Create a subgroup and recursively write its contents
                     subgroup = h5_group.create_group(item.name)
                     recursively_write_hdf5(item, subgroup)

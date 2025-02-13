@@ -2,8 +2,8 @@ import h5py
 from pathlib import Path
 
 from src.data_io.read_write.readers.file_reader import FileReader
-from src.data_io.formats.hdf5.group import Group
-from src.data_io.formats.hdf5.dataset import Dataset
+from data_io.formats.hdf5.hdf5_group import HDF5Group
+from data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 
 
 class HDF5FileReader(FileReader):
@@ -11,7 +11,7 @@ class HDF5FileReader(FileReader):
     HDF5 file reader.
     """
 
-    def read(self, path: Path) -> Group:
+    def read(self, path: Path) -> HDF5Group:
         """Reads data from an HDF5 file and returns them Group format.
 
         Args:
@@ -27,10 +27,10 @@ class HDF5FileReader(FileReader):
             raise ValueError(
                 f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}."
             )
-        output_group = Group()
+        output_group = HDF5Group()
         with h5py.File(path, "r") as file:
 
-            def recursively_load_hdf5(group: h5py.Group, target: Group) -> None:
+            def recursively_load_hdf5(group: h5py.Group, target: HDF5Group) -> None:
                 """Recursively reads a Group object to an HDF5 group.
 
                 Args:
@@ -42,14 +42,14 @@ class HDF5FileReader(FileReader):
                 target.items = []
                 for key, item in group.items():
                     if isinstance(item, h5py.Dataset):
-                        dataset = Dataset(
+                        dataset = HDF5Dataset(
                             name=key,
                             data=item[()],
                             attributes={key: val for key, val in item.attrs.items()},
                         )
                         target.items.append(dataset)
                     elif isinstance(item, h5py.Group):
-                        subgroup = Group()
+                        subgroup = HDF5Group()
                         recursively_load_hdf5(subgroup, item)
                         target.items.append(subgroup)
 

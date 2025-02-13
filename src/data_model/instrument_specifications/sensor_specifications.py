@@ -1,11 +1,11 @@
 from dataclasses import dataclass
+from typing import Dict, Tuple
 
-from src.util.mechanics.units.unit import Unit
 from data_types.instrument.sensor_type import SensorType
 
 
 @dataclass
-class SensorSpecifications:
+class SensorSpecification:
     """
     Specifications of an IMU sensor
     """
@@ -15,7 +15,7 @@ class SensorSpecifications:
     # Sensor name
     sensor_name: str
     # Native units
-    units: Unit
+    units: str
     # Operating range
     range: tuple[float, float]
     # Sensitivity as linear change in output per change in input
@@ -35,8 +35,8 @@ class SensorSpecifications:
     # Power consumption in mW
     power_consumption: float
     # Environmental operating conditions as condition: value
-    operating_conditions: dict[str:str]
+    operating_conditions: Dict[str, str]
     # Size as length, width, height in cm
-    physical_size: tuple[float, float, float]
+    physical_size: Tuple[float, float, float]
     # Mass in g
     mass: float

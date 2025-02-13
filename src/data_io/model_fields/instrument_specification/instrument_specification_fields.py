@@ -1,0 +1,31 @@
+from enum import Enum
+
+
+class InstrumentSpecificationFields(Enum):
+    """Fields used in instrument specification files"""
+
+    SPEC_ID = "spec_id"
+    IMU_NAME = "imu_name"
+    SENSOR_SPECIFICATIONS = "sensor_specifications"
+    SENSOR_TYPE = "sensor_type"
+    SENSOR_NAME = "sensor_name"
+    UNITS = "units"
+    RANGE = "range"
+    VALUE = "value"
+    UNIT = "unit"
+    SENSITIVITY = "sensitivity"
+    RESOLUTION = "resolution"
+    SAMPLING_RATE = "sampling_rate"
+    NOISE_DENSITY = "noise_density"
+    BIAS_STABILITY = "bias_stability"
+    ALIGNMENT_ERROR = "alignment_error"
+    CROSS_AXIS_SENSITIVITY = "cross_axis_sensitivity"
+    POWER_CONSUMPTION = "power_consumption"
+    OPERATING_CONDITIONS = "operating_conditions"
+    TEMPERATURE = "temperature"
+    HUMIDITY = "humidity"
+    PHYSICAL_SIZE = "physical_size"
+    LENGTH = "length"
+    WIDTH = "width"
+    HEIGHT = "height"
+    MASS = "mass"
