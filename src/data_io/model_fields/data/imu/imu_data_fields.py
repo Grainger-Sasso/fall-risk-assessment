@@ -21,7 +21,7 @@ class IMUDataFields(Enum):
     ANATOMICAL_AXIS_VERTICAL = "anatomical_axis_vertical"
     SAMPLING_RATE = "sampling_rate"
     UNIT = "unit"
-    SENSOR_AXIS_NAMES = "sensor_axis_names"
+    SENSOR_AXIS_NAMES = "axis_names"
     IMU_DATA_IDENTIFIER = "imu_data_identifier"
     INSTRUMENT_IDENTIFIER = "instrument_identifier"
     INSTRUMENT_NAME = "instrument_name"

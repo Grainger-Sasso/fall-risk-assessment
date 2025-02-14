@@ -3,7 +3,6 @@ from typing import List, Dict, Tuple
 
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
-from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
@@ -127,15 +126,19 @@ class IMUDataBuilder(ModelBuilder):
     def __get_model_axes_from_file_axes(
         self, sensor_data_group: HDF5Group, file_sensor_axis: IMUDataFields
     ) -> Tuple[SensorAxis, AnatomicalAxis]:
+        # Convert the file sensor axis to data model sensor axis
         model_sensor_axis: SensorCoordinateSystem = self.file_to_model_sensor_axis_map[
             file_sensor_axis
         ]
+        # Get the sensor to anatomical axis map from file
         sensor_to_anatomical_axis_map: Dict[IMUDataFields:IMUDataFields] = (
             sensor_data_group.attributes[IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP]
         )
+        # Get the file anatomical axis from the file axis map
         file_anatomical_axis: IMUDataFields = sensor_to_anatomical_axis_map[
-            file_anatomical_axis
+            file_sensor_axis
         ]
+        # Convert the file anatomical axis to data model anatomical axis
         model_anatomical_axis: AnatomicalCoordinateSystem = (
             self.file_to_model_anatomical_axis_map[file_anatomical_axis]
         )

@@ -1,5 +1,5 @@
 from typing import List, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
     InstrumentSpecificationIdentifier,

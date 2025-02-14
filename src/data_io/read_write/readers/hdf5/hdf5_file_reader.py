@@ -23,7 +23,7 @@ class HDF5FileReader(FileReader):
         if not path.exists():
             raise FileNotFoundError(f"The file at {path} does not exist.")
 
-        if not path.suffix in [".h5", ".hdf5"]:
+        if path.suffix not in [".h5", ".hdf5"]:
             raise ValueError(
                 f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}."
             )
