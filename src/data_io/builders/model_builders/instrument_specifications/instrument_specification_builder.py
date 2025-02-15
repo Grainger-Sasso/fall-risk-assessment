@@ -54,7 +54,7 @@ class IMUSpecificationBuilder(ModelBuilder):
         )
         sensor_name: str = file_sensor_spec[InstrumentSpecificationFields.SENSOR_NAME]
         units: str = file_sensor_spec[InstrumentSpecificationFields.UNITS]
-        range: tuple[float, float] = file_sensor_spec[
+        range: Tuple[float, float] = file_sensor_spec[
             InstrumentSpecificationFields.RANGE
         ][InstrumentSpecificationFields.VALUE]
         sensitivity: float = file_sensor_spec[

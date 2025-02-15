@@ -55,7 +55,7 @@ class IMUDataBuilder(ModelBuilder):
         # Assumes single epoch in raw IMU data file
         # Get the sensor data group from the input file
         sensor_data_group: HDF5Group = input_file.get_item_by_name(
-            IMUDataFields.SENSOR_DATA
+            IMUDataFields.SENSOR_DATA.value
         )
         # Build epoch data
         epoch_data_list: List[EpochIMUData] = [
@@ -87,7 +87,7 @@ class IMUDataBuilder(ModelBuilder):
     def __build_sensor_data(self, sensor_data_group: HDF5Group) -> SensorData:
         # Get time data.
         time: np.ndarray = np.array(
-            sensor_data_group.get_item_by_name(IMUDataFields.TIME).data
+            sensor_data_group.get_item_by_name(IMUDataFields.TIME.value).data
         )
         # Build uniaxial sensor data list
         uniaxial_sensor_data_list: List[UniaxialSensorData] = (
@@ -103,11 +103,11 @@ class IMUDataBuilder(ModelBuilder):
         self, sensor_data_group: HDF5Group
     ) -> List[UniaxialSensorData]:
         sensor_data: np.ndarray = np.array(
-            sensor_data_group.get_item_by_name(IMUDataFields.DATA).data
+            sensor_data_group.get_item_by_name(IMUDataFields.DATA.value).data
         )
         sensor_axis_names: List[IMUDataFields] = [
             IMUDataFields(axis)
-            for axis in sensor_data_group.attributes[IMUDataFields.AXIS_NAMES]
+            for axis in sensor_data_group.attributes[IMUDataFields.AXIS_NAMES.value]
         ]
         uniaxial_sensor_data_list: List[UniaxialSensorData] = []
         # For axis in sensor axis names
@@ -132,7 +132,7 @@ class IMUDataBuilder(ModelBuilder):
         ]
         # Get the sensor to anatomical axis map from file
         sensor_to_anatomical_axis_map: Dict[IMUDataFields:IMUDataFields] = (
-            sensor_data_group.attributes[IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP]
+            sensor_data_group.attributes[IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP.value]
         )
         # Get the file anatomical axis from the file axis map
         file_anatomical_axis: IMUDataFields = sensor_to_anatomical_axis_map[
@@ -148,10 +148,10 @@ class IMUDataBuilder(ModelBuilder):
 
     def __build_imu_metadata(self, input_file: HDF5Group) -> IMUMetadata:
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
-            input_file.attributes[IMUDataFields.IMU_DATA_IDENTIFIER]
+            input_file.attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value]
         )
         file_instrument_id: Dict[IMUDataFields:str] = input_file.attributes[
-            IMUDataFields.INSTRUMENT_IDENTIFIER
+            IMUDataFields.INSTRUMENT_IDENTIFIER.value
         ]
         instrument_name: str = file_instrument_id[IMUDataFields.INSTRUMENT_NAME]
         instrument_serial_number: str = file_instrument_id[IMUDataFields.SERIAL_NUMBER]

@@ -17,7 +17,7 @@ class SensorSpecification:
     # Native units
     units: str
     # Operating range
-    range: tuple[float, float]
+    range: Tuple[float, float]
     # Sensitivity as linear change in output per change in input
     sensitivity: float
     # Resolution in bits

@@ -9,8 +9,8 @@ from src.data_io.model_fields.registries.registry_fields import RegistryFields
 class RegistryBuilder(ModelBuilder, ABC):
     def build_registry(self, input_file: CSVFile) -> Dict[str, Path]:
         registry: Dict[str, Path] = {}
-        ids = input_file[RegistryFields.DATA_IDENTIFIER]
-        paths = input_file[RegistryFields.DIRECTORY]
+        ids = input_file[RegistryFields.DATA_IDENTIFIER.value]
+        paths = input_file[RegistryFields.DIRECTORY.value]
         for id, path in zip(ids, paths):
             registry[id] = Path(path)
         return registry
