@@ -22,9 +22,48 @@ from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system impor
 
 
 class IMUDataFileBuilder(FileBuilder):
-    version = "1.0"
+    """Builds HDF5 file format from IMU data model objects.
 
-    def __init__(self):
+    This builder handles conversion of IMU (Inertial Measurement Unit) data
+    into HDF5 file format, including sensor data and metadata.
+
+    Attributes:
+        version (str): Version identifier for the builder
+        model_to_file_sensor_type_map (Dict[SensorType, str]): Maps sensor types to file fields
+        model_to_file_anatomical_axis_map (Dict[AnatomicalCoordinateSystem, str]): Maps anatomical axes
+        model_to_file_sensor_axis_map (Dict[SensorCoordinateSystem, str]): Maps sensor axes
+    """
+
+    version: str = "1.0"
+
+    def __init__(self) -> None:
+        """Initialize the IMU data file builder with mapping dictionaries.
+
+        Raises:
+            ValueError: If mapping dictionaries are incomplete
+        """
+        super().__init__()
+
+        # Validate that all sensor types are mapped
+        if not all(
+            sensor_type in self.model_to_file_sensor_type_map
+            for sensor_type in SensorType
+        ):
+            raise ValueError("Incomplete sensor type mapping")
+
+        # Validate that all axes are mapped
+        if not all(
+            axis in self.model_to_file_anatomical_axis_map
+            for axis in AnatomicalCoordinateSystem
+        ):
+            raise ValueError("Incomplete anatomical axis mapping")
+
+        if not all(
+            axis in self.model_to_file_sensor_axis_map
+            for axis in SensorCoordinateSystem
+        ):
+            raise ValueError("Incomplete sensor axis mapping")
+
         self.model_to_file_sensor_type_map: Dict[SensorType, str] = {
             SensorType.ACCELEROMETER: IMUDataFields.ACCELEROMETER.value,
             SensorType.GYROSCOPE: IMUDataFields.GYROSCOPE.value,
@@ -37,20 +76,29 @@ class IMUDataFileBuilder(FileBuilder):
             AnatomicalCoordinateSystem.MEDIOLATERAL: IMUDataFields.ANATOMICAL_AXIS_MEDIOLATERAL.value,
             AnatomicalCoordinateSystem.VERTICAL: IMUDataFields.ANATOMICAL_AXIS_VERTICAL.value,
         }
-        self.model_to_file_sensor_axis_map: Dict[
-            SensorCoordinateSystem, str
-        ] = {
+        self.model_to_file_sensor_axis_map: Dict[SensorCoordinateSystem, str] = {
             SensorCoordinateSystem.X: IMUDataFields.SENSOR_AXIS_X.value,
             SensorCoordinateSystem.Y: IMUDataFields.SENSOR_AXIS_Y.value,
             SensorCoordinateSystem.Z: IMUDataFields.SENSOR_AXIS_Z.value,
         }
 
     def build(self, data: IMUData) -> HDF5Group:
-        if len(IMUData.data) != 0:
+        if len(data.data) != 0:
             raise ValueError("File must contain single epoch")
         return self.__build_imu_data_group(data)
 
     def __build_imu_data_group(self, data: IMUData) -> HDF5Group:
+        """Build the main IMU data group in HDF5 format.
+
+        Args:
+            data (IMUData): The IMU data model to convert
+
+        Returns:
+            HDF5Group: The root group containing all IMU data
+
+        Raises:
+            ValueError: If data validation fails
+        """
         # Initialize imu data group
         imu_data_group: HDF5Group = HDF5Group()
         imu_data_group.name = IMUDataFields.IMU_DATA.value
@@ -61,6 +109,14 @@ class IMUDataFileBuilder(FileBuilder):
         return imu_data_group
 
     def __build_sensor_data_group(self, epoch_imu_data: EpochIMUData) -> HDF5Group:
+        """Build the sensor data group containing all sensor measurements.
+
+        Args:
+            epoch_imu_data (EpochIMUData): The epoch data containing sensor measurements
+
+        Returns:
+            HDF5Group: Group containing all sensor data subgroups
+        """
         # Initialize sensor data group
         sensor_data_group: HDF5Group = HDF5Group()
         sensor_data_group.name = IMUDataFields.SENSOR_DATA.value
@@ -118,10 +174,31 @@ class IMUDataFileBuilder(FileBuilder):
     def __build_sensor_metadata_attributes(
         self, sensor_data: SensorData
     ) -> Dict[str, Any]:
-        # Get file senor type
-        sensor_type: IMUDataFields = self.model_to_file_sensor_type_map[
-            sensor_data.metadata.sensor_type
-        ]
+        """Build metadata attributes for a sensor.
+
+        Args:
+            sensor_data (SensorData): The sensor data containing metadata
+
+        Returns:
+            Dict[str, Any]: Dictionary of metadata attributes
+
+        Raises:
+            ValueError: If required metadata fields are missing
+        """
+        if not sensor_data.metadata:
+            raise ValueError("Sensor metadata is required")
+
+        if not sensor_data.metadata.sensor_type:
+            raise ValueError("Sensor type is required in metadata")
+
+        # Get file sensor type
+        try:
+            sensor_type: IMUDataFields = self.model_to_file_sensor_type_map[
+                sensor_data.metadata.sensor_type
+            ]
+        except KeyError:
+            raise ValueError(f"Unknown sensor type: {sensor_data.metadata.sensor_type}")
+
         # Get file axis map
         file_axis_map: Dict[IMUDataFields, IMUDataFields] = (
             self.__convert_model_to_file_axis_map(
@@ -147,10 +224,28 @@ class IMUDataFileBuilder(FileBuilder):
 
     def __convert_model_to_file_axis_map(
         self, model_axis_map: Dict[SensorAxis, AnatomicalAxis]
-    ) -> Dict[IMUDataFields, IMUDataFields]:
-        return {
-            self.model_to_file_sensor_axis_map[
-                sensor_axis
-            ]: self.model_to_file_anatomical_axis_map[anatomical_axis]
-            for sensor_axis, anatomical_axis in model_axis_map
-        }
+    ) -> Dict[str, str]:
+        """Convert model axis mappings to file format mappings.
+
+        Args:
+            model_axis_map (Dict[SensorAxis, AnatomicalAxis]): Model's axis mappings
+
+        Returns:
+            Dict[str, str]: File format axis mappings
+
+        Raises:
+            ValueError: If an unknown axis is encountered
+        """
+        file_map = {}
+        for sensor_axis, anatomical_axis in model_axis_map.items():
+            try:
+                file_sensor_axis = self.model_to_file_sensor_axis_map[sensor_axis]
+                file_anatomical_axis = self.model_to_file_anatomical_axis_map[
+                    anatomical_axis
+                ]
+            except KeyError as e:
+                raise ValueError(f"Unknown axis in mapping: {e}")
+
+            file_map[file_sensor_axis] = file_anatomical_axis
+
+        return file_map

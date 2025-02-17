@@ -15,9 +15,26 @@ from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_meta
 
 
 class AggregateFeatureSetEntryFileBuilder(FileBuilder):
-    """File builder for aggregate feature set entries"""
+    """Builds HDF5 file format from aggregate feature set entries.
+
+    This builder handles conversion of aggregate feature data into HDF5 format,
+    including feature values, statistics, and metadata.
+
+    Attributes:
+        version (str): Version identifier for the builder
+    """
+
+    version: str = "1.0"
 
     def build(self, data: AggregateFeatureSetEntry) -> HDF5Group:
+        """Build HDF5 group from aggregate feature set entry.
+
+        Args:
+            data (AggregateFeatureSetEntry): The feature data to convert
+
+        Returns:
+            HDF5Group: Root group containing all feature data
+        """
         aggregate_feature_group = HDF5Group()
         aggregate_feature_group.name = AggregateFeatureFields.AGGREGATE_FEATURE.value
         # Build aggregate feature group items
@@ -33,10 +50,18 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
     def __build_aggregate_feature_group_items(
         self, data: AggregateFeatureSetEntry
     ) -> Tuple[HDF5Dataset]:
+        """Build HDF5 datasets for feature data.
+
+        Args:
+            data (AggregateFeatureSetEntry): Source feature data
+
+        Returns:
+            Tuple[HDF5Dataset]: Feature, feature names, and statistic names datasets
+        """
         feature_names = []
         aggregate_feature_data = []
         for aggregate_feature in data.aggregate_features:
-            feature_names.append[aggregate_feature.feature_type.value]
+            feature_names.append(aggregate_feature.feature_type.value)
             aggregate_feature = [
                 stat.value for stat in aggregate_feature.descriptive_statistics
             ]
@@ -67,6 +92,20 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
     def __build_aggregate_feature_group_attributes(
         self, metadata: AggregateFeatureSetEntryMetadata
     ) -> Dict[str, Any]:
+        """Build metadata attributes for the feature group.
+
+        Args:
+            metadata (AggregateFeatureSetEntryMetadata): Source metadata
+
+        Returns:
+            Dict[str, Any]: Dictionary of metadata attributes
+
+        Raises:
+            ValueError: If required metadata fields are missing
+        """
+        if not metadata:
+            raise ValueError("Feature metadata is required")
+
         aggregate_feature_id: str = metadata.aggregate_feature_identifier.value
         raw_feature_id: str = metadata.imu_data_identifier.value
         user_id: str = metadata.user_identifier.value
