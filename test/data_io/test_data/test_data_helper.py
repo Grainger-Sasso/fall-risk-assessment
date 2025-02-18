@@ -174,9 +174,7 @@ class TestDataHelper:
     def __build_test_imu_data_attributes(self) -> Dict[str, Any]:
         """Build test IMU data attributes."""
         test_attributes = {}
-        test_attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value] = (
-            "test_imu_data_identifier"
-        )
+        test_attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value] = "test_imu_data_identifier"
         test_attributes[IMUDataFields.INSTRUMENT_IDENTIFIER.value] = (
             "test_instrument_identifier"
         )

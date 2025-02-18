@@ -179,10 +179,8 @@ class IMUDataFileBuilder(FileBuilder):
         serial_number = instrument_id.split("_")[1]
         return {
             IMUDataFields.IMU_DATA_IDENTIFIER.value: imu_data_identifier,
-            IMUDataFields.INSTRUMENT_IDENTIFIER.value: {
-                IMUDataFields.INSTRUMENT_NAME.value: instrument_name,
-                IMUDataFields.SERIAL_NUMBER.value: serial_number,
-            },
+            IMUDataFields.INSTRUMENT_NAME.value: instrument_name,
+            IMUDataFields.SERIAL_NUMBER.value: serial_number,
         }
 
     def __build_sensor_metadata_attributes(

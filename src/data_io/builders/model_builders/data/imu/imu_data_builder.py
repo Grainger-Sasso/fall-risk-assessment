@@ -282,25 +282,22 @@ class IMUDataBuilder(ModelBuilder):
             ValueError: If required metadata fields are missing
         """
         if IMUDataFields.IMU_DATA_IDENTIFIER.value not in input_file.attributes:
-            raise ValueError("Missing IMU data identifier")
-
-        if IMUDataFields.INSTRUMENT_IDENTIFIER.value not in input_file.attributes:
-            raise ValueError("Missing instrument identifier")
+            raise ValueError("Missing IMU data identifier from IMU metadata")
+        if IMUDataFields.INSTRUMENT_NAME.value not in input_file.attributes:
+            raise ValueError("Missing instrument name from IMU metadata")
+        if IMUDataFields.SERIAL_NUMBER.value not in input_file.attributes:
+            raise ValueError("Missing instrument serial number from IMU metadata")
 
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
             input_file.attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value]
         )
-        file_instrument_id: Dict[IMUDataFields:str] = input_file.attributes[
-            IMUDataFields.INSTRUMENT_IDENTIFIER.value
+
+        instrument_name: str = input_file.attributes[
+            IMUDataFields.INSTRUMENT_NAME.value
         ]
-
-        if IMUDataFields.INSTRUMENT_NAME not in file_instrument_id:
-            raise ValueError("Missing instrument name")
-        if IMUDataFields.SERIAL_NUMBER not in file_instrument_id:
-            raise ValueError("Missing serial number")
-
-        instrument_name: str = file_instrument_id[IMUDataFields.INSTRUMENT_NAME]
-        instrument_serial_number: str = file_instrument_id[IMUDataFields.SERIAL_NUMBER]
+        instrument_serial_number: str = input_file.attributes[
+            IMUDataFields.SERIAL_NUMBER.value
+        ]
         model_instrument_id: InstrumentIdentifier = InstrumentIdentifier(
             instrument_name, instrument_serial_number
         )
