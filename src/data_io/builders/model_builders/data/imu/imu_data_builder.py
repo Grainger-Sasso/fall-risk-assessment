@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple
 
-import numpy as np
+import numpy as np  # type: ignore
 
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
@@ -67,7 +67,7 @@ class IMUDataBuilder(ModelBuilder):
             IMUDataFields.MAGNETOMETER: SensorType.MAGNETOMETER,
         }
 
-    def build(self, input_file: HDF5Group, **kwargs) -> IMUData:
+    def build(self, input_file: HDF5Group) -> IMUData:
         """Build IMU data model from HDF5 file format.
 
         Args:
@@ -311,21 +311,24 @@ class IMUDataBuilder(ModelBuilder):
             IMUDataFields(sensor_data_group.name)
         ]
         sampling_rate: float = sensor_data_group.attributes[IMUDataFields.SAMPLING_RATE]
-        file_sensor_orientation_map: Dict[IMUDataFields:IMUDataFields] = {
-            IMUDataFields(file_sensor_axis): IMUDataFields(file_anatomical_axis)
-            for file_sensor_axis, file_anatomical_axis in sensor_data_group.attributes[
-                IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP
-            ].items()
-        }
-        model_sensor_orientation_map: Dict[SensorAxis:AnatomicalAxis] = {
-            SensorAxis(
-                self.file_to_model_sensor_axis_map[file_sensor_axis]
-            ): AnatomicalAxis(
-                self.file_to_model_anatomical_axis_map[file_anatomical_axis]
+        # Construct file sensor orientation map from input file lists
+        file_orientation_map: Dict[IMUDataFields, IMUDataFields] = {
+            IMUDataFields(sensor_axis): IMUDataFields(anatomical_axis)
+            for sensor_axis, anatomical_axis in zip(
+                sensor_data_group.attributes[
+                    IMUDataFields.ORIENTATION_MAP_SENSOR.value
+                ],
+                sensor_data_group.attributes[
+                    IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value
+                ],
             )
-            for file_sensor_axis, file_anatomical_axis in file_sensor_orientation_map.items()
+        }
+        # Convert the file map to model map
+        model_orientation_map: Dict[SensorAxis, AnatomicalAxis] = {
+            SensorAxis(
+                self.file_to_model_sensor_axis_map(file_sensor_axis)
+            ): AnatomicalAxis(self.file_to_model_anatomical_axis_map(file_anatom_axis))
+            for file_sensor_axis, file_anatom_axis in file_orientation_map
         }
         unit: str = sensor_data_group.attributes[IMUDataFields.UNIT]
-        return SensorMetadata(
-            sensor_type, sampling_rate, model_sensor_orientation_map, unit
-        )
+        return SensorMetadata(sensor_type, sampling_rate, model_orientation_map, unit)

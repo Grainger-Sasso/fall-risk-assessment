@@ -1,13 +1,15 @@
-import h5py
+import traceback
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Tuple
 
-from data_io.formats.hdf5.hdf5_group import HDF5Group
-from data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
+import h5py
+
+from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
+from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.read_write.writers.file_writer import FileWriter
 
 
-class JHDF5FileWriter(FileWriter):
+class HDF5FileWriter(FileWriter):
     """
     HDF5 file writer.
     """
@@ -37,6 +39,8 @@ class JHDF5FileWriter(FileWriter):
             """
             # Write attributes
             for key, val in target.attributes.items():
+                print("#########")
+                print(key, val)
                 h5_group.attrs[key] = val
 
             # Write items
@@ -50,10 +54,18 @@ class JHDF5FileWriter(FileWriter):
                     # Create a subgroup and recursively write its contents
                     subgroup = h5_group.create_group(item.name)
                     recursively_write_hdf5(item, subgroup)
+                print("######################")
+                print(target)
+                print(h5_group)
 
         try:
-            with h5py.File(path, "w") as file:
-                recursively_write_hdf5(group, file)
+            with h5py.File(path, "w") as h5file:
+                # Create root group with same name as input group
+                root_group = h5file.create_group(group.name)
+                recursively_write_hdf5(group, root_group)
             return True, ""  # Success
         except Exception as e:
-            return False, str(e)  # Failure with error message
+            return (
+                False,
+                f"Failed to write HDF5 file: {str(e)}\nStacktrace:\n{traceback.format_exc()}",
+            )  # Failure with error message

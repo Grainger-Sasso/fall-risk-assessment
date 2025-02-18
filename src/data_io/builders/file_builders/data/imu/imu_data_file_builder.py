@@ -99,14 +99,17 @@ class IMUDataFileBuilder(FileBuilder):
         Raises:
             ValueError: If data validation fails
         """
-        # Initialize imu data group
-        imu_data_group: HDF5Group = HDF5Group()
-        imu_data_group.name = IMUDataFields.IMU_DATA.value
+        # Get data group name
+        imu_data_group_name = IMUDataFields.IMU_DATA.value
         # Build sensor data group of imu data group
-        imu_data_group.items = list(self.__build_sensor_data_group(data.data[0]))
+        imu_data_group_items = list(self.__build_sensor_data_group(data.data[0]))
         # Build imu data metadata attributes
-        imu_data_group.attributes = self.__build_imu_metadata_attributes(data.metadata)
-        return imu_data_group
+        imu_data_group_attributes = self.__build_imu_metadata_attributes(data.metadata)
+        return HDF5Group(
+            name=imu_data_group_name,
+            items=imu_data_group_items,
+            attributes=imu_data_group_attributes,
+        )
 
     def __build_sensor_data_group(self, epoch_imu_data: EpochIMUData) -> HDF5Group:
         """Build the sensor data group containing all sensor measurements.
@@ -118,43 +121,54 @@ class IMUDataFileBuilder(FileBuilder):
             HDF5Group: Group containing all sensor data subgroups
         """
         # Initialize sensor data group
-        sensor_data_group: HDF5Group = HDF5Group()
-        sensor_data_group.name = IMUDataFields.SENSOR_DATA.value
-        sensor_data_group.items = []
-        sensor_data_group.attributes = {}
+        sensor_data_group_name = IMUDataFields.SENSOR_DATA.value
+        sensor_data_group_items = []
+        sensor_data_group_attributes = {}
 
         # For every sensor present in IMU data
         for sensor_data in epoch_imu_data.data:
             # Build sensor subgroup and append to sensor data group items
-            sensor_data_group.items.append(
+            sensor_data_group_items.append(
                 self.__build_sensor_data_subgroup(sensor_data)
             )
 
-        return sensor_data_group
+        return HDF5Group(
+            name=sensor_data_group_name,
+            items=sensor_data_group_items,
+            attributes=sensor_data_group_attributes,
+        )
 
     def __build_sensor_data_subgroup(self, sensor_data: SensorData) -> HDF5Group:
         # Initialize sensor subgroup
-        sensor_data_subgroup: HDF5Group = HDF5Group()
-        sensor_data_subgroup.name = self.model_to_file_sensor_type_map[
+        sensor_data_subgroup_name = self.model_to_file_sensor_type_map[
             SensorData.metadata.sensor_type
         ]
         # Build time dataset and add to sensor data subgroup items
-        time: HDF5Dataset = HDF5Dataset()
-        time.name = IMUDataFields.TIME.value
-        time.attributes = {}
-        time.data = sensor_data.time.tolist()
-        # Build data dataset and add to sensor data subgroup items
-        data_dataset: HDF5Dataset = HDF5Dataset()
-        data_dataset.name = IMUDataFields.DATA.value
-        data_dataset.attributes = {}
-        data_dataset.data = [axis.data.tolist() for axis in sensor_data.data]
-        # Add time and data datasets to sensor data subgroup's items
-        sensor_data_subgroup.items = [time, data_dataset]
-        # Build sensor metadata attributes
-        sensor_data_subgroup.attributes = self.__build_sensor_metadata_attributes(
-            sensor_data
+        time: HDF5Dataset = HDF5Dataset(
+            name=IMUDataFields.TIME.value, data=sensor_data.time.tolist(), attributes={}
         )
-        return sensor_data_subgroup
+        # Build data dataset and add to sensor data subgroup items
+        sensor_axis_names: List[SensorAxis] = []
+        axis_data: List[List[Any]] = []
+        for axis in sensor_data.data:
+            sensor_axis_names.append(axis.sensor_axis)
+            axis_data.append(axis.data.tolist())
+        data_dataset: HDF5Dataset = HDF5Dataset(
+            name=IMUDataFields.DATA.value,
+            data=axis_data,
+            attributes={},
+        )
+        # Add time and data datasets to sensor data subgroup's items
+        sensor_data_subgroup_items = [time, data_dataset]
+        # Build sensor metadata attributes
+        sensor_data_subgroup_attributes = self.__build_sensor_metadata_attributes(
+            sensor_data, sensor_axis_names
+        )
+        return HDF5Group(
+            name=sensor_data_subgroup_name,
+            items=sensor_data_subgroup_items,
+            attributes=sensor_data_subgroup_attributes,
+        )
 
     def __build_imu_metadata_attributes(
         self, imu_metadata: IMUMetadata
@@ -172,7 +186,7 @@ class IMUDataFileBuilder(FileBuilder):
         }
 
     def __build_sensor_metadata_attributes(
-        self, sensor_data: SensorData
+        self, sensor_data: SensorData, sensor_axis_names: List[SensorAxis]
     ) -> Dict[str, Any]:
         """Build metadata attributes for a sensor.
 
@@ -193,59 +207,36 @@ class IMUDataFileBuilder(FileBuilder):
 
         # Get file sensor type
         try:
-            sensor_type: IMUDataFields = self.model_to_file_sensor_type_map[
+            sensor_type: str = self.model_to_file_sensor_type_map[
                 sensor_data.metadata.sensor_type
             ]
         except KeyError:
             raise ValueError(f"Unknown sensor type: {sensor_data.metadata.sensor_type}")
 
-        # Get file axis map
-        file_axis_map: Dict[IMUDataFields, IMUDataFields] = (
-            self.__convert_model_to_file_axis_map(
-                sensor_data.metadata.sensor_orientation_map
+        # Construct orientation map entries
+        orientation_map_sensor: List[str] = []
+        orientation_map_anatomical: List[str] = []
+        for sensor_axis, anatom_axis in sensor_data.metadata.sensor_orientation_map:
+            orientation_map_sensor.append(
+                self.model_to_file_sensor_axis_map[sensor_axis.name]
             )
-        )
+            orientation_map_anatomical.append(
+                self.model_to_file_anatomical_axis_map[anatom_axis.name]
+            )
+
         # Get sampling rate
         sampling_rate: float = sensor_data.metadata.sampling_rate
         # Get unit
         unit: str = sensor_data.metadata.unit
-        # Get file axis names
-        axis_names: List[IMUDataFields] = [
-            self.model_to_file_sensor_type_map[axis.sensor_axis]
-            for axis in sensor_data.data
+        # Conver model sensor axis names to file sensor axis names
+        sensor_axis_names: List[str] = [
+            self.model_to_file_sensor_axis_map[axis.name] for axis in sensor_axis_names
         ]
         return {
             IMUDataFields.SENSOR_TYPE.value: sensor_type,
-            IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP.value: file_axis_map,
+            IMUDataFields.ORIENTATION_MAP_SENSOR.value: orientation_map_sensor,
+            IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value: orientation_map_anatomical,
             IMUDataFields.SAMPLING_RATE.value: sampling_rate,
             IMUDataFields.UNIT.value: unit,
-            IMUDataFields.SENSOR_AXIS_NAMES.value: axis_names,
+            IMUDataFields.SENSOR_AXIS_NAMES.value: sensor_axis_names,
         }
-
-    def __convert_model_to_file_axis_map(
-        self, model_axis_map: Dict[SensorAxis, AnatomicalAxis]
-    ) -> Dict[str, str]:
-        """Convert model axis mappings to file format mappings.
-
-        Args:
-            model_axis_map (Dict[SensorAxis, AnatomicalAxis]): Model's axis mappings
-
-        Returns:
-            Dict[str, str]: File format axis mappings
-
-        Raises:
-            ValueError: If an unknown axis is encountered
-        """
-        file_map = {}
-        for sensor_axis, anatomical_axis in model_axis_map.items():
-            try:
-                file_sensor_axis = self.model_to_file_sensor_axis_map[sensor_axis]
-                file_anatomical_axis = self.model_to_file_anatomical_axis_map[
-                    anatomical_axis
-                ]
-            except KeyError as e:
-                raise ValueError(f"Unknown axis in mapping: {e}")
-
-            file_map[file_sensor_axis] = file_anatomical_axis
-
-        return file_map

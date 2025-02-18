@@ -5,7 +5,7 @@ from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_syst
 
 class AnatomicalAxis:
     def __init__(self, name: AnatomicalCoordinateSystem):
-        self._name = name
+        self.name = name
 
     @property
     def name(self) -> AnatomicalCoordinateSystem:

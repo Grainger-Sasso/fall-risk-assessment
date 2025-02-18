@@ -113,7 +113,9 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         if features.shape[0] != len(feature_epochs):
             raise ValueError("Number of features does not match number of epochs")
         if features.shape[1] != len(feature_names):
-            raise ValueError("Number of features does not match number of feature names")
+            raise ValueError(
+                "Number of features does not match number of feature names"
+            )
 
         raw_epoch_feature_list: List[RawEpochFeatures] = []
         for row_index, epoch in enumerate(feature_epochs):
