@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from data_model.data.imu.metadata.imu_metadata import IMUMetadata
+from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 
 

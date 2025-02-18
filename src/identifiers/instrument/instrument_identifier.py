@@ -11,7 +11,7 @@ class InstrumentIdentifier(Identifier):
         Initialize the InstrumentIdentifier with a name and serial number.
 
         Args:
-            name (str): The name of the instrument.
+            name (str): The name of the instrument. NOTE - the name is intended to be camel-case
             serial_number (str): The serial number of the instrument.
         """
         # Combine name and serial number into a single value
@@ -31,5 +31,7 @@ class InstrumentIdentifier(Identifier):
             bool: True if the identifier is valid, False otherwise.
         """
         # Check if the value contains exactly one underscore
+        print("################")
+        print(value)
         parts = value.split("_")
         return len(parts) == 2 and all(part.strip() != "" for part in parts)

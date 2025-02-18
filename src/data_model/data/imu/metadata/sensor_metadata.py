@@ -16,5 +16,5 @@ class SensorMetadata:
 
     sensor_type: SensorType
     sampling_rate: float
-    sensor_orientation_map: Dict[SensorAxis:AnatomicalAxis]
+    sensor_orientation_map: Dict[SensorAxis, AnatomicalAxis]
     unit: str

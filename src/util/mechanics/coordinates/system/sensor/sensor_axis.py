@@ -5,7 +5,7 @@ from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system impor
 
 class SensorAxis:
     def __init__(self, name: SensorCoordinateSystem):
-        self.name = name
+        self._name = name
 
     @property
     def name(self) -> SensorCoordinateSystem:
