@@ -39,8 +39,6 @@ class HDF5FileWriter(FileWriter):
             """
             # Write attributes
             for key, val in target.attributes.items():
-                print("#########")
-                print(key, val)
                 h5_group.attrs[key] = val
 
             # Write items
@@ -54,9 +52,6 @@ class HDF5FileWriter(FileWriter):
                     # Create a subgroup and recursively write its contents
                     subgroup = h5_group.create_group(item.name)
                     recursively_write_hdf5(item, subgroup)
-                print("######################")
-                print(target)
-                print(h5_group)
 
         try:
             with h5py.File(path, "w") as h5file:
