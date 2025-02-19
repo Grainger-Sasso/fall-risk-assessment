@@ -31,7 +31,5 @@ class InstrumentIdentifier(Identifier):
             bool: True if the identifier is valid, False otherwise.
         """
         # Check if the value contains exactly one underscore
-        print("################")
-        print(value)
         parts = value.split("_")
         return len(parts) == 2 and all(part.strip() != "" for part in parts)

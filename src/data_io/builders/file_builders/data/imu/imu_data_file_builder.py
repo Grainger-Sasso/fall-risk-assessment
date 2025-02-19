@@ -43,6 +43,23 @@ class IMUDataFileBuilder(FileBuilder):
             ValueError: If mapping dictionaries are incomplete
         """
         super().__init__()
+        self.model_to_file_sensor_type_map: Dict[SensorType, str] = {
+            SensorType.ACCELEROMETER: IMUDataFields.ACCELEROMETER.value,
+            SensorType.GYROSCOPE: IMUDataFields.GYROSCOPE.value,
+            SensorType.MAGNETOMETER: IMUDataFields.MAGNETOMETER.value,
+        }
+        self.model_to_file_anatomical_axis_map: Dict[
+            AnatomicalCoordinateSystem, str
+        ] = {
+            AnatomicalCoordinateSystem.ANTEROPOSTERIOR: IMUDataFields.ANATOMICAL_AXIS_ANTEROPOSTERIOR.value,
+            AnatomicalCoordinateSystem.MEDIOLATERAL: IMUDataFields.ANATOMICAL_AXIS_MEDIOLATERAL.value,
+            AnatomicalCoordinateSystem.VERTICAL: IMUDataFields.ANATOMICAL_AXIS_VERTICAL.value,
+        }
+        self.model_to_file_sensor_axis_map: Dict[SensorCoordinateSystem, str] = {
+            SensorCoordinateSystem.X: IMUDataFields.SENSOR_AXIS_X.value,
+            SensorCoordinateSystem.Y: IMUDataFields.SENSOR_AXIS_Y.value,
+            SensorCoordinateSystem.Z: IMUDataFields.SENSOR_AXIS_Z.value,
+        }
 
         # Validate that all sensor types are mapped
         if not all(
@@ -64,26 +81,9 @@ class IMUDataFileBuilder(FileBuilder):
         ):
             raise ValueError("Incomplete sensor axis mapping")
 
-        self.model_to_file_sensor_type_map: Dict[SensorType, str] = {
-            SensorType.ACCELEROMETER: IMUDataFields.ACCELEROMETER.value,
-            SensorType.GYROSCOPE: IMUDataFields.GYROSCOPE.value,
-            SensorType.MAGNETOMETER: IMUDataFields.MAGNETOMETER.value,
-        }
-        self.model_to_file_anatomical_axis_map: Dict[
-            AnatomicalCoordinateSystem, str
-        ] = {
-            AnatomicalCoordinateSystem.ANTEROPOSTERIOR: IMUDataFields.ANATOMICAL_AXIS_ANTEROPOSTERIOR.value,
-            AnatomicalCoordinateSystem.MEDIOLATERAL: IMUDataFields.ANATOMICAL_AXIS_MEDIOLATERAL.value,
-            AnatomicalCoordinateSystem.VERTICAL: IMUDataFields.ANATOMICAL_AXIS_VERTICAL.value,
-        }
-        self.model_to_file_sensor_axis_map: Dict[SensorCoordinateSystem, str] = {
-            SensorCoordinateSystem.X: IMUDataFields.SENSOR_AXIS_X.value,
-            SensorCoordinateSystem.Y: IMUDataFields.SENSOR_AXIS_Y.value,
-            SensorCoordinateSystem.Z: IMUDataFields.SENSOR_AXIS_Z.value,
-        }
-
+        
     def build(self, data: IMUData) -> HDF5Group:
-        if len(data.data) != 0:
+        if type(data) is not IMUData or len(data.data) != 1:
             raise ValueError("File must contain single epoch")
         return self.__build_imu_data_group(data)
 
@@ -102,7 +102,7 @@ class IMUDataFileBuilder(FileBuilder):
         # Get data group name
         imu_data_group_name = IMUDataFields.IMU_DATA.value
         # Build sensor data group of imu data group
-        imu_data_group_items = list(self.__build_sensor_data_group(data.data[0]))
+        imu_data_group_items = [self.__build_sensor_data_group(data.data[0])]
         # Build imu data metadata attributes
         imu_data_group_attributes = self.__build_imu_metadata_attributes(data.metadata)
         return HDF5Group(
@@ -141,7 +141,7 @@ class IMUDataFileBuilder(FileBuilder):
     def __build_sensor_data_subgroup(self, sensor_data: SensorData) -> HDF5Group:
         # Initialize sensor subgroup
         sensor_data_subgroup_name = self.model_to_file_sensor_type_map[
-            SensorData.metadata.sensor_type
+            sensor_data.metadata.sensor_type
         ]
         # Build time dataset and add to sensor data subgroup items
         time: HDF5Dataset = HDF5Dataset(
@@ -173,8 +173,8 @@ class IMUDataFileBuilder(FileBuilder):
     def __build_imu_metadata_attributes(
         self, imu_metadata: IMUMetadata
     ) -> Dict[str, Any]:
-        imu_data_identifier: str = IMUMetadata.imu_data_identifier.value
-        instrument_id: str = IMUMetadata.instument_identifier.value
+        imu_data_identifier: str = imu_metadata.imu_data_identifier.value
+        instrument_id: str = imu_metadata.instument_identifier.value
         instrument_name = instrument_id.split("_")[0]
         serial_number = instrument_id.split("_")[1]
         return {
@@ -214,7 +214,7 @@ class IMUDataFileBuilder(FileBuilder):
         # Construct orientation map entries
         orientation_map_sensor: List[str] = []
         orientation_map_anatomical: List[str] = []
-        for sensor_axis, anatom_axis in sensor_data.metadata.sensor_orientation_map:
+        for sensor_axis, anatom_axis in sensor_data.metadata.sensor_orientation_map.items():
             orientation_map_sensor.append(
                 self.model_to_file_sensor_axis_map[sensor_axis.name]
             )

@@ -1,6 +1,7 @@
 import shutil
+from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np  # type: ignore
 
@@ -27,6 +28,51 @@ from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
 from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
     SensorCoordinateSystem,
 )
+
+
+class TestConstants(Enum):
+    """Test constants for IMU data generation."""
+
+    IMU_DATA_ID = "test_imu_data_identifier"
+    INSTRUMENT_NAME = "testInstrumentName"
+    SERIAL_NUMBER = "1234567890"
+    SAMPLING_RATE = 100.0
+    UNIT = "test_unit"
+    TIME_DATA = [float(i) / 10 for i in range(0, 11, 1)]
+    IMU_DATA = [[0.0 for i in range(10)] for j in range(3)]
+
+    # Sensor types and names
+    SENSORS = [
+        (SensorType.ACCELEROMETER, IMUDataFields.ACCELEROMETER),
+        (SensorType.GYROSCOPE, IMUDataFields.GYROSCOPE),
+    ]
+
+    # Axis mappings
+    ORIENTATION_MAP_SENSOR = [
+        IMUDataFields.SENSOR_AXIS_X.value,
+        IMUDataFields.SENSOR_AXIS_Y.value,
+        IMUDataFields.SENSOR_AXIS_Z.value,
+    ]
+    ORIENTATION_MAP_ANATOM = [
+        IMUDataFields.ANATOMICAL_AXIS_ANTEROPOSTERIOR.value,
+        IMUDataFields.ANATOMICAL_AXIS_MEDIOLATERAL.value,
+        IMUDataFields.ANATOMICAL_AXIS_VERTICAL.value,
+    ]
+    AXIS_NAMES = [
+        IMUDataFields.SENSOR_AXIS_X.value,
+        IMUDataFields.SENSOR_AXIS_Y.value,
+        IMUDataFields.SENSOR_AXIS_Z.value,
+    ]
+    MODEL_AXIS_NAMES = [
+        SensorCoordinateSystem.X,
+        SensorCoordinateSystem.Y,
+        SensorCoordinateSystem.Z,
+    ]
+    MODEL_ORIENTATION_MAP = {
+        SensorCoordinateSystem.X: AnatomicalCoordinateSystem.ANTEROPOSTERIOR,
+        SensorCoordinateSystem.Y: AnatomicalCoordinateSystem.MEDIOLATERAL,
+        SensorCoordinateSystem.Z: AnatomicalCoordinateSystem.VERTICAL,
+    }
 
 
 class TestDataHelper:
@@ -95,44 +141,6 @@ class IMUDataHelper:
 
     def __init__(self):
         self.test_data_helper = TestDataHelper()
-        self.constants = {
-            "imu_data_id": "test_imu_data_identifier",
-            "instrument_name": "testInstrumentName",
-            "serial_number": "1234567890",
-            "sensors": [
-                (SensorType.ACCELEROMETER, IMUDataFields.ACCELEROMETER),
-                (SensorType.GYROSCOPE, IMUDataFields.GYROSCOPE),
-            ],
-            "orientation_map_sensor": [
-                IMUDataFields.SENSOR_AXIS_X.value,
-                IMUDataFields.SENSOR_AXIS_Y.value,
-                IMUDataFields.SENSOR_AXIS_Z.value,
-            ],
-            "orientation_map_anatom": [
-                IMUDataFields.ANATOMICAL_AXIS_ANTEROPOSTERIOR.value,
-                IMUDataFields.ANATOMICAL_AXIS_MEDIOLATERAL.value,
-                IMUDataFields.ANATOMICAL_AXIS_VERTICAL.value,
-            ],
-            "sampling_rate": 100.0,
-            "unit": "test_unit",
-            "axis_names": [
-                IMUDataFields.SENSOR_AXIS_X.value,
-                IMUDataFields.SENSOR_AXIS_Y.value,
-                IMUDataFields.SENSOR_AXIS_Z.value,
-            ],
-            "time_data": [float(i) / 10 for i in range(0, 11, 1)],
-            "imu_data": [[0.0 for i in range(10)] for j in range(3)],
-            "model_axis_names": [
-                SensorCoordinateSystem.X,
-                SensorCoordinateSystem.Y,
-                SensorCoordinateSystem.Z,
-            ],
-            "model_orientation_map": {
-                SensorCoordinateSystem.X: AnatomicalCoordinateSystem.ANTEROPOSTERIOR,
-                SensorCoordinateSystem.Y: AnatomicalCoordinateSystem.MEDIOLATERAL,
-                SensorCoordinateSystem.Z: AnatomicalCoordinateSystem.VERTICAL,
-            },
-        }
 
     def create_test_imu_data_file(self) -> Path:
         """Create a test IMU data file.
@@ -152,15 +160,15 @@ class IMUDataHelper:
     def _build_test_imu_data_attributes(self) -> Dict[str, Any]:
         """Build test IMU data attributes."""
         test_attributes = {}
-        test_attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value] = self.constants[
-            "imu_data_id"
-        ]
-        test_attributes[IMUDataFields.INSTRUMENT_NAME.value] = self.constants[
-            "instrument_name"
-        ]
-        test_attributes[IMUDataFields.SERIAL_NUMBER.value] = self.constants[
-            "serial_number"
-        ]
+        test_attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value] = (
+            TestConstants.IMU_DATA_ID.value
+        )
+        test_attributes[IMUDataFields.INSTRUMENT_NAME.value] = (
+            TestConstants.INSTRUMENT_NAME.value
+        )
+        test_attributes[IMUDataFields.SERIAL_NUMBER.value] = (
+            TestConstants.SERIAL_NUMBER.value
+        )
         return test_attributes
 
     def _build_sensor_data_group(self) -> List[HDF5Group]:
@@ -169,7 +177,7 @@ class IMUDataHelper:
             name=IMUDataFields.SENSOR_DATA.value, items=[], attributes={}
         )
         items = []
-        for sensor_type, sensor_name in self.constants["sensors"]:
+        for sensor_type, sensor_name in TestConstants.SENSORS.value:
             items.append(self._build_sensor_data_group_item(sensor_type, sensor_name))
         sensor_data_group.items = items
         return [sensor_data_group]
@@ -181,27 +189,23 @@ class IMUDataHelper:
         # Build time dataset
         time_dataset = HDF5Dataset(
             name=IMUDataFields.TIME.value,
-            data=self.constants["time_data"],
+            data=TestConstants.TIME_DATA.value,
             attributes={},
         )
         # Build imu data dataset
         imu_data_dataset = HDF5Dataset(
             name=IMUDataFields.DATA.value,
-            data=self.constants["imu_data"],
+            data=TestConstants.IMU_DATA.value,
             attributes={},
         )
         # Build sensor data group attributes
         sensor_data_group_attr: Dict[str, Any] = {
             IMUDataFields.SENSOR_TYPE.value: sensor_type.value,
-            IMUDataFields.ORIENTATION_MAP_SENSOR.value: self.constants[
-                "orientation_map_sensor"
-            ],
-            IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value: self.constants[
-                "orientation_map_anatom"
-            ],
-            IMUDataFields.SAMPLING_RATE.value: self.constants["sampling_rate"],
-            IMUDataFields.UNIT.value: self.constants["unit"],
-            IMUDataFields.SENSOR_AXIS_NAMES.value: self.constants["axis_names"],
+            IMUDataFields.ORIENTATION_MAP_SENSOR.value: TestConstants.ORIENTATION_MAP_SENSOR.value,
+            IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value: TestConstants.ORIENTATION_MAP_ANATOM.value,
+            IMUDataFields.SAMPLING_RATE.value: TestConstants.SAMPLING_RATE.value,
+            IMUDataFields.UNIT.value: TestConstants.UNIT.value,
+            IMUDataFields.SENSOR_AXIS_NAMES.value: TestConstants.AXIS_NAMES.value,
         }
         # Build sensor data group
         return HDF5Group(
@@ -225,7 +229,7 @@ class IMUDataHelper:
     def __build_epoch_imu_data(self) -> EpochIMUData:
         sensor_data_list: List[SensorData] = []
         # For every sensor
-        for sensor_type, _ in self.constants["sensors"]:
+        for sensor_type, _ in TestConstants.SENSORS.value:
             # Build sensor data
             sensor_data_list.append(self.__build_sensor_data(sensor_type))
 
@@ -238,7 +242,7 @@ class IMUDataHelper:
 
     def __build_sensor_data(self, sensor_type: SensorType) -> SensorData:
         # Get time data.
-        time: np.ndarray = np.array(self.constants["time_data"])
+        time: np.ndarray = np.array(TestConstants.TIME_DATA.value)
 
         # Build uniaxial sensor data list
         uniaxial_sensor_data_list: List[UniaxialSensorData] = (
@@ -249,17 +253,17 @@ class IMUDataHelper:
         return SensorData(uniaxial_sensor_data_list, time, sensor_metadata)
 
     def __build_uniaxial_sensor_data_list(self) -> List[UniaxialSensorData]:
-        sensor_data: np.ndarray = np.array(self.constants["imu_data"])
+        sensor_data: np.ndarray = np.array(TestConstants.IMU_DATA.value)
 
-        sensor_axis_names: List[SensorCoordinateSystem] = self.constants[
-            "model_axis_names"
-        ]
+        sensor_axis_names: List[SensorCoordinateSystem] = (
+            TestConstants.MODEL_AXIS_NAMES.value
+        )
 
         uniaxial_sensor_data_list: List[UniaxialSensorData] = []
         # For axis in sensor axis names
         for index, model_sensor_axis in enumerate(sensor_axis_names):
             uniaxial_sensor_data: np.ndarray = sensor_data[index]
-            model_anatomical_axis = self.constants["model_orientation_map"][
+            model_anatomical_axis = TestConstants.MODEL_ORIENTATION_MAP.value[
                 model_sensor_axis
             ]
             uniaxial_sensor_data_list.append(
@@ -273,24 +277,22 @@ class IMUDataHelper:
 
     def __build_imu_metadata(self) -> IMUMetadata:
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
-            self.constants["imu_data_id"]
+            TestConstants.IMU_DATA_ID.value
         )
-        instrument_name: str = self.constants["instrument_name"]
-        instrument_serial_number: str = self.constants["serial_number"]
+        instrument_name: str = TestConstants.INSTRUMENT_NAME.value
+        instrument_serial_number: str = TestConstants.SERIAL_NUMBER.value
         model_instrument_id: InstrumentIdentifier = InstrumentIdentifier(
             instrument_name, instrument_serial_number
         )
         return IMUMetadata(imu_data_identifier, model_instrument_id)
 
     def __build_sensor_metadata(self, sensor_type: SensorType) -> SensorMetadata:
-        sampling_rate: float = self.constants["sampling_rate"]
+        sampling_rate: float = TestConstants.SAMPLING_RATE.value
         model_orientation_map: Dict[SensorAxis, AnatomicalAxis] = {
             SensorAxis(sensor_axis): AnatomicalAxis(anatom_axis)
-            for sensor_axis, anatom_axis in self.constants[
-                "model_orientation_map"
-            ].items()
+            for sensor_axis, anatom_axis in TestConstants.MODEL_ORIENTATION_MAP.value.items()
         }
-        unit: str = self.constants["unit"]
+        unit: str = TestConstants.UNIT.value
         return SensorMetadata(sensor_type, sampling_rate, model_orientation_map, unit)
 
 
