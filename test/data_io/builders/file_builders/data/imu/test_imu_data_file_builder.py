@@ -1,6 +1,3 @@
-import unittest
-from pathlib import Path
-
 from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
     IMUDataFileBuilder,
 )
@@ -18,8 +15,8 @@ class TestIMUDataFileBuilder(BaseTest):
         self.data_helper = IMUDataHelper()
 
     def test_build_valid_imu_data(self):
-        # Test builder.build() for IMUData -> HDF5Group
-        # TODO: Create test IMU data
+        """Test builder.build() for IMUData -> HDF5Group"""
+        # Create test IMU data
         imu_data: IMUData = self.data_helper.create_test_imu_data()
         # Test building HDF5 group
         result: HDF5Group = self.builder.build(imu_data)
@@ -52,7 +49,7 @@ class TestIMUDataFileBuilder(BaseTest):
         self.assertEqual(sensor_group.name, IMUDataFields.SENSOR_DATA.value)
         self.assertEqual(sensor_group.attributes, {})
         # Assert two sensor data subgroups
-        self.assertEqual(len(sensor_group.items), 2)
+        self.assertEqual(len(sensor_group.items), len(TestConstants.SENSORS.value))
         self.assertIn(
             IMUDataFields.ACCELEROMETER.value,
             [group.name for group in sensor_group.items],
@@ -93,7 +90,7 @@ class TestIMUDataFileBuilder(BaseTest):
             )
             self.assertIn(IMUDataFields.SAMPLING_RATE.value, sub_group_attr.keys())
             self.assertIn(IMUDataFields.UNIT.value, sub_group_attr.keys())
-            self.assertIn(IMUDataFields.SENSOR_AXIS_NAMES.value, sub_group_attr.keys())
+            self.assertIn(IMUDataFields.AXIS_NAMES.value, sub_group_attr.keys())
 
             self.assertIn(
                 sub_group_attr[IMUDataFields.SENSOR_TYPE.value],
@@ -116,7 +113,7 @@ class TestIMUDataFileBuilder(BaseTest):
                 TestConstants.UNIT.value,
             )
             self.assertEqual(
-                sub_group_attr[IMUDataFields.SENSOR_AXIS_NAMES.value],
+                sub_group_attr[IMUDataFields.AXIS_NAMES.value],
                 TestConstants.AXIS_NAMES.value,
             )
 

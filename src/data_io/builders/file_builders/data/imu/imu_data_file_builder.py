@@ -81,7 +81,6 @@ class IMUDataFileBuilder(FileBuilder):
         ):
             raise ValueError("Incomplete sensor axis mapping")
 
-        
     def build(self, data: IMUData) -> HDF5Group:
         if type(data) is not IMUData or len(data.data) != 1:
             raise ValueError("File must contain single epoch")
@@ -174,9 +173,8 @@ class IMUDataFileBuilder(FileBuilder):
         self, imu_metadata: IMUMetadata
     ) -> Dict[str, Any]:
         imu_data_identifier: str = imu_metadata.imu_data_identifier.value
-        instrument_id: str = imu_metadata.instument_identifier.value
-        instrument_name = instrument_id.split("_")[0]
-        serial_number = instrument_id.split("_")[1]
+        instrument_name = imu_metadata.instrument_identifier.name
+        serial_number = imu_metadata.instrument_identifier.serial_number
         return {
             IMUDataFields.IMU_DATA_IDENTIFIER.value: imu_data_identifier,
             IMUDataFields.INSTRUMENT_NAME.value: instrument_name,
@@ -214,12 +212,16 @@ class IMUDataFileBuilder(FileBuilder):
         # Construct orientation map entries
         orientation_map_sensor: List[str] = []
         orientation_map_anatomical: List[str] = []
-        for sensor_axis, anatom_axis in sensor_data.metadata.sensor_orientation_map.items():
+        sensor_axes = [
+            (data.sensor_axis.name, data.anatomical_axis.name)
+            for data in sensor_data.data
+        ]
+        for sensor_axis, anatom_axis in sensor_axes:
             orientation_map_sensor.append(
-                self.model_to_file_sensor_axis_map[sensor_axis.name]
+                self.model_to_file_sensor_axis_map[sensor_axis]
             )
             orientation_map_anatomical.append(
-                self.model_to_file_anatomical_axis_map[anatom_axis.name]
+                self.model_to_file_anatomical_axis_map[anatom_axis]
             )
 
         # Get sampling rate
@@ -236,5 +238,5 @@ class IMUDataFileBuilder(FileBuilder):
             IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value: orientation_map_anatomical,
             IMUDataFields.SAMPLING_RATE.value: sampling_rate,
             IMUDataFields.UNIT.value: unit,
-            IMUDataFields.SENSOR_AXIS_NAMES.value: sensor_axis_names,
+            IMUDataFields.AXIS_NAMES.value: sensor_axis_names,
         }

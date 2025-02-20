@@ -39,7 +39,11 @@ class TestConstants(Enum):
     SAMPLING_RATE = 100.0
     UNIT = "test_unit"
     TIME_DATA = [float(i) / 10 for i in range(0, 11, 1)]
-    IMU_DATA = [[0.0 for i in range(10)] for j in range(3)]
+    IMU_DATA = [
+        [0.0 for i in range(10)],
+        [1.0 for i in range(10)],
+        [2.0 for i in range(10)],
+    ]
 
     # Sensor types and names
     SENSORS = [
@@ -148,13 +152,17 @@ class IMUDataHelper:
         Returns:
             Path: Path to created test file
         """
-        imu_data_group = HDF5Group(
+        imu_data_group: HDF5Group = self.create_test_imu_data_hdf5()
+        return self.test_data_helper.create_test_file(
+            "test_imu_data.h5", imu_data_group
+        )
+
+    def create_test_imu_data_hdf5(self) -> HDF5Group:
+        """Creates test imu data in HDF5Group"""
+        return HDF5Group(
             name=IMUDataFields.IMU_DATA.value,
             attributes=self._build_test_imu_data_attributes(),
             items=self._build_sensor_data_group(),
-        )
-        return self.test_data_helper.create_test_file(
-            "test_imu_data.h5", imu_data_group
         )
 
     def _build_test_imu_data_attributes(self) -> Dict[str, Any]:
@@ -205,7 +213,7 @@ class IMUDataHelper:
             IMUDataFields.ORIENTATION_MAP_ANATOMICAL.value: TestConstants.ORIENTATION_MAP_ANATOM.value,
             IMUDataFields.SAMPLING_RATE.value: TestConstants.SAMPLING_RATE.value,
             IMUDataFields.UNIT.value: TestConstants.UNIT.value,
-            IMUDataFields.SENSOR_AXIS_NAMES.value: TestConstants.AXIS_NAMES.value,
+            IMUDataFields.AXIS_NAMES.value: TestConstants.AXIS_NAMES.value,
         }
         # Build sensor data group
         return HDF5Group(
@@ -288,12 +296,8 @@ class IMUDataHelper:
 
     def __build_sensor_metadata(self, sensor_type: SensorType) -> SensorMetadata:
         sampling_rate: float = TestConstants.SAMPLING_RATE.value
-        model_orientation_map: Dict[SensorAxis, AnatomicalAxis] = {
-            SensorAxis(sensor_axis): AnatomicalAxis(anatom_axis)
-            for sensor_axis, anatom_axis in TestConstants.MODEL_ORIENTATION_MAP.value.items()
-        }
         unit: str = TestConstants.UNIT.value
-        return SensorMetadata(sensor_type, sampling_rate, model_orientation_map, unit)
+        return SensorMetadata(sensor_type, sampling_rate, unit)
 
 
 def main():

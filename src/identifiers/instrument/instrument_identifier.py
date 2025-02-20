@@ -18,6 +18,8 @@ class InstrumentIdentifier(Identifier):
         value = f"{name}_{serial_number}"
         # Call the parent class's initializer with the combined value
         super().__init__(value)
+        self.name: str = name
+        self.serial_number: str = serial_number
 
     def validate(self, value: str) -> bool:
         """

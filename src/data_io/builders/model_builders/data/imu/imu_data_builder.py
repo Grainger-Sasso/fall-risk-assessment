@@ -80,8 +80,8 @@ class IMUDataBuilder(ModelBuilder):
         Raises:
             ValueError: If required data is missing or invalid
         """
-        if not input_file:
-            raise ValueError("Input file data is required")
+        if type(input_file) is not HDF5Group:
+            raise ValueError("File must contain single epoch")
 
         # Assumes single epoch in raw IMU data file
         # Get the sensor data group from the input file
@@ -156,18 +156,26 @@ class IMUDataBuilder(ModelBuilder):
         if len(time) == 0:
             raise ValueError("Empty time data")
 
-        # Build uniaxial sensor data list
-        uniaxial_sensor_data_list: List[UniaxialSensorData] = (
-            self.__build_uniaxial_sensor_data_list(sensor_data_group)
-        )
         # Build metadata
         sensor_metadata: SensorMetadata = self.__build_sensor_metadata(
             sensor_data_group
         )
+
+        # Build uniaxial sensor data list
+        model_orientation_map: Dict[SensorAxis, AnatomicalAxis] = (
+            self.__get_model_orientation_map(sensor_data_group)
+        )
+        uniaxial_sensor_data_list: List[UniaxialSensorData] = (
+            self.__build_uniaxial_sensor_data_list(
+                sensor_data_group, model_orientation_map
+            )
+        )
         return SensorData(uniaxial_sensor_data_list, time, sensor_metadata)
 
     def __build_uniaxial_sensor_data_list(
-        self, sensor_data_group: HDF5Group
+        self,
+        sensor_data_group: HDF5Group,
+        model_orientation_map: Dict[SensorAxis, AnatomicalAxis],
     ) -> List[UniaxialSensorData]:
         """Build list of uniaxial sensor data from HDF5 group.
 
@@ -187,7 +195,8 @@ class IMUDataBuilder(ModelBuilder):
         except ValueError as e:
             raise ValueError(f"Missing sensor data: {e}")
 
-        if IMUDataFields.AXIS_NAMES.value not in sensor_data_group.attributes:
+        print(sensor_data_group.attributes)
+        if IMUDataFields.AXIS_NAMES.value not in sensor_data_group.attributes.keys():
             raise ValueError("Missing axis names in sensor data attributes")
 
         sensor_axis_names: List[IMUDataFields] = [
@@ -198,76 +207,29 @@ class IMUDataBuilder(ModelBuilder):
         if not sensor_axis_names:
             raise ValueError("Empty axis names list")
 
+        model_orientation_map: Dict[
+            SensorCoordinateSystem, AnatomicalCoordinateSystem
+        ] = {
+            sensor_axis.name: anatom_axis.name
+            for sensor_axis, anatom_axis in model_orientation_map.items()
+        }
         uniaxial_sensor_data_list: List[UniaxialSensorData] = []
         # For axis in sensor axis names
         for index, file_axis_name in enumerate(sensor_axis_names):
-            uniaxial_sensor_data: np.ndarray = sensor_data[index]
-            model_sensor_axis, model_anatomical_axis = (
-                self.__get_model_axes_from_file_axes(sensor_data_group, file_axis_name)
+            model_sensor_axis: SensorAxis = SensorAxis(
+                self.file_to_model_sensor_axis_map[file_axis_name]
             )
+            model_anatom_axis: AnatomicalAxis = AnatomicalAxis(
+                model_orientation_map[model_sensor_axis.name]
+            )
+            uniaxial_sensor_data: np.ndarray = sensor_data[index]
+
             uniaxial_sensor_data_list.append(
                 UniaxialSensorData(
-                    model_anatomical_axis, model_sensor_axis, uniaxial_sensor_data
+                    model_anatom_axis, model_sensor_axis, uniaxial_sensor_data
                 )
             )
         return uniaxial_sensor_data_list
-
-    def __get_model_axes_from_file_axes(
-        self, sensor_data_group: HDF5Group, file_sensor_axis: IMUDataFields
-    ) -> Tuple[SensorAxis, AnatomicalAxis]:
-        """Convert file axes to model axes.
-
-        Args:
-            sensor_data_group (HDF5Group): Group containing axis mappings
-            file_sensor_axis (IMUDataFields): Sensor axis from file
-
-        Returns:
-            Tuple[SensorAxis, AnatomicalAxis]: Converted model axes
-
-        Raises:
-            ValueError: If axis mapping is invalid or missing
-        """
-        # Convert the file sensor axis to data model sensor axis
-        try:
-            model_sensor_axis: SensorCoordinateSystem = (
-                self.file_to_model_sensor_axis_map[file_sensor_axis]
-            )
-        except KeyError:
-            raise ValueError(f"Unknown sensor axis: {file_sensor_axis}")
-
-        # Get the sensor to anatomical axis map from file
-        if (
-            IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP.value
-            not in sensor_data_group.attributes
-        ):
-            raise ValueError("Missing anatomical axis mapping")
-
-        sensor_to_anatomical_axis_map: Dict[IMUDataFields:IMUDataFields] = (
-            sensor_data_group.attributes[
-                IMUDataFields.SENSOR_TO_ANATOMICAL_AXIS_MAP.value
-            ]
-        )
-        # Get the file anatomical axis from the file axis map
-        try:
-            file_anatomical_axis: IMUDataFields = sensor_to_anatomical_axis_map[
-                file_sensor_axis
-            ]
-        except KeyError:
-            raise ValueError(
-                f"Missing anatomical axis mapping for sensor axis: {file_sensor_axis}"
-            )
-
-        # Convert the file anatomical axis to data model anatomical axis
-        try:
-            model_anatomical_axis: AnatomicalCoordinateSystem = (
-                self.file_to_model_anatomical_axis_map[file_anatomical_axis]
-            )
-        except KeyError:
-            raise ValueError(f"Unknown anatomical axis: {file_anatomical_axis}")
-
-        return tuple(
-            SensorAxis(model_sensor_axis), AnatomicalAxis(model_anatomical_axis)
-        )
 
     def __build_imu_metadata(self, input_file: HDF5Group) -> IMUMetadata:
         """Build IMU metadata from HDF5 file attributes.
@@ -307,7 +269,15 @@ class IMUDataBuilder(ModelBuilder):
         sensor_type: SensorType = self.sensor_name_to_sensor_type_map[
             IMUDataFields(sensor_data_group.name)
         ]
-        sampling_rate: float = sensor_data_group.attributes[IMUDataFields.SAMPLING_RATE]
+        sampling_rate: float = sensor_data_group.attributes[
+            IMUDataFields.SAMPLING_RATE.value
+        ]
+        unit: str = sensor_data_group.attributes[IMUDataFields.UNIT.value]
+        return SensorMetadata(sensor_type, sampling_rate, unit)
+
+    def __get_model_orientation_map(
+        self, sensor_data_group: HDF5Group
+    ) -> Dict[SensorAxis, AnatomicalAxis]:
         # Construct file sensor orientation map from input file lists
         file_orientation_map: Dict[IMUDataFields, IMUDataFields] = {
             IMUDataFields(sensor_axis): IMUDataFields(anatomical_axis)
@@ -321,11 +291,9 @@ class IMUDataBuilder(ModelBuilder):
             )
         }
         # Convert the file map to model map
-        model_orientation_map: Dict[SensorAxis, AnatomicalAxis] = {
+        return {
             SensorAxis(
-                self.file_to_model_sensor_axis_map(file_sensor_axis)
-            ): AnatomicalAxis(self.file_to_model_anatomical_axis_map(file_anatom_axis))
-            for file_sensor_axis, file_anatom_axis in file_orientation_map
+                self.file_to_model_sensor_axis_map[file_sensor_axis]
+            ): AnatomicalAxis(self.file_to_model_anatomical_axis_map[file_anatom_axis])
+            for file_sensor_axis, file_anatom_axis in file_orientation_map.items()
         }
-        unit: str = sensor_data_group.attributes[IMUDataFields.UNIT]
-        return SensorMetadata(sensor_type, sampling_rate, model_orientation_map, unit)

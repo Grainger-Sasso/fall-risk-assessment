@@ -1,13 +1,16 @@
 from dataclasses import dataclass, field
-import numpy as np # type: ignore
-from typing import List, Dict
+from typing import Dict, List
 
-from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
+import numpy as np  # type: ignore
+
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
-from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
-    AnatomicalAxis,
+from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
+from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
+    AnatomicalCoordinateSystem,
 )
-from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
+from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
+    SensorCoordinateSystem,
+)
 
 
 @dataclass
@@ -19,17 +22,17 @@ class SensorData:
     data: List[UniaxialSensorData]
     time: np.ndarray
     metadata: SensorMetadata
-    _anatomical_axis_map: Dict[AnatomicalAxis, UniaxialSensorData] = field(
+    _anatomical_axis_map: Dict[AnatomicalCoordinateSystem, UniaxialSensorData] = field(
         init=False, repr=False
     )
-    _sensor_axis_map: Dict[SensorAxis, UniaxialSensorData] = field(
+    _sensor_axis_map: Dict[SensorCoordinateSystem, UniaxialSensorData] = field(
         init=False, repr=False
     )
 
     def __post_init__(self):
         # Create the axis maps during initialization
-        self._anatomical_axis_map = {axis.anatomical_axis: axis for axis in self.data}
-        self._sensor_axis_map = {axis.sensor_axis: axis for axis in self.data}
+        self._anatomical_axis_map = {axis.anatomical_axis.name: axis for axis in self.data}
+        self._sensor_axis_map = {axis.sensor_axis.name: axis for axis in self.data}
 
     def _get_data_by_axis(self, axis_map: Dict, axis_value) -> UniaxialSensorData:
         """
@@ -40,14 +43,16 @@ class SensorData:
         return axis_map[axis_value]
 
     def get_data_by_anatomical_axis(
-        self, anatomical_axis: AnatomicalAxis
+        self, anatomical_axis: AnatomicalCoordinateSystem
     ) -> UniaxialSensorData:
         """
         Retrieve data corresponding to a specific anatomical axis.
         """
         return self._get_data_by_axis(self._anatomical_axis_map, anatomical_axis)
 
-    def get_data_by_sensor_axis(self, sensor_axis: SensorAxis) -> UniaxialSensorData:
+    def get_data_by_sensor_axis(
+        self, sensor_axis: SensorCoordinateSystem
+    ) -> UniaxialSensorData:
         """
         Retrieve data corresponding to a specific sensor axis.
         """
