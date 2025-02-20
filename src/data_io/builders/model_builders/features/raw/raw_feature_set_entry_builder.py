@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-import numpy as np
+import numpy as np # type: ignore
 
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
