@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
-from data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
+from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
 

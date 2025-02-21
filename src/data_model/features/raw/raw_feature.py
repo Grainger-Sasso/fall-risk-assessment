@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from data_types.feature.raw_feature_type import RawFeatureType
+from src.data_types.feature.raw_feature_type import RawFeatureType
 
 
 @dataclass

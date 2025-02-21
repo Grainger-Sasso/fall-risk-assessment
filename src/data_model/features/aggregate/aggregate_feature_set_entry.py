@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from data_types.feature.raw_feature_type import RawFeatureType
+from src.data_types.feature.raw_feature_type import RawFeatureType
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_metadata import (
     AggregateFeatureSetEntryMetadata,
