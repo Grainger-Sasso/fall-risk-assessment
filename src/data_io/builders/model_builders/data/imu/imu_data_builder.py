@@ -80,8 +80,8 @@ class IMUDataBuilder(ModelBuilder):
         Raises:
             ValueError: If required data is missing or invalid
         """
-        if type(input_file) is not HDF5Group:
-            raise ValueError("File must contain single epoch")
+        if not isinstance(input_file, HDF5Group):
+            raise ValueError("Input must be an HDF5Group")
 
         # Assumes single epoch in raw IMU data file
         # Get the sensor data group from the input file

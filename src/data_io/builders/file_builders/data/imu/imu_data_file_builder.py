@@ -9,9 +9,6 @@ from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_types.instrument.sensor_type import SensorType
-from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
-    AnatomicalAxis,
-)
 from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
     AnatomicalCoordinateSystem,
 )
@@ -82,7 +79,7 @@ class IMUDataFileBuilder(FileBuilder):
             raise ValueError("Incomplete sensor axis mapping")
 
     def build(self, data: IMUData) -> HDF5Group:
-        if type(data) is not IMUData or len(data.data) != 1:
+        if not isinstance(data, IMUData) or len(data.data) != 1:
             raise ValueError("File must contain single epoch")
         return self.__build_imu_data_group(data)
 

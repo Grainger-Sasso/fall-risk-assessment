@@ -35,17 +35,27 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
         Returns:
             HDF5Group: Root group containing all feature data
         """
-        aggregate_feature_group = HDF5Group()
-        aggregate_feature_group.name = AggregateFeatureFields.AGGREGATE_FEATURE.value
+        if not isinstance(data, AggregateFeatureSetEntry):
+            raise ValueError("File must contain single epoch")
+        return self.__build_aggregate_feature_group(data)
+
+    def __build_aggregate_feature_group(
+        self, data: AggregateFeatureSetEntry
+    ) -> HDF5Group:
+        aggregate_feature_group_name = AggregateFeatureFields.AGGREGATE_FEATURE.value
         # Build aggregate feature group items
-        aggregate_feature_group.items = [
+        aggregate_feature_group_items = [
             item for item in self.__build_aggregate_feature_group_items(data)
         ]
         # Build aggreate feature group attributes (metadata)
-        aggregate_feature_group.attributes = (
+        aggregate_feature_group_attributes = (
             self.__build_aggregate_feature_group_attributes(data.metadata)
         )
-        return aggregate_feature_group
+        return HDF5Group(
+            name=aggregate_feature_group_name,
+            items=aggregate_feature_group_items,
+            attributes=aggregate_feature_group_attributes,
+        )
 
     def __build_aggregate_feature_group_items(
         self, data: AggregateFeatureSetEntry
@@ -68,26 +78,27 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
             aggregate_feature_data.append(aggregate_feature)
         stat_names = [
             stat_name.value
-            for stat_name in data.aggregate_features[0]._statistics_map.keys
+            for stat_name in data.aggregate_features[0]._statistics_map.keys()
         ]
         # Build feature dataset
-        feature_dataset = HDF5Dataset()
-        feature_dataset.name = AggregateFeatureFields.FEATURES.value
-        feature_dataset.attributes = {}
-        feature_dataset.data = aggregate_feature_data
-        # Build feature name dataset
-        feature_names_dataset = HDF5Dataset()
-        feature_names_dataset.name = AggregateFeatureFields.FEATURE_NAMES.value
-        feature_names_dataset.attributes = {}
-        feature_names_dataset.data = feature_names
-        # Build stat name dataset
-        stat_names_dataset = HDF5Dataset()
-        stat_names_dataset.name = (
-            AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES.value
+        feature_dataset = HDF5Dataset(
+            name=AggregateFeatureFields.FEATURES.value,
+            data=aggregate_feature_data,
+            attributes={},
         )
-        stat_names_dataset.attributes = {}
-        stat_names_dataset.data = stat_names
-        return tuple(feature_dataset, feature_names_dataset, stat_names_dataset)
+        # Build feature name dataset
+        feature_names_dataset = HDF5Dataset(
+            name=AggregateFeatureFields.FEATURE_NAMES.value,
+            data=feature_names,
+            attributes={},
+        )
+        # Build stat name dataset
+        stat_names_dataset = HDF5Dataset(
+            name=AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES.value,
+            data=stat_names,
+            attributes={},
+        )
+        return (feature_dataset, feature_names_dataset, stat_names_dataset)
 
     def __build_aggregate_feature_group_attributes(
         self, metadata: AggregateFeatureSetEntryMetadata
@@ -107,7 +118,7 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
             raise ValueError("Feature metadata is required")
 
         aggregate_feature_id: str = metadata.aggregate_feature_identifier.value
-        raw_feature_id: str = metadata.imu_data_identifier.value
+        raw_feature_id: str = metadata.raw_feature_identifier.value
         user_id: str = metadata.user_identifier.value
         imu_data_id: str = metadata.imu_data_identifier.value
         return {
