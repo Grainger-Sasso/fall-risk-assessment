@@ -72,13 +72,10 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
         aggregate_feature_data = []
         for aggregate_feature in data.aggregate_features:
             feature_names.append(aggregate_feature.feature_type.value)
-            aggregate_feature = [
-                stat.value for stat in aggregate_feature.descriptive_statistics
-            ]
-            aggregate_feature_data.append(aggregate_feature)
+            aggregate_feature_data.append(aggregate_feature.get_stat_values())
         stat_names = [
-            stat_name.value
-            for stat_name in data.aggregate_features[0]._statistics_map.keys()
+            stat.statistic_type.value
+            for stat in data.aggregate_features[0].descriptive_statistics
         ]
         # Build feature dataset
         feature_dataset = HDF5Dataset(

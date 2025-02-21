@@ -424,7 +424,11 @@ class FeatureDataHelper:
             AggregateFeature(
                 descriptive_statistics=self.__build_descriptive_statistics_list(),
                 feature_type=RawFeatureType.PLACEHOLDER,
-            )
+            ),
+            AggregateFeature(
+                descriptive_statistics=self.__build_descriptive_statistics_list(),
+                feature_type=RawFeatureType.PLACEHOLDER,
+            ),
         ]
 
     def __build_descriptive_statistics_list(self) -> List[DescriptiveStatistic]:
@@ -432,7 +436,11 @@ class FeatureDataHelper:
             DescriptiveStatistic(
                 statistic_type=DescriptiveStatisticType.PLACEHOLDER,
                 value=TestConstants.PLACEHOLDER_STAT_VALUE.value,
-            )
+            ),
+            DescriptiveStatistic(
+                statistic_type=DescriptiveStatisticType.PLACEHOLDER,
+                value=TestConstants.PLACEHOLDER_STAT_VALUE.value,
+            ),
         ]
 
     def __build_aggregate_metadata(self) -> AggregateFeatureSetEntryMetadata:

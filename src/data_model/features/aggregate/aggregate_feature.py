@@ -30,3 +30,8 @@ class AggregateFeature:
         self, statistic_type: DescriptiveStatisticType
     ) -> Optional[DescriptiveStatistic]:
         return self._statistics_map.get(statistic_type)
+    
+    def get_stat_values(self) -> List[float]:
+        return [
+            stat.value for stat in self.descriptive_statistics
+        ]
