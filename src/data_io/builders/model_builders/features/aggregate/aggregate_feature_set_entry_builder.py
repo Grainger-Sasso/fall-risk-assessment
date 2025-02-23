@@ -53,9 +53,9 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         super().__init__()
         self.stat_name_to_descriptive_stat_type_map: Dict[
             str, DescriptiveStatisticType
-        ] = {"placeholder": DescriptiveStatisticType.PLACEHOLDER}
+        ] = {DescriptiveStatisticType.PLACEHOLDER.value: DescriptiveStatisticType.PLACEHOLDER}
         self.feature_name_to_raw_feature_type_map: Dict[str, RawFeatureType] = {
-            "placeholder": RawFeatureType.PLACEHOLDER
+            RawFeatureType.PLACEHOLDER.value: RawFeatureType.PLACEHOLDER
         }
 
     def build(self, input_file: HDF5Group) -> AggregateFeatureSetEntry:
@@ -70,9 +70,13 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         Raises:
             ValueError: If required data is missing or invalid
         """
-        if not input_file:
-            raise ValueError("Input file data is required")
+        if not isinstance(input_file, HDF5Group):
+            raise ValueError("File must aggregate feature data from HDF5")
+        return self.__build_aggreagate_feature_set_entry(input_file)
 
+    def __build_aggreagate_feature_set_entry(
+        self, input_file: HDF5Group
+    ) -> AggregateFeatureSetEntry:
         # Build metadata
         input_file_attributes: Dict[str:Any] = input_file.attributes
         aggregate_feature_set_entry_metadata: AggregateFeatureSetEntryMetadata = (
@@ -102,14 +106,14 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         """
         try:
             features: np.ndarray = np.array(
-                input_file.get_item_by_name(AggregateFeatureFields.FEATURES).data
+                input_file.get_item_by_name(AggregateFeatureFields.FEATURES.value).data
             )
             feature_row_indices: np.ndarray = np.array(
-                input_file.get_item_by_name(AggregateFeatureFields.FEATURE_NAMES).data
+                input_file.get_item_by_name(AggregateFeatureFields.FEATURE_NAMES.value).data
             )
             feature_col_names: np.ndarray = np.array(
                 input_file.get_item_by_name(
-                    AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES
+                    AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES.value
                 ).data
             )
         except ValueError as e:
@@ -160,7 +164,7 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
                 raise ValueError(f"Unknown statistic type: {stat_name}")
 
             statistic_type: DescriptiveStatisticType = (
-                self.stat_name_to_descriptive_stat_type_map(stat_name)
+                self.stat_name_to_descriptive_stat_type_map[stat_name]
             )
             statistic_value: float = features[row_index][col_index]
             descriptive_statistic_list.append(
@@ -169,7 +173,7 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         return AggregateFeature(descriptive_statistic_list, raw_feature_type)
 
     def __build_aggregate_feature_set_entry_metadata(
-        self, input_file_attributes: Dict[str:Any]
+        self, input_file_attributes: Dict[str, Any]
     ) -> AggregateFeatureSetEntryMetadata:
         """Build metadata for aggregate feature set entry.
 
@@ -196,18 +200,18 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         aggregate_feature_identifier: AggregateFeatureIdentifier = (
             AggregateFeatureIdentifier(
                 input_file_attributes[
-                    AggregateFeatureFields.AGGREGATE_FEATURE_IDENTIFIER
+                    AggregateFeatureFields.AGGREGATE_FEATURE_IDENTIFIER.value
                 ]
             )
         )
         raw_feature_identifier: RawFeatureIdentifier = RawFeatureIdentifier(
-            input_file_attributes[AggregateFeatureFields.RAW_FEATURE_IDENTIFIER]
+            input_file_attributes[AggregateFeatureFields.RAW_FEATURE_IDENTIFIER.value]
         )
         user_identifier: UserIdentifier = UserIdentifier(
-            input_file_attributes[AggregateFeatureFields.USER_DATA_IDENTIFIER]
+            input_file_attributes[AggregateFeatureFields.USER_DATA_IDENTIFIER.value]
         )
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
-            input_file_attributes[AggregateFeatureFields.IMU_DATA_IDENTIFIER]
+            input_file_attributes[AggregateFeatureFields.IMU_DATA_IDENTIFIER.value]
         )
         return AggregateFeatureSetEntryMetadata(
             aggregate_feature_identifier,

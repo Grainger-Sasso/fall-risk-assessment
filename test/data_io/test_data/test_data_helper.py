@@ -111,15 +111,15 @@ class TestConstants(Enum):
 
     ############### Feature DATA ###############
     RAW_FEATURE_NAMES = [
-        RawFeatureType.PLACEHOLDER,
-        RawFeatureType.PLACEHOLDER,
-        RawFeatureType.PLACEHOLDER,
+        RawFeatureType.PLACEHOLDER.value,
+        RawFeatureType.PLACEHOLDER.value,
+        RawFeatureType.PLACEHOLDER.value,
     ]
     EPOCH_START_TIMES = [0.0, 1.0, 2.0]
     STAT_NAMES = [
-        DescriptiveStatisticType.PLACEHOLDER,
-        DescriptiveStatisticType.PLACEHOLDER,
-        DescriptiveStatisticType.PLACEHOLDER,
+        DescriptiveStatisticType.PLACEHOLDER.value,
+        DescriptiveStatisticType.PLACEHOLDER.value,
+        DescriptiveStatisticType.PLACEHOLDER.value,
     ]
     FEATURE_DATA = [[0.0, 0.1, 0.2], [0.1, 0.2, 0.3], [0.2, 0.3, 0.4]]
     FEATURE_IMU_DATA_ID = "test_feature_imu_data_id"

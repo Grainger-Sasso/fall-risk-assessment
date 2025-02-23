@@ -23,7 +23,7 @@ class TestAggregateFeatureFileBuilder(BaseTest):
         self.data_helper = FeatureDataHelper()
 
     def test_build_valid_feature(self):
-        # TODO: Create test feature data
+        # Create test feature data
         feature_data: AggregateFeatureSetEntry = (
             self.data_helper.create_test_aggregate_feature()
         )
