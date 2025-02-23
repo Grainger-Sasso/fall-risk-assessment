@@ -1,6 +1,6 @@
 from typing import Any, Dict, List
 
-import numpy as np # type: ignore
+import numpy as np  # type: ignore
 
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
@@ -55,9 +55,13 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         Raises:
             ValueError: If required data is missing or invalid
         """
-        if not input_file:
-            raise ValueError("Input file data is required")
+        if not isinstance(input_file, HDF5Group):
+            raise ValueError("File must raw feature data from HDF5")
+        return self.__build_raw_feature_set_entry(input_file)
 
+    def __build_raw_feature_set_entry(
+        self, input_file: HDF5Group
+    ) -> RawFeatureSetEntry:
         # Build metadata
         input_file_attributes: Dict[str:Any] = input_file.attributes
         raw_feature_set_entry_metadata: RawFeatureSetEntryMetadata = (
@@ -93,13 +97,13 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
 
         try:
             features: np.ndarray = np.array(
-                input_file.get_item_by_name(RawFeatureFields.FEATURES).data
+                input_file.get_item_by_name(RawFeatureFields.FEATURES.value).data
             )
             feature_epochs: np.ndarray = np.array(
-                input_file.get_item_by_name(RawFeatureFields.FEATURE_EPOCHS).data
+                input_file.get_item_by_name(RawFeatureFields.FEATURE_EPOCHS.value).data
             )
             feature_names: np.ndarray = np.array(
-                input_file.get_item_by_name(RawFeatureFields.FEATURE_NAMES).data
+                input_file.get_item_by_name(RawFeatureFields.FEATURE_NAMES.value).data
             )
         except ValueError as e:
             raise ValueError(f"Missing required feature data: {e}")
@@ -172,7 +176,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         return RawEpochFeatures(raw_feature_list, epoch_start_time, epoch_end_time)
 
     def __build_raw_feature_set_entry_metadata(
-        self, input_file_attributes: Dict[str:Any]
+        self, input_file_attributes: Dict[str, Any]
     ) -> RawFeatureSetEntryMetadata:
         """Build metadata for raw feature set entry.
 
@@ -198,16 +202,16 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
                 raise ValueError(f"Missing required metadata field: {field.value}")
 
         raw_feature_identifier: RawFeatureIdentifier = RawFeatureIdentifier(
-            input_file_attributes[RawFeatureFields.RAW_FEATURE_IDENTIFIER]
+            input_file_attributes[RawFeatureFields.RAW_FEATURE_IDENTIFIER.value]
         )
         user_identifier: UserIdentifier = UserIdentifier(
-            input_file_attributes[RawFeatureFields.USER_DATA_IDENTIFIER]
+            input_file_attributes[RawFeatureFields.USER_DATA_IDENTIFIER.value]
         )
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
-            input_file_attributes[RawFeatureFields.IMU_DATA_IDENTIFIER]
+            input_file_attributes[RawFeatureFields.IMU_DATA_IDENTIFIER.value]
         )
-        start_time: float = input_file_attributes[RawFeatureFields.START_TIME]
-        epoch_length: float = input_file_attributes[RawFeatureFields.EPOCH_LEN]
+        start_time: float = input_file_attributes[RawFeatureFields.START_TIME.value]
+        epoch_length: float = input_file_attributes[RawFeatureFields.EPOCH_LEN.value]
 
         if epoch_length <= 0:
             raise ValueError("Epoch length must be positive")

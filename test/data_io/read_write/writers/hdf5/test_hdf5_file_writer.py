@@ -1,5 +1,7 @@
 from test.base_test import BaseTest
 
+from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
+
 class TestHDF5FileWriter(BaseTest):
     def setUp(self):
         self.writer = HDF5FileWriter()
