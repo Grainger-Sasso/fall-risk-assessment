@@ -98,7 +98,7 @@ class IMUDataFileBuilder(FileBuilder):
         # Get data group name
         imu_data_group_name = IMUDataFields.IMU_DATA.value
         # Build sensor data group of imu data group
-        imu_data_group_items = [self.__build_sensor_data_group(data.data[0])]
+        imu_data_group_items = self.__build_sensor_data_group(data.data[0])
         # Build imu data metadata attributes
         imu_data_group_attributes = self.__build_imu_metadata_attributes(data.metadata)
         return HDF5Group(
@@ -107,7 +107,7 @@ class IMUDataFileBuilder(FileBuilder):
             attributes=imu_data_group_attributes,
         )
 
-    def __build_sensor_data_group(self, epoch_imu_data: EpochIMUData) -> HDF5Group:
+    def __build_sensor_data_group(self, epoch_imu_data: EpochIMUData) -> List[HDF5Group]:
         """Build the sensor data group containing all sensor measurements.
 
         Args:
@@ -128,11 +128,11 @@ class IMUDataFileBuilder(FileBuilder):
                 self.__build_sensor_data_subgroup(sensor_data)
             )
 
-        return HDF5Group(
+        return [HDF5Group(
             name=sensor_data_group_name,
             items=sensor_data_group_items,
             attributes=sensor_data_group_attributes,
-        )
+        )]
 
     def __build_sensor_data_subgroup(self, sensor_data: SensorData) -> HDF5Group:
         # Initialize sensor subgroup

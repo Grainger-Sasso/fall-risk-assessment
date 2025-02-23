@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List
 
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
@@ -23,6 +23,19 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
     version: str = "1.0"
 
     def build(self, data: RawFeatureSetEntry) -> HDF5Group:
+        """Build HDF5 group from aggregate feature set entry.
+
+        Args:
+            data (AggregateFeatureSetEntry): The feature data to convert
+
+        Returns:
+            HDF5Group: Root group containing all feature data
+        """
+        if not isinstance(data, RawFeatureSetEntry):
+            raise ValueError("Data must be raw feature set entry")
+        return self.__build_raw_feature_group(data)
+
+    def __build_raw_feature_group(self, data: RawFeatureSetEntry) -> HDF5Group:
         """Build HDF5 group from raw feature set entry.
 
         Args:
@@ -34,24 +47,16 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
         Raises:
             ValueError: If data validation fails
         """
-        if not data:
-            raise ValueError("Raw feature data is required")
 
-        raw_feature_group = HDF5Group()
-        raw_feature_group.name = RawFeatureFields.RAW_FEATURE.value
-        # Build raw feature group items
-        raw_feature_group.items = [
-            item for item in self.__build_raw_feature_group_items(data)
-        ]
-        # Build raw feature group attributes
-        raw_feature_group.attributes = self.__build_raw_feature_group_attributes(
-            data.metadata
+        return HDF5Group(
+            name=RawFeatureFields.RAW_FEATURE.value,
+            items=self.__build_raw_feature_group_items(data),
+            attributes=self.__build_raw_feature_group_attributes(data.metadata),
         )
-        return raw_feature_group
 
     def __build_raw_feature_group_items(
         self, data: RawFeatureSetEntry
-    ) -> Tuple[HDF5Dataset]:
+    ) -> List[HDF5Dataset]:
         """Build HDF5 datasets for feature data.
 
         Args:
@@ -77,28 +82,26 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
             feature_data.append(epoch_data)
         # Feature names are assumed to be consistent across all epochs
         feature_names = [
-            name.value for name in data.raw_epoch_features[0]._raw_feature_map.keys()
+            feature.feature_type.value
+            for feature in data.raw_epoch_features[0].raw_features
         ]
 
         # Build feature dataset
-        feature_dataset: HDF5Dataset = HDF5Dataset()
-        feature_dataset.name = RawFeatureFields.FEATURES.value
-        feature_dataset.attributes = {}
-        feature_dataset.data = feature_data
+        feature_dataset: HDF5Dataset = HDF5Dataset(
+            name=RawFeatureFields.FEATURES.value, data=feature_data, attributes={}
+        )
 
         # Build feature epoch dataset
-        feature_epoch_dataset: HDF5Dataset = HDF5Dataset()
-        feature_epoch_dataset.name = RawFeatureFields.FEATURE_EPOCHS.value
-        feature_epoch_dataset.attributes = {}
-        feature_epoch_dataset.data = epochs
+        feature_epoch_dataset: HDF5Dataset = HDF5Dataset(
+            name=RawFeatureFields.FEATURE_EPOCHS.value, data=epochs, attributes={}
+        )
 
         # Build feature name dataset
-        feature_names_dataset: HDF5Dataset = HDF5Dataset()
-        feature_names_dataset.name = RawFeatureFields.FEATURE_NAMES.value
-        feature_names_dataset.attributes = {}
-        feature_names_dataset.data = feature_names
+        feature_names_dataset: HDF5Dataset = HDF5Dataset(
+            name=RawFeatureFields.FEATURE_NAMES.value, data=feature_names, attributes={}
+        )
 
-        return (feature_dataset, feature_epoch_dataset, feature_names_dataset)
+        return [feature_dataset, feature_epoch_dataset, feature_names_dataset]
 
     def __build_raw_feature_group_attributes(
         self, metadata: RawFeatureSetEntryMetadata
@@ -117,7 +120,7 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
         if not metadata:
             raise ValueError("Feature metadata is required")
 
-        raw_feature_id: str = metadata.imu_data_identifier.value
+        raw_feature_id: str = metadata.raw_feature_identifier.value
         user_id: str = metadata.user_identifier.value
         imu_data_id: str = metadata.imu_data_identifier.value
         start_time: float = metadata.start_time

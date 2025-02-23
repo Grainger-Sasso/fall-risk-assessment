@@ -101,11 +101,11 @@ class TestAggregateFeatureFileBuilder(BaseTest):
             [
                 [
                     TestConstants.PLACEHOLDER_STAT_VALUE.value,
-                    TestConstants.PLACEHOLDER_STAT_VALUE.value,
+                    TestConstants.PLACEHOLDER_STAT_VALUE.value + 1.0,
                 ],
                 [
                     TestConstants.PLACEHOLDER_STAT_VALUE.value,
-                    TestConstants.PLACEHOLDER_STAT_VALUE.value,
+                    TestConstants.PLACEHOLDER_STAT_VALUE.value + 1.0,
                 ],
             ],
         )

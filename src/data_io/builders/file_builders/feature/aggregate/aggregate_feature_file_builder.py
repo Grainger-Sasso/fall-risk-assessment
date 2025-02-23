@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List
 
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
@@ -36,7 +36,7 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
             HDF5Group: Root group containing all feature data
         """
         if not isinstance(data, AggregateFeatureSetEntry):
-            raise ValueError("File must contain single epoch")
+            raise ValueError("Data must be aggregate feature set entry")
         return self.__build_aggregate_feature_group(data)
 
     def __build_aggregate_feature_group(
@@ -44,9 +44,7 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
     ) -> HDF5Group:
         aggregate_feature_group_name = AggregateFeatureFields.AGGREGATE_FEATURE.value
         # Build aggregate feature group items
-        aggregate_feature_group_items = [
-            item for item in self.__build_aggregate_feature_group_items(data)
-        ]
+        aggregate_feature_group_items = self.__build_aggregate_feature_group_items(data)
         # Build aggreate feature group attributes (metadata)
         aggregate_feature_group_attributes = (
             self.__build_aggregate_feature_group_attributes(data.metadata)
@@ -59,7 +57,7 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
 
     def __build_aggregate_feature_group_items(
         self, data: AggregateFeatureSetEntry
-    ) -> Tuple[HDF5Dataset]:
+    ) -> List[HDF5Dataset]:
         """Build HDF5 datasets for feature data.
 
         Args:
@@ -95,7 +93,7 @@ class AggregateFeatureSetEntryFileBuilder(FileBuilder):
             data=stat_names,
             attributes={},
         )
-        return (feature_dataset, feature_names_dataset, stat_names_dataset)
+        return [feature_dataset, feature_names_dataset, stat_names_dataset]
 
     def __build_aggregate_feature_group_attributes(
         self, metadata: AggregateFeatureSetEntryMetadata

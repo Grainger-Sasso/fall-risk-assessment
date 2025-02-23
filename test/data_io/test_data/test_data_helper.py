@@ -439,7 +439,7 @@ class FeatureDataHelper:
             ),
             DescriptiveStatistic(
                 statistic_type=DescriptiveStatisticType.PLACEHOLDER,
-                value=TestConstants.PLACEHOLDER_STAT_VALUE.value,
+                value=TestConstants.PLACEHOLDER_STAT_VALUE.value + 1.0,
             ),
         ]
 
@@ -525,11 +525,16 @@ class FeatureDataHelper:
             RawEpochFeatures(
                 raw_features=self.__build_raw_feature_list(),
                 epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value,
-                epoch_end_time=sum(
-                    TestConstants.RAW_FEATURE_START_TIME.value,
-                    TestConstants.RAW_FEATURE_EPOCH_LEN.value,
-                ),
-            )
+                epoch_end_time=TestConstants.RAW_FEATURE_START_TIME.value
+                + TestConstants.RAW_FEATURE_EPOCH_LEN.value,
+            ),
+            RawEpochFeatures(
+                raw_features=self.__build_raw_feature_list(),
+                epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value + 0.1,
+                epoch_end_time=TestConstants.RAW_FEATURE_START_TIME.value
+                + TestConstants.RAW_FEATURE_EPOCH_LEN.value
+                + 0.1,
+            ),
         ]
 
     def __build_raw_feature_list(self) -> List[RawFeature]:
@@ -537,7 +542,11 @@ class FeatureDataHelper:
             RawFeature(
                 feature_type=RawFeatureType.PLACEHOLDER,
                 value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value,
-            )
+            ),
+            RawFeature(
+                feature_type=RawFeatureType.PLACEHOLDER,
+                value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value + 1.0,
+            ),
         ]
 
     def __build_raw_metadata(self) -> RawFeatureSetEntryMetadata:
