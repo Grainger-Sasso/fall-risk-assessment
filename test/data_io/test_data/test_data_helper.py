@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np  # type: ignore
 
+from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.formats.json.json_dict_file import JSONDictFile
@@ -13,6 +14,7 @@ from src.data_io.model_fields.data.user.clinical_demographic_data_fields import 
     ClinicalDemographicDataFields,
 )
 from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
+from src.data_io.model_fields.dataset.dataset_fields import DatasetFields
 from src.data_io.model_fields.features.aggregate.aggregate_feature_fields import (
     AggregateFeatureFields,
 )
@@ -30,6 +32,8 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
+from src.data_model.dataset.dataset import Dataset
+from src.data_model.dataset.dataset_entry import DatasetEntry
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
@@ -151,6 +155,11 @@ class TestConstants(Enum):
     USER_SEX = "male"  # lowercase to match Sex enum values
     USER_WEIGHT = 70.0  # kg
     USER_HEIGHT = 1.75  # m
+
+    ############### Dataset ###############
+    DATASET_NAME = "test_dataset"
+    DATASET_USER_IDS = ["user_1", "user_2", "user_3"]
+    DATASET_IMU_IDS = ["imu_1", "imu_2", "imu_3"]
 
 
 class TestDataHelper:
@@ -632,6 +641,37 @@ class UserDataHelper:
             sex=Sex(TestConstants.USER_SEX.value),
             weight=Kilogram(TestConstants.USER_WEIGHT.value),
             height=Meter(TestConstants.USER_HEIGHT.value),
+        )
+
+
+class DatasetHelper:
+    """Helper class for creating test dataset data."""
+
+    def create_test_dataset(self) -> Dataset:
+        """Create test dataset model object."""
+        entries = [
+            DatasetEntry(
+                user_data_id=UserIdentifier(user_id),
+                imu_data_id=IMUDataIdentifier(imu_id),
+            )
+            for user_id, imu_id in zip(
+                TestConstants.DATASET_USER_IDS.value,
+                TestConstants.DATASET_IMU_IDS.value,
+            )
+        ]
+        return Dataset(name=TestConstants.DATASET_NAME.value, entries=entries)
+
+    def create_test_dataset_csv(self) -> CSVFile:
+        """Create test dataset CSV file."""
+        return CSVFile(
+            fieldnames=[
+                DatasetFields.USER_DATA_IDENTIFIER.value,
+                DatasetFields.IMU_DATA_IDENTIFIER.value,
+            ],
+            data={
+                DatasetFields.USER_DATA_IDENTIFIER.value: TestConstants.DATASET_USER_IDS.value,
+                DatasetFields.IMU_DATA_IDENTIFIER.value: TestConstants.DATASET_IMU_IDS.value,
+            },
         )
 
 
