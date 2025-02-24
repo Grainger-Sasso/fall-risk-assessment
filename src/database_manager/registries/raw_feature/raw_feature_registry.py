@@ -8,5 +8,5 @@ from src.database_manager.registries.registry import Registry
 
 
 class RawFeatureRegistry(Registry):
-    def __init__(self, registry: Dict[RawFeatureIdentifier:Path]):
+    def __init__(self, registry: Dict[RawFeatureIdentifier, Path]):
         super().__init__(registry)

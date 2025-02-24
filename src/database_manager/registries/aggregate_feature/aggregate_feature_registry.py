@@ -8,5 +8,5 @@ from src.database_manager.registries.registry import Registry
 
 
 class AggregateFeatureRegistry(Registry):
-    def __init__(self, registry: Dict[AggregateFeatureIdentifier:Path]):
+    def __init__(self, registry: Dict[AggregateFeatureIdentifier,Path]):
         super().__init__(registry)

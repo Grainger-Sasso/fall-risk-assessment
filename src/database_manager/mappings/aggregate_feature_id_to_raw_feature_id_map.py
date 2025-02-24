@@ -11,4 +11,4 @@ from src.identifiers.feature.raw_feature_identifier import (
 
 @dataclass
 class AggregateFeatureIDToRawFeatureIDMap:
-    map: Dict[AggregateFeatureIdentifier:RawFeatureIdentifier]
+    map: Dict[AggregateFeatureIdentifier, RawFeatureIdentifier]

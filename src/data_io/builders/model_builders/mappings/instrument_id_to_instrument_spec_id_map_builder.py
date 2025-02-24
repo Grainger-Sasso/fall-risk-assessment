@@ -18,7 +18,7 @@ class InstrumentIDToInstrumentSpecIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> InstrumentIDToInstrumentSpecIDMap:
-        map: Dict[InstrumentIdentifier:InstrumentSpecificationIdentifier] = {}
+        map: Dict[InstrumentIdentifier, InstrumentSpecificationIdentifier] = {}
         instrument_ids: List[InstrumentIdentifier] = [
             InstrumentIdentifier(id.split("_")[0], id.split("_")[1])
             for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]

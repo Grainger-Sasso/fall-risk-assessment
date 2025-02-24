@@ -16,14 +16,16 @@ class IMUIDToUserIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> IMUDataIDToUserDataIDMap:
-        map: Dict[IMUDataIdentifier:UserIdentifier] = {}
+        if not isinstance(input_file, CSVFile):
+            raise ValueError("Input must be an CSVFile")
+        map: Dict[IMUDataIdentifier, UserIdentifier] = {}
         imu_ids: List[IMUDataIdentifier] = [
             IMUDataIdentifier(id)
-            for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.SOURCE_DATA_IDENTIFIER.value]
         ]
         user_ids: List[UserIdentifier] = [
             UserIdentifier(id)
-            for id in input_file[MappingFields.TARGET_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.TARGET_DATA_IDENTIFIER.value]
         ]
         for imu_id, user_id in zip(imu_ids, user_ids):
             map[imu_id] = user_id

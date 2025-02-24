@@ -8,5 +8,5 @@ from src.database_manager.registries.registry import Registry
 
 
 class InstrumentSpecificationRegistry(Registry):
-    def __init__(self, registry: Dict[InstrumentSpecificationIdentifier:Path]):
+    def __init__(self, registry: Dict[InstrumentSpecificationIdentifier, Path]):
         super().__init__(registry)

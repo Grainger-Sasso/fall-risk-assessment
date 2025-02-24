@@ -195,7 +195,6 @@ class IMUDataBuilder(ModelBuilder):
         except ValueError as e:
             raise ValueError(f"Missing sensor data: {e}")
 
-        print(sensor_data_group.attributes)
         if IMUDataFields.AXIS_NAMES.value not in sensor_data_group.attributes.keys():
             raise ValueError("Missing axis names in sensor data attributes")
 

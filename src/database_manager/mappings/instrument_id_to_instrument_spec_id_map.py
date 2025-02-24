@@ -11,4 +11,4 @@ from src.identifiers.instrument_specification.instrument_specification_identifie
 
 @dataclass
 class InstrumentIDToInstrumentSpecIDMap:
-    map: Dict[InstrumentIdentifier:InstrumentSpecificationIdentifier]
+    map: Dict[InstrumentIdentifier, InstrumentSpecificationIdentifier]

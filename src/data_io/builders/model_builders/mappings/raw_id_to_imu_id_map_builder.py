@@ -16,7 +16,7 @@ class RawFeatureIDToIMUIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> RawFeatureIDToIMUDataIDMap:
-        map: Dict[RawFeatureIdentifier:IMUDataIdentifier] = {}
+        map: Dict[RawFeatureIdentifier, IMUDataIdentifier] = {}
         raw_ids: List[RawFeatureIdentifier] = [
             RawFeatureIdentifier(id)
             for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]

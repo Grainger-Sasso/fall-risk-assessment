@@ -6,5 +6,5 @@ from src.database_manager.registries.registry import Registry
 
 
 class IMUDataRegistry(Registry):
-    def __init__(self, registry: Dict[IMUDataIdentifier:Path]):
+    def __init__(self, registry: Dict[IMUDataIdentifier, Path]):
         super().__init__(registry)

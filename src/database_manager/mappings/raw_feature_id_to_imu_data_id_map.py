@@ -9,4 +9,4 @@ from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 
 @dataclass
 class RawFeatureIDToIMUDataIDMap:
-    map: Dict[RawFeatureIdentifier:IMUDataIdentifier]
+    map: Dict[RawFeatureIdentifier, IMUDataIdentifier]

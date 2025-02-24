@@ -20,7 +20,7 @@ class AggregateIDToRawIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> AggregateFeatureIDToRawFeatureIDMap:
-        map: Dict[AggregateFeatureIdentifier:RawFeatureIdentifier] = {}
+        map: Dict[AggregateFeatureIdentifier, RawFeatureIdentifier] = {}
         aggregate_ids: List[AggregateFeatureIdentifier] = [
             AggregateFeatureIdentifier(id)
             for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]
