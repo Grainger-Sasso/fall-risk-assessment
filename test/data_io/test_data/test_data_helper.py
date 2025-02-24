@@ -20,6 +20,9 @@ from src.data_io.model_fields.features.aggregate.aggregate_feature_fields import
     AggregateFeatureFields,
 )
 from src.data_io.model_fields.features.raw.raw_feature_fields import RawFeatureFields
+from src.data_io.model_fields.instrument_specification.instrument_specification_fields import (
+    InstrumentSpecificationFields,
+)
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
@@ -51,6 +54,12 @@ from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
+from src.data_model.instrument_specifications.imu_specifications import (
+    IMUSpecifications,
+)
+from src.data_model.instrument_specifications.sensor_specifications import (
+    SensorSpecification,
+)
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
@@ -62,6 +71,9 @@ from src.identifiers.feature.aggregate_feature_identifier import (
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
+)
 from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
@@ -168,6 +180,27 @@ class TestConstants(Enum):
     FEATURE_SET_NAME = "test_feature_set"
     FEATURE_SET_RAW_IDS = ["raw_1", "raw_2", "raw_3"]
     FEATURE_SET_AGG_IDS = ["agg_1", "agg_2", "agg_3"]
+
+    ############### Instrument Specifications ###############
+    SPEC_ID = "test_spec_id"
+    IMU_NAME = "Test IMU"
+    SENSOR_NAME = "Test Sensor"
+    SENSOR_UNITS = "m/s^2"
+    SENSOR_RANGE = (-16.0, 16.0)
+    SENSOR_SENSITIVITY = 2048.0  # LSB/unit
+    SENSOR_RESOLUTION = 16  # bits
+    SENSOR_SAMPLING_RATE = 100.0  # Hz
+    SENSOR_NOISE_DENSITY = 0.0004  # unit/√Hz
+    SENSOR_BIAS_STABILITY = 0.1  # unit
+    SENSOR_ALIGNMENT_ERROR = 0.1  # degrees
+    SENSOR_CROSS_AXIS_SENSITIVITY = 2.0  # %
+    SENSOR_POWER_CONSUMPTION = 0.45  # mW
+    SENSOR_OPERATING_CONDITIONS = {
+        "temperature": "-40°C to 85°C",
+        "humidity": "10% to 90%",
+    }
+    SENSOR_SIZE = {"length": 3.0, "width": 3.0, "height": 0.95}
+    SENSOR_MASS = 0.3  # grams
 
 
 class TestDataHelper:
@@ -713,6 +746,98 @@ class FeatureSetHelper:
             },
         )
 
+
+class InstrumentSpecificationHelper:
+    """Helper class for creating test instrument specification data."""
+
+    def create_test_imu_specifications(self) -> IMUSpecifications:
+        """Create test IMU specifications model object."""
+        sensor_specs = [
+            self.__build_sensor_specification(SensorType.ACCELEROMETER),
+            self.__build_sensor_specification(SensorType.GYROSCOPE),
+        ]
+        return IMUSpecifications(
+            sensor_specifications=sensor_specs,
+            spec_id=InstrumentSpecificationIdentifier(TestConstants.SPEC_ID.value),
+            imu_name=TestConstants.IMU_NAME.value,
+        )
+
+    def __build_sensor_specification(
+        self, sensor_type: SensorType
+    ) -> SensorSpecification:
+        """Build sensor specification object."""
+        return SensorSpecification(
+            sensor_type=sensor_type,
+            sensor_name=TestConstants.SENSOR_NAME.value,
+            units=TestConstants.SENSOR_UNITS.value,
+            range=TestConstants.SENSOR_RANGE.value,
+            sensitivity=TestConstants.SENSOR_SENSITIVITY.value,
+            resolution=TestConstants.SENSOR_RESOLUTION.value,
+            sampling_rate=TestConstants.SENSOR_SAMPLING_RATE.value,
+            noise_density=TestConstants.SENSOR_NOISE_DENSITY.value,
+            bias_stability=TestConstants.SENSOR_BIAS_STABILITY.value,
+            alignment_error=TestConstants.SENSOR_ALIGNMENT_ERROR.value,
+            cross_axis_sensitivity=TestConstants.SENSOR_CROSS_AXIS_SENSITIVITY.value,
+            power_consumption=TestConstants.SENSOR_POWER_CONSUMPTION.value,
+            operating_conditions=TestConstants.SENSOR_OPERATING_CONDITIONS.value,
+            physical_size=TestConstants.SENSOR_SIZE.value,
+            mass=TestConstants.SENSOR_MASS.value,
+        )
+
+    def create_test_specification_json(self) -> JSONDictFile:
+        """Create test specification JSON file."""
+        return JSONDictFile(
+            {
+                InstrumentSpecificationFields.SPEC_ID.value: TestConstants.SPEC_ID.value,
+                InstrumentSpecificationFields.IMU_NAME.value: TestConstants.IMU_NAME.value,
+                InstrumentSpecificationFields.SENSOR_SPECIFICATIONS.value: [
+                    self.__build_sensor_specification_dict(SensorType.ACCELEROMETER),
+                    self.__build_sensor_specification_dict(SensorType.GYROSCOPE),
+                ],
+            }
+        )
+
+    def __build_sensor_specification_dict(
+        self, sensor_type: SensorType
+    ) -> Dict[str, Any]:
+        """Build sensor specification dictionary."""
+        return {
+            InstrumentSpecificationFields.SENSOR_TYPE.value: sensor_type.value,
+            InstrumentSpecificationFields.SENSOR_NAME.value: TestConstants.SENSOR_NAME.value,
+            InstrumentSpecificationFields.UNITS.value: TestConstants.SENSOR_UNITS.value,
+            InstrumentSpecificationFields.RANGE.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_RANGE.value
+            },
+            InstrumentSpecificationFields.SENSITIVITY.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_SENSITIVITY.value
+            },
+            InstrumentSpecificationFields.RESOLUTION.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_RESOLUTION.value
+            },
+            InstrumentSpecificationFields.SAMPLING_RATE.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_SAMPLING_RATE.value
+            },
+            InstrumentSpecificationFields.NOISE_DENSITY.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_NOISE_DENSITY.value
+            },
+            InstrumentSpecificationFields.BIAS_STABILITY.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_BIAS_STABILITY.value
+            },
+            InstrumentSpecificationFields.ALIGNMENT_ERROR.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_ALIGNMENT_ERROR.value
+            },
+            InstrumentSpecificationFields.CROSS_AXIS_SENSITIVITY.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_CROSS_AXIS_SENSITIVITY.value
+            },
+            InstrumentSpecificationFields.POWER_CONSUMPTION.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_POWER_CONSUMPTION.value
+            },
+            InstrumentSpecificationFields.OPERATING_CONDITIONS.value: {
+                InstrumentSpecificationFields.VALUE.value: TestConstants.SENSOR_OPERATING_CONDITIONS.value
+            },
+            InstrumentSpecificationFields.PHYSICAL_SIZE.value: TestConstants.SENSOR_SIZE.value,
+            InstrumentSpecificationFields.MASS.value: TestConstants.SENSOR_MASS.value,
+        }
 
 def main():
     """Run test data generation."""

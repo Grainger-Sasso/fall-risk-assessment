@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from data_types.instrument.sensor_type import SensorType
+from src.data_types.instrument.sensor_type import SensorType
 
 
 @dataclass
