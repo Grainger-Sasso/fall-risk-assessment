@@ -23,6 +23,7 @@ from src.data_io.model_fields.features.raw.raw_feature_fields import RawFeatureF
 from src.data_io.model_fields.instrument_specification.instrument_specification_fields import (
     InstrumentSpecificationFields,
 )
+from src.data_io.model_fields.mappings.mapping_fields import MappingFields
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
@@ -87,7 +88,6 @@ from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system impor
 )
 from src.util.mechanics.units.si.kilogram import Kilogram
 from src.util.mechanics.units.si.meter import Meter
-from src.data_io.model_fields.mappings.mapping_fields import MappingFields
 
 
 class TestConstants(Enum):
@@ -207,17 +207,17 @@ class TestConstants(Enum):
     # IMU to User mapping
     IMU_TO_USER_SOURCE_IDS = ["imu_1", "imu_2", "imu_3"]
     IMU_TO_USER_TARGET_IDS = ["user_1", "user_2", "user_3"]
-    
+
     # Raw to IMU mapping
     RAW_TO_IMU_SOURCE_IDS = ["raw_1", "raw_2", "raw_3"]
     RAW_TO_IMU_TARGET_IDS = ["imu_1", "imu_2", "imu_3"]
-    
+
     # Aggregate to Raw mapping
     AGG_TO_RAW_SOURCE_IDS = ["agg_1", "agg_2", "agg_3"]
     AGG_TO_RAW_TARGET_IDS = ["raw_1", "raw_2", "raw_3"]
-    
+
     # Instrument to Spec mapping
-    INST_TO_SPEC_SOURCE_IDS = ["manufacturer_1_serial1", "manufacturer_2_serial2"]
+    INST_TO_SPEC_SOURCE_IDS = ["manufacturer1_serial1", "manufacturer2_serial2"]
     INST_TO_SPEC_TARGET_IDS = ["spec_1", "spec_2"]
 
 
