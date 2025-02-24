@@ -15,6 +15,7 @@ from src.data_io.model_fields.data.user.clinical_demographic_data_fields import 
 )
 from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
 from src.data_io.model_fields.dataset.dataset_fields import DatasetFields
+from src.data_io.model_fields.feature_set.feature_set_fields import FeatureSetFields
 from src.data_io.model_fields.features.aggregate.aggregate_feature_fields import (
     AggregateFeatureFields,
 )
@@ -34,6 +35,8 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
 from src.data_model.data.user.user_data import UserData
 from src.data_model.dataset.dataset import Dataset
 from src.data_model.dataset.dataset_entry import DatasetEntry
+from src.data_model.feature_set.feature_set import FeatureSet
+from src.data_model.feature_set.feature_set_entry import FeatureSetEntry
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
@@ -160,6 +163,11 @@ class TestConstants(Enum):
     DATASET_NAME = "test_dataset"
     DATASET_USER_IDS = ["user_1", "user_2", "user_3"]
     DATASET_IMU_IDS = ["imu_1", "imu_2", "imu_3"]
+
+    ############### Feature Set ###############
+    FEATURE_SET_NAME = "test_feature_set"
+    FEATURE_SET_RAW_IDS = ["raw_1", "raw_2", "raw_3"]
+    FEATURE_SET_AGG_IDS = ["agg_1", "agg_2", "agg_3"]
 
 
 class TestDataHelper:
@@ -671,6 +679,37 @@ class DatasetHelper:
             data={
                 DatasetFields.USER_DATA_IDENTIFIER.value: TestConstants.DATASET_USER_IDS.value,
                 DatasetFields.IMU_DATA_IDENTIFIER.value: TestConstants.DATASET_IMU_IDS.value,
+            },
+        )
+
+
+class FeatureSetHelper:
+    """Helper class for creating test feature set data."""
+
+    def create_test_feature_set(self) -> FeatureSet:
+        """Create test feature set model object."""
+        entries = [
+            FeatureSetEntry(
+                raw_feature_identifier=RawFeatureIdentifier(raw_id),
+                aggregate_feature_identifier=AggregateFeatureIdentifier(agg_id),
+            )
+            for raw_id, agg_id in zip(
+                TestConstants.FEATURE_SET_RAW_IDS.value,
+                TestConstants.FEATURE_SET_AGG_IDS.value,
+            )
+        ]
+        return FeatureSet(name=TestConstants.FEATURE_SET_NAME.value, entries=entries)
+
+    def create_test_feature_set_csv(self) -> CSVFile:
+        """Create test feature set CSV file."""
+        return CSVFile(
+            fieldnames=[
+                FeatureSetFields.RAW_FEATURE_IDENTIFIER.value,
+                FeatureSetFields.AGGREGATE_FEATURE_IDENTIFIER.value,
+            ],
+            data={
+                FeatureSetFields.RAW_FEATURE_IDENTIFIER.value: TestConstants.FEATURE_SET_RAW_IDS.value,
+                FeatureSetFields.AGGREGATE_FEATURE_IDENTIFIER.value: TestConstants.FEATURE_SET_AGG_IDS.value,
             },
         )
 
