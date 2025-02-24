@@ -7,7 +7,12 @@ import numpy as np  # type: ignore
 
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
+from src.data_io.formats.json.json_dict_file import JSONDictFile
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
+from src.data_io.model_fields.data.user.clinical_demographic_data_fields import (
+    ClinicalDemographicDataFields,
+)
+from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
 from src.data_io.model_fields.features.aggregate.aggregate_feature_fields import (
     AggregateFeatureFields,
 )
@@ -19,6 +24,12 @@ from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
+from src.data_model.data.user.clinical.clinical_assessment import ClinicalAssessment
+from src.data_model.data.user.clinical.clinical_demographic_data import (
+    ClinicalDemographicData,
+    Sex,
+)
+from src.data_model.data.user.user_data import UserData
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
@@ -55,6 +66,8 @@ from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
 from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
     SensorCoordinateSystem,
 )
+from src.util.mechanics.units.si.kilogram import Kilogram
+from src.util.mechanics.units.si.meter import Meter
 
 
 class TestConstants(Enum):
@@ -130,6 +143,14 @@ class TestConstants(Enum):
     RAW_FEATURE_EPOCH_LEN = 1.0
     PLACEHOLDER_STAT_VALUE = 1.0
     PLACEHOLDER_FEATURE_VALUE = 2.0
+
+    ############### User DATA ###############
+    USER_DATA_ID = "test_user_data_id"
+    USER_NAME = "Test User"
+    USER_AGE = 65.0
+    USER_SEX = "male"  # lowercase to match Sex enum values
+    USER_WEIGHT = 70.0  # kg
+    USER_HEIGHT = 1.75  # m
 
 
 class TestDataHelper:
@@ -560,6 +581,57 @@ class FeatureDataHelper:
             ),
             start_time=TestConstants.RAW_FEATURE_START_TIME.value,
             epoch_length=TestConstants.RAW_FEATURE_EPOCH_LEN.value,
+        )
+
+
+class UserDataHelper:
+    """Helper class for creating test user data."""
+
+    def create_test_user_data(self) -> UserData:
+        """Create test user data model object."""
+        return UserData(
+            user_identifier=UserIdentifier(TestConstants.USER_DATA_ID.value),
+            clinical_demographic_data=self.__build_clinical_demographic_data(),
+            clinical_assessment=ClinicalAssessment(),
+        )
+
+    def create_test_user_data_json(self) -> JSONDictFile:
+        """Create test user data JSON file."""
+        return JSONDictFile(
+            {
+                UserDataFields.USER_DATA_IDENTIFIER.value: TestConstants.USER_DATA_ID.value
+            }
+        )
+
+    def create_test_clinical_demographic_json(self) -> JSONDictFile:
+        """Create test clinical demographic JSON file."""
+        return JSONDictFile(
+            {
+                ClinicalDemographicDataFields.NAME.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_NAME.value
+                },
+                ClinicalDemographicDataFields.AGE.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_AGE.value
+                },
+                ClinicalDemographicDataFields.SEX.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_SEX.value
+                },
+                ClinicalDemographicDataFields.WEIGHT.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_WEIGHT.value
+                },
+                ClinicalDemographicDataFields.HEIGHT.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_HEIGHT.value
+                },
+            }
+        )
+
+    def __build_clinical_demographic_data(self) -> ClinicalDemographicData:
+        return ClinicalDemographicData(
+            name=TestConstants.USER_NAME.value,
+            age=TestConstants.USER_AGE.value,
+            sex=Sex(TestConstants.USER_SEX.value),
+            weight=Kilogram(TestConstants.USER_WEIGHT.value),
+            height=Meter(TestConstants.USER_HEIGHT.value),
         )
 
 
