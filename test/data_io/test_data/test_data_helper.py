@@ -24,6 +24,7 @@ from src.data_io.model_fields.instrument_specification.instrument_specification_
     InstrumentSpecificationFields,
 )
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
+from src.data_io.model_fields.registries.registry_fields import RegistryFields
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
@@ -219,6 +220,39 @@ class TestConstants(Enum):
     # Instrument to Spec mapping
     INST_TO_SPEC_SOURCE_IDS = ["manufacturer1_serial1", "manufacturer2_serial2"]
     INST_TO_SPEC_TARGET_IDS = ["spec_1", "spec_2"]
+
+    ############### Registries ###############
+    # Common registry paths
+    REGISTRY_PATHS = ["path/to/file1", "path/to/file2", "path/to/file3"]
+
+    # Registry IDs
+    USER_REGISTRY_IDS = ["user_1", "user_2", "user_3"]
+    IMU_REGISTRY_IDS = ["imu_1", "imu_2", "imu_3"]
+    RAW_FEATURE_REGISTRY_IDS = ["raw_1", "raw_2", "raw_3"]
+    AGG_FEATURE_REGISTRY_IDS = ["agg_1", "agg_2", "agg_3"]
+    INSTRUMENT_SPEC_REGISTRY_IDS = ["spec_1", "spec_2", "spec_3"]
+
+    ############### File I/O ###############
+    # CSV Test Data
+    CSV_FIELDNAMES = ["column1", "column2", "column3"]
+    CSV_DATA = {
+        "column1": ["value1", "value2", "value3"],
+        "column2": ["value4", "value5", "value6"],
+        "column3": ["value7", "value8", "value9"],
+    }
+
+    # JSON Test Data
+    JSON_DATA = {
+        "string_field": "test_string",
+        "number_field": 42,
+        "list_field": [1, 2, 3],
+        "nested_field": {"inner_field": "inner_value"},
+    }
+
+    # HDF5 Test Data
+    HDF5_DATASET_NAME = "test_dataset"
+    HDF5_DATA = [[1, 2, 3], [4, 5, 6]]
+    HDF5_ATTRIBUTES = {"attr1": "value1", "attr2": 42}
 
 
 class TestDataHelper:
@@ -877,24 +911,46 @@ class MappingHelper:
         )
 
 
-def main():
-    """Run test data generation."""
-    # Create helper instance
-    helper = IMUDataHelper()
+class RegistryHelper:
+    """Helper class for creating test registry data."""
 
-    try:
-        # Generate test IMU data file
-        # file_path = helper.create_test_imu_data_file()
-        # print(f"Successfully created test IMU data file at: {file_path}")
-        imu_data: IMUData = helper.create_test_imu_data()
-        print(imu_data)
-    except Exception as e:
-        import traceback
-
-        print(f"Error creating test file: {e}")
-        print("\nFull traceback:")
-        print(traceback.format_exc())
+    def create_test_registry_csv(self, ids: List[str]) -> CSVFile:
+        """Create test registry CSV file."""
+        return CSVFile(
+            fieldnames=[
+                RegistryFields.DATA_IDENTIFIER.value,
+                RegistryFields.DIRECTORY.value,
+            ],
+            data={
+                RegistryFields.DATA_IDENTIFIER.value: ids,
+                RegistryFields.DIRECTORY.value: TestConstants.REGISTRY_PATHS.value,
+            },
+        )
 
 
-if __name__ == "__main__":
-    main()
+class FileIOHelper:
+    """Helper class for file I/O testing."""
+
+    def create_test_csv_file(self) -> CSVFile:
+        """Create test CSV file object."""
+        return CSVFile(
+            fieldnames=TestConstants.CSV_FIELDNAMES.value,
+            data=TestConstants.CSV_DATA.value,
+        )
+
+    def create_test_json_file(self) -> JSONDictFile:
+        """Create test JSON file object."""
+        return JSONDictFile(data=TestConstants.JSON_DATA.value)
+
+    def create_test_hdf5_group(self) -> HDF5Group:
+        """Create test HDF5 group object."""
+        dataset = HDF5Dataset(
+            name=TestConstants.HDF5_DATASET_NAME.value,
+            data=TestConstants.HDF5_DATA.value,
+            attributes=TestConstants.HDF5_ATTRIBUTES.value,
+        )
+        group = HDF5Group()
+        group.name = "test_group"
+        group.attributes = {"group_attr": "group_value"}
+        group.items = [dataset]
+        return group

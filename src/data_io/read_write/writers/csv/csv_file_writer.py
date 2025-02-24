@@ -1,9 +1,9 @@
-import csv
+import pandas as pd # type: ignore
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Tuple
 
-from src.data_io.read_write.writers.file_writer import FileWriter
 from src.data_io.formats.csv.csv_file import CSVFile
+from src.data_io.read_write.writers.file_writer import FileWriter
 
 
 class CSVFileWriter(FileWriter):
@@ -11,7 +11,7 @@ class CSVFileWriter(FileWriter):
     CSV file writer.
     """
 
-    def write(self, path: Path, data: CSVFile, **kwargs) -> Tuple[bool, str]:
+    def write(self, path: Path, csv_file: CSVFile, **kwargs) -> Tuple[bool, str]:
         """
         Writes CSV data to a file.
 
@@ -24,10 +24,8 @@ class CSVFileWriter(FileWriter):
             Tuple[bool, str]: (success flag, error message)
         """
         try:
-            with open(path, mode="w", newline="", encoding="utf-8") as file:
-                writer = csv.DictWriter(file, fieldnames=CSVFile.fieldnames, **kwargs)
-                writer.writeheader()
-                writer.writerows(CSVFile.data)
+            df = pd.DataFrame(csv_file.data)
+            df.to_csv(path, index=False)
             return True, ""
         except Exception as e:
             return False, str(e)
