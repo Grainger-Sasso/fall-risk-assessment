@@ -18,14 +18,16 @@ class InstrumentIDToInstrumentSpecIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> InstrumentIDToInstrumentSpecIDMap:
+        if not isinstance(input_file, CSVFile):
+            raise ValueError("Input must be an CSVFile")
         map: Dict[InstrumentIdentifier, InstrumentSpecificationIdentifier] = {}
         instrument_ids: List[InstrumentIdentifier] = [
             InstrumentIdentifier(id.split("_")[0], id.split("_")[1])
-            for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.SOURCE_DATA_IDENTIFIER.value]
         ]
         instrument_spec_ids: List[InstrumentSpecificationIdentifier] = [
             InstrumentSpecificationIdentifier(id)
-            for id in input_file[MappingFields.TARGET_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.TARGET_DATA_IDENTIFIER.value]
         ]
         for instrument_id, instrument_spec_id in zip(
             instrument_ids, instrument_spec_ids

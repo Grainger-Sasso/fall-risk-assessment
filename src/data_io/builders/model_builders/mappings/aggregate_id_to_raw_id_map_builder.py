@@ -20,14 +20,16 @@ class AggregateIDToRawIDMapBuilder(ModelBuilder):
     version = "1.0"
 
     def build(self, input_file: CSVFile) -> AggregateFeatureIDToRawFeatureIDMap:
+        if not isinstance(input_file, CSVFile):
+            raise ValueError("Input must be an CSVFile")
         map: Dict[AggregateFeatureIdentifier, RawFeatureIdentifier] = {}
         aggregate_ids: List[AggregateFeatureIdentifier] = [
             AggregateFeatureIdentifier(id)
-            for id in input_file[MappingFields.SOURCE_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.SOURCE_DATA_IDENTIFIER.value]
         ]
         raw_ids: List[RawFeatureIdentifier] = [
             RawFeatureIdentifier(id)
-            for id in input[MappingFields.TARGET_DATA_IDENTIFIER]
+            for id in input_file.data[MappingFields.TARGET_DATA_IDENTIFIER.value]
         ]
         for aggregate_id, raw_id in zip(aggregate_ids, raw_ids):
             map[aggregate_id] = raw_id
