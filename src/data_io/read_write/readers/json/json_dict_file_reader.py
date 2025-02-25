@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
-from src.data_io.read_write.readers.file_reader import FileReader
 from src.data_io.formats.json.json_dict_file import JSONDictFile
+from src.data_io.read_write.readers.file_reader import FileReader
 
 
 class JSONDictFileReader(FileReader):
@@ -22,15 +22,15 @@ class JSONDictFileReader(FileReader):
         Returns:
             Any: The parsed data (could be a dict, list, etc.).
         """
-        if not path.exists():
-            raise FileNotFoundError(f"The file at {path} does not exist.")
-
         if not path.suffix == ".json":
             raise ValueError(f"Expected a .json file, but got {path.suffix}.")
 
+        if not path.exists():
+            raise FileNotFoundError(f"The file at {path} does not exist.")
+
         with path.open("r", encoding="utf-8") as file:
             json_file = json.load(file)
-            if self.__json_file_is_dictionary():
+            if self.__json_file_is_dictionary(json_file):
                 return JSONDictFile(data=json_file)
             else:
                 raise ValueError(f"JSON file must be dictionary")
