@@ -250,9 +250,13 @@ class TestConstants(Enum):
     }
 
     # HDF5 Test Data
-    HDF5_DATASET_NAME = "test_dataset"
+    HDF5_DATASET_1_NAME = "test_dataset_1"
+    HDF5_DATASET_2_NAME = "test_dataset_2"
     HDF5_DATA = [[1, 2, 3], [4, 5, 6]]
     HDF5_ATTRIBUTES = {"attr1": "value1", "attr2": 42}
+
+    HDF5_GROUP_NAME = "test_group_name"
+    HDF5_GROUP_ATTRIBUTES = {"attr1": "value1", "attr2": 99}
 
 
 class TestDataHelper:
@@ -944,13 +948,19 @@ class FileIOHelper:
 
     def create_test_hdf5_group(self) -> HDF5Group:
         """Create test HDF5 group object."""
-        dataset = HDF5Dataset(
-            name=TestConstants.HDF5_DATASET_NAME.value,
+        dataset_1 = HDF5Dataset(
+            name=TestConstants.HDF5_DATASET_1_NAME.value,
             data=TestConstants.HDF5_DATA.value,
             attributes=TestConstants.HDF5_ATTRIBUTES.value,
         )
-        group = HDF5Group()
-        group.name = "test_group"
-        group.attributes = {"group_attr": "group_value"}
-        group.items = [dataset]
+        dataset_2 = HDF5Dataset(
+            name=TestConstants.HDF5_DATASET_2_NAME.value,
+            data=TestConstants.HDF5_DATA.value,
+            attributes=TestConstants.HDF5_ATTRIBUTES.value,
+        )
+        group = HDF5Group(
+            name=TestConstants.HDF5_GROUP_NAME.value,
+            items=[dataset_1, dataset_2],
+            attributes=TestConstants.HDF5_GROUP_ATTRIBUTES.value
+        )
         return group
