@@ -2,7 +2,6 @@ from abc import ABC
 from pathlib import Path
 from typing import Dict
 
-
 from src.identifiers.identifier import Identifier
 
 
@@ -13,8 +12,8 @@ class Registry(ABC):
         ABC (_type_): _description_
     """
 
-    def __init__(self, registry: Dict[Identifier:Path]):
-        self.registry: Dict[Identifier:Path] = registry
+    def __init__(self, registry: Dict[Identifier, Path]):
+        self.registry: Dict[Identifier, Path] = registry
 
     @property
     def registry(self) -> str:
@@ -26,7 +25,7 @@ class Registry(ABC):
         return self._registry
 
     @registry.setter
-    def registry(self, registry: Dict[Identifier:Path]):
+    def registry(self, registry: Dict[Identifier, Path]):
         """
         Set the value of the registry.
 

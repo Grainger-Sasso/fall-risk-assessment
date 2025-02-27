@@ -38,9 +38,6 @@ class UserDataImporter(Importer[UserData]):
         clinical_demo_data_file: JSONDictFile = self.reader.read(
             file_paths[UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA]
         )
-        print("##########")
-        print(user_data_file)
-        print(clinical_demo_data_file)
 
         # Build model from file data
         return self.model_builder.build(user_data_file, clinical_demo_data_file)

@@ -13,6 +13,8 @@ from src.database_manager.registries.aggregate_feature.aggregate_feature_registr
 
 
 class AggregateFeatureRegistryBuilder(RegistryBuilder):
+    version = "1.0"
+    
     def build(self, input_file: CSVFile) -> AggregateFeatureRegistry:
         registry: Dict[str, Path] = self.build_registry(input_file)
         return AggregateFeatureRegistry(

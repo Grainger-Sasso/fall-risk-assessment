@@ -1,4 +1,3 @@
-import json
 import tempfile
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
 )
 from src.data_model.data.user.user_data import UserData
 from test.base_test import BaseTest
-from test.data_io.test_data.test_data_helper import TestConstants
+from test.data_io.test_data.test_data_helper import TestConstants, UserDataHelper
 
 
 class TestUserDataImporter(BaseTest):
@@ -20,34 +19,22 @@ class TestUserDataImporter(BaseTest):
         self.importer = UserDataImporter()
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
+        self.helper = UserDataHelper()
 
-        # Create test JSON files
-        self.user_data = {
-            "user_data_identifier": TestConstants.USER_DATA_ID.value,
-        }
-
-        self.clinical_data = {
-            "name": {"value": TestConstants.USER_NAME.value, "unit": None},
-            "age": {"value": TestConstants.USER_AGE.value, "unit": "years"},
-            "sex": {"value": TestConstants.USER_SEX.value, "unit": None},
-            "weight": {"value": TestConstants.USER_WEIGHT.value, "unit": "kilograms"},
-            "height": {"value": TestConstants.USER_HEIGHT.value, "unit": "centimeters"},
-        }
-
-        # Write test files
-        self._write_json_file(
-            self.temp_path / f"{UserDataFileNames.USER_DATA.value}.json", self.user_data
+        # Create test files in temp directory
+        self.user_data_path = self.helper.create_test_user_data_file(
+            self.temp_path / f"{UserDataFileNames.USER_DATA.value}.json"
         )
-        self._write_json_file(
-            self.temp_path
-            / f"{UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value}.json",
-            self.clinical_data,
+        self.clinical_data_path = self.helper.create_test_clinical_demographic_file(
+            self.temp_path / f"{UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value}.json"
         )
 
     def tearDown(self):
         # Clean up test files
-        for file in self.temp_path.glob("*.json"):
-            file.unlink()
+        if self.user_data_path.exists():
+            self.user_data_path.unlink()
+        if self.clinical_data_path.exists():
+            self.clinical_data_path.unlink()
         self.temp_path.rmdir()
 
     def test_import_data(self):
@@ -82,16 +69,11 @@ class TestUserDataImporter(BaseTest):
 
     def test_missing_file(self):
         # Remove one of the required files
-        (self.temp_path / f"{UserDataFileNames.USER_DATA.value}.json").unlink()
+        self.user_data_path.unlink()
 
         # Verify import raises error
         with self.assertRaises(FileNotFoundError):
             self.importer.import_data(self.temp_path)
-
-    def _write_json_file(self, path: Path, data: dict) -> None:
-        """Helper method to write test JSON files."""
-        with open(path, "w") as f:
-            json.dump(data, f)
 
 
 if __name__ == "__main__":

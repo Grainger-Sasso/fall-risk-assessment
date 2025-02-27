@@ -1,3 +1,4 @@
+import json
 import shutil
 from enum import Enum
 from pathlib import Path
@@ -326,16 +327,32 @@ class IMUDataHelper:
     def __init__(self):
         self.test_data_helper = TestDataHelper()
 
-    def create_test_imu_data_file(self) -> Path:
-        """Create a test IMU data file.
+    def create_test_imu_data_file(self, path: Optional[Path] = None) -> Path:
+        """Create test IMU data file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
 
         Returns:
-            Path: Path to created test file
+            Path: Path to the created file
         """
-        imu_data_group: HDF5Group = self.create_test_imu_data_hdf5()
-        return self.test_data_helper.create_test_file(
-            TestConstants.IMU_FILE_NAME.value, imu_data_group
-        )
+        # Create test data
+        test_data = self.create_test_imu_data_hdf5()
+
+        # Use provided path or default
+        if path is None:
+            path = Path("test/test_data/imu_data.h5")
+
+        # Ensure parent directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write data
+        writer = HDF5FileWriter()
+        success, error = writer.write(path, test_data)
+        if not success:
+            raise RuntimeError(f"Failed to write test IMU data: {error}")
+
+        return path
 
     def create_test_imu_data_hdf5(self) -> HDF5Group:
         """Creates test imu data in HDF5Group"""
@@ -481,20 +498,33 @@ class IMUDataHelper:
 
 
 class FeatureDataHelper:
+    """Helper class for creating test feature data."""
+
     def __init__(self):
         self.test_data_helper = TestDataHelper()
 
     ############### AGGREGATE ###############
-    def create_test_aggregate_feature_file(self):
-        """Create a test aggregate feature file.
+    def create_test_aggregate_feature_file(self, path: Optional[Path] = None) -> Path:
+        """Create test aggregate feature file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
 
         Returns:
-            Path: Path to created test file
+            Path: Path to the created file
         """
-        aggregate_feature: HDF5Group = self.create_test_aggregate_feature_hdf5()
-        return self.test_data_helper.create_test_file(
-            TestConstants.AGGREGATE_FILE_NAME.value, aggregate_feature
-        )
+        if path is None:
+            path = Path("test/test_data/aggregate_feature.h5")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        writer = HDF5FileWriter()
+        test_data = self.create_test_aggregate_feature_hdf5()
+        success, error = writer.write(path, test_data)
+        if not success:
+            raise RuntimeError(f"Failed to write test aggregate feature file: {error}")
+
+        return path
 
     def create_test_aggregate_feature_hdf5(self) -> HDF5Group:
         # Build feature dataset
@@ -585,16 +615,27 @@ class FeatureDataHelper:
         )
 
     ############### RAW ###############
-    def create_test_raw_feature_file(self):
-        """Create a test raw feature file.
+    def create_test_raw_feature_file(self, path: Optional[Path] = None) -> Path:
+        """Create test raw feature file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
 
         Returns:
-            Path: Path to created test file
+            Path: Path to the created file
         """
-        raw_feature: HDF5Group = self.create_test_raw_feature_hdf5()
-        return self.test_data_helper.create_test_file(
-            TestConstants.RAW_FILE_NAME.value, raw_feature
-        )
+        if path is None:
+            path = Path("test/test_data/raw_feature.h5")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        writer = HDF5FileWriter()
+        test_data = self.create_test_raw_feature_hdf5()
+        success, error = writer.write(path, test_data)
+        if not success:
+            raise RuntimeError(f"Failed to write test raw feature file: {error}")
+
+        return path
 
     def create_test_raw_feature_hdf5(self) -> HDF5Group:
         # Build feature dataset
@@ -701,6 +742,28 @@ class UserDataHelper:
             clinical_assessment=ClinicalAssessment(),
         )
 
+    def create_test_user_data_file(self, path: Optional[Path] = None) -> Path:
+        """Create test user data file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        # Use provided path or default
+        if path is None:
+            path = Path("test/test_data/user_data.json")
+
+        # Ensure parent directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create and write data
+        with open(path, "w") as f:
+            json.dump(self.create_test_user_data_json().data, f)
+
+        return path
+
     def create_test_user_data_json(self) -> JSONDictFile:
         """Create test user data JSON file."""
         return JSONDictFile(
@@ -708,6 +771,27 @@ class UserDataHelper:
                 UserDataFields.USER_DATA_IDENTIFIER.value: TestConstants.USER_DATA_ID.value
             }
         )
+
+    def create_test_clinical_demographic_file(
+        self, path: Optional[Path] = None
+    ) -> Path:
+        """Create test clinical demographic data file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/clinical_demographic_data.json")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as f:
+            json.dump(self.create_test_clinical_demographic_json().data, f)
+
+        return path
 
     def create_test_clinical_demographic_json(self) -> JSONDictFile:
         """Create test clinical demographic JSON file."""
@@ -758,6 +842,25 @@ class DatasetHelper:
         ]
         return Dataset(name=TestConstants.DATASET_NAME.value, entries=entries)
 
+    def create_test_dataset_file(self, path: Optional[Path] = None) -> Path:
+        """Create test dataset file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/dataset.csv")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_data = self.create_test_dataset_csv()
+        test_data.to_csv(path)
+
+        return path
+
     def create_test_dataset_csv(self) -> CSVFile:
         """Create test dataset CSV file."""
         return CSVFile(
@@ -788,6 +891,25 @@ class FeatureSetHelper:
             )
         ]
         return FeatureSet(name=TestConstants.FEATURE_SET_NAME.value, entries=entries)
+
+    def create_test_feature_set_file(self, path: Optional[Path] = None) -> Path:
+        """Create test feature set file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/feature_set.csv")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_data = self.create_test_feature_set_csv()
+        test_data.to_csv(path)
+
+        return path
 
     def create_test_feature_set_csv(self) -> CSVFile:
         """Create test feature set CSV file."""
@@ -839,6 +961,25 @@ class InstrumentSpecificationHelper:
             physical_size=TestConstants.SENSOR_SIZE.value,
             mass=TestConstants.SENSOR_MASS.value,
         )
+
+    def create_test_specification_file(self, path: Optional[Path] = None) -> Path:
+        """Create test specification file.
+
+        Args:
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/instrument_specification.json")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(path, "w") as f:
+            json.dump(self.create_test_specification_json().data, f)
+
+        return path
 
     def create_test_specification_json(self) -> JSONDictFile:
         """Create test specification JSON file."""
@@ -899,6 +1040,29 @@ class InstrumentSpecificationHelper:
 class MappingHelper:
     """Helper class for creating test mapping data."""
 
+    def create_test_mapping_file(
+        self, source_ids: List[str], target_ids: List[str], path: Optional[Path] = None
+    ) -> Path:
+        """Create test mapping file.
+
+        Args:
+            source_ids (List[str]): Source identifiers
+            target_ids (List[str]): Target identifiers
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/mapping.csv")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_data = self.create_test_mapping_csv(source_ids, target_ids)
+        test_data.to_csv(path)
+
+        return path
+
     def create_test_mapping_csv(
         self, source_ids: List[str], target_ids: List[str]
     ) -> CSVFile:
@@ -917,6 +1081,28 @@ class MappingHelper:
 
 class RegistryHelper:
     """Helper class for creating test registry data."""
+
+    def create_test_registry_file(
+        self, ids: List[str], path: Optional[Path] = None
+    ) -> Path:
+        """Create test registry file.
+
+        Args:
+            ids (List[str]): Registry identifiers
+            path (Optional[Path]): Path where to create the file. If None, uses default location.
+
+        Returns:
+            Path: Path to the created file
+        """
+        if path is None:
+            path = Path("test/test_data/registry.csv")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        test_data = self.create_test_registry_csv(ids)
+        test_data.to_csv(path)
+
+        return path
 
     def create_test_registry_csv(self, ids: List[str]) -> CSVFile:
         """Create test registry CSV file."""
@@ -961,6 +1147,6 @@ class FileIOHelper:
         group = HDF5Group(
             name=TestConstants.HDF5_GROUP_NAME.value,
             items=[dataset_1, dataset_2],
-            attributes=TestConstants.HDF5_GROUP_ATTRIBUTES.value
+            attributes=TestConstants.HDF5_GROUP_ATTRIBUTES.value,
         )
         return group
