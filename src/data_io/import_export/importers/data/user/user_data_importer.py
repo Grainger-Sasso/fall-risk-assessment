@@ -30,6 +30,12 @@ class UserDataImporter(Importer[UserData]):
         file_paths: Dict[Enum, Path] = self.resolve_file_paths(
             directory, UserDataFileNames
         )
+        if not all([p.exists for _, p in file_paths.items()]):
+            raise (
+                FileNotFoundError(
+                    f"Files missing in set of file paths found: {file_paths}"
+                )
+            )
 
         # Read files using resolved paths
         user_data_file: JSONDictFile = self.reader.read(

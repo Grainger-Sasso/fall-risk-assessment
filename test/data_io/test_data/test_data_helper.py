@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
@@ -857,7 +858,8 @@ class DatasetHelper:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         test_data = self.create_test_dataset_csv()
-        test_data.to_csv(path)
+        df = pd.DataFrame(test_data.data)
+        df.to_csv(path)
 
         return path
 

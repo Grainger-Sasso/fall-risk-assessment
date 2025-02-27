@@ -38,4 +38,4 @@ class TestRawFeatureRegistryBuilder(BaseTest):
 
 
 if __name__ == "__main__":
-    TestRawFeatureRegistryBuilder.run_tests() 
+    TestRawFeatureRegistryBuilder.run_tests()

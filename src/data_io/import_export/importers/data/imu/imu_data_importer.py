@@ -24,6 +24,12 @@ class IMUDataImporter(Importer[IMUData]):
         file_paths: Dict[Enum, Path] = self.resolve_file_paths(
             directory, IMUDataFileNames
         )
+        if not all([p.exists for _, p in file_paths.items()]):
+            raise (
+                FileNotFoundError(
+                    f"Files missing in set of file paths found: {file_paths}"
+                )
+            )
         imu_data_group: HDF5Group = self.reader.read(
             file_paths[IMUDataFileNames.IMU_DATA]
         )
