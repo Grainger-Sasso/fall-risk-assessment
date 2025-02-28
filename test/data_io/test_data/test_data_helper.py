@@ -909,7 +909,8 @@ class FeatureSetHelper:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         test_data = self.create_test_feature_set_csv()
-        test_data.to_csv(path)
+        df = pd.DataFrame(test_data.data)
+        df.to_csv(path)
 
         return path
 
