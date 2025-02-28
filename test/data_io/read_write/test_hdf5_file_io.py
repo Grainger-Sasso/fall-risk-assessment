@@ -74,7 +74,7 @@ class TestHDF5FileIO(BaseTest):
             test_dataset = test_data.items[ix]
             self.assertEqual(result_dataset.name, test_dataset.name)
             self.assertEqual(result_dataset.attributes, test_dataset.attributes)
-            self.assertEqual(result_dataset.data.tolist(), test_dataset.data)
+            self.assertEqual(result_dataset.data, test_dataset.data)
 
     def test_read_nonexistent_file(self):
         with self.assertRaises(FileNotFoundError):

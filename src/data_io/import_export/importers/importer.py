@@ -74,6 +74,7 @@ class Importer(Generic[T], ABC):
         for suffix in self.file_suffixes:
             all_files.extend(self.find_files_glob(directory, suffix))
 
+
         # Create mapping of enum members to paths
         file_paths: Dict[Enum, Path] = {}
         for enum_member in file_names_enum:

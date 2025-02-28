@@ -2,7 +2,6 @@ import heapq
 from pathlib import Path
 from typing import Tuple, Union
 
-
 import h5py
 
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
@@ -51,10 +50,10 @@ class HDF5FileReader(FileReader):
                 for key, item in group.items():
                     # If item is dataset
                     if isinstance(item, h5py.Dataset):
-                        # Create dataset and add to output
+                        # Create dataset with converted data
                         output_dataset = HDF5Dataset(
                             name=key,
-                            data=item[()],
+                            data=self.__convert_data(item[()]),
                             attributes={key: val for key, val in item.attrs.items()},
                         )
                         output_group_items.append(output_dataset)
@@ -72,3 +71,37 @@ class HDF5FileReader(FileReader):
             output_group = recursively_load_hdf5(parent_name_and_group)
 
         return output_group
+
+    def __convert_data(self, data):
+        """Convert numpy array data to appropriate Python types.
+
+        Args:
+            data: Numpy array from HDF5 dataset
+
+        Returns:
+            List of converted data values
+        """
+        # Handle object arrays (could contain mixed types)
+        if data.dtype.kind == 'O':  # O = object dtype
+            if data.shape == ():  # scalar
+                value = data.item()
+                return value.decode('utf-8') if isinstance(value, bytes) else value
+            # Array of objects
+            return [x.decode('utf-8') if isinstance(x, bytes) else x for x in data]
+
+        # Handle string/bytes data
+        if data.dtype.kind in ["S", "U"]:  # S=bytes, U=unicode
+            # Handle single string/bytes value
+            if data.shape == ():  # scalar
+                return data.item().decode("utf-8") if isinstance(data.item(), bytes) else str(data.item())
+            # Handle array of strings/bytes
+            return [x.decode("utf-8") if isinstance(x, bytes) else str(x) for x in data]
+
+        # Handle numeric data
+        if data.dtype.kind in ["i", "u", "f"]:  # i=integer, u=unsigned int, f=float
+            return data.tolist()
+
+        # For other types, try direct conversion to list
+        if data.dtype == list:
+            return data
+        return data.tolist()
