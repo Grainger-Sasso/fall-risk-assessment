@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 
-import numpy as np
+import numpy as np # type: ignore
 
 from src.data_io.builders.file_builders.feature.aggregate.aggregate_feature_file_builder import (
     AggregateFeatureSetEntryFileBuilder,
