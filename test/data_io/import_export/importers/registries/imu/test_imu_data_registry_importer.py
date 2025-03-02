@@ -21,8 +21,7 @@ class TestIMUDataRegistryImporter(BaseTest):
         # Create test file in temp directory
         self.registry_path = self.helper.create_test_registry_file(
             TestConstants.IMU_REGISTRY_IDS.value,
-            self.temp_path
-            / f"{IMUDataRegistryFileNames.IMU_DATA_REGISTRY.value}.csv",
+            self.temp_path / f"{IMUDataRegistryFileNames.IMU_DATA_REGISTRY.value}.csv",
         )
 
     def tearDown(self):
@@ -47,9 +46,7 @@ class TestIMUDataRegistryImporter(BaseTest):
             TestConstants.REGISTRY_PATHS.value,
         ):
             self.assertIn(IMUDataIdentifier(id), result.registry)
-            self.assertEqual(
-                result.registry[IMUDataIdentifier(id)], Path(path)
-            )
+            self.assertEqual(result.registry[IMUDataIdentifier(id)], Path(path))
 
     def test_missing_file(self):
         # Remove the required file
@@ -61,4 +58,4 @@ class TestIMUDataRegistryImporter(BaseTest):
 
 
 if __name__ == "__main__":
-    TestIMUDataRegistryImporter.run_tests() 
+    TestIMUDataRegistryImporter.run_tests()
