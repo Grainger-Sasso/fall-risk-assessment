@@ -1,5 +1,9 @@
-from src.data_io.builders.model_builders.mappings.aggregate_id_to_raw_id_map_builder import (
-    AggregateIDToRawIDMapBuilder,
+import tempfile
+from pathlib import Path
+
+from src.data_io.import_export.importers.mappings.aggregate_id_to_raw_id_map_importer import (
+    AggregateIDToRawIDMapFileNames,
+    AggregateIDToRawIDMapImporter,
 )
 from src.database_manager.mappings.aggregate_feature_id_to_raw_feature_id_map import (
     AggregateFeatureIDToRawFeatureIDMap,
@@ -12,20 +16,30 @@ from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import MappingHelper, TestConstants
 
 
-class TestAggregateIDToRawIDMapBuilder(BaseTest):
+class TestAggregateIDToRawIDMapImporter(BaseTest):
     def setUp(self):
-        self.builder = AggregateIDToRawIDMapBuilder()
-        self.data_helper = MappingHelper()
+        self.importer = AggregateIDToRawIDMapImporter()
+        self.temp_dir = tempfile.mkdtemp()
+        self.temp_path = Path(self.temp_dir)
+        self.helper = MappingHelper()
 
-    def test_build_valid_data(self):
-        # Create test CSV data
-        csv_data = self.data_helper.create_test_mapping_csv(
+        # Create test file in temp directory
+        self.map_path = self.helper.create_test_mapping_file(
             TestConstants.AGG_TO_RAW_SOURCE_IDS.value,
             TestConstants.AGG_TO_RAW_TARGET_IDS.value,
+            self.temp_path
+            / f"{AggregateIDToRawIDMapFileNames.AGGREGATE_FEATURE_TO_RAW_FEATURE_ID_MAP.value}.csv",
         )
 
-        # Test building map
-        result = self.builder.build(csv_data)
+    def tearDown(self):
+        # Clean up test files
+        if self.map_path.exists():
+            self.map_path.unlink()
+        self.temp_path.rmdir()
+
+    def test_import_data(self):
+        # Import data from test directory
+        result = self.importer.import_data(self.temp_path)
 
         # Assertions
         self.assertIsInstance(result, AggregateFeatureIDToRawFeatureIDMap)
@@ -44,10 +58,14 @@ class TestAggregateIDToRawIDMapBuilder(BaseTest):
                 raw_id.value, TestConstants.AGG_TO_RAW_TARGET_IDS.value[ix]
             )
 
-    def test_build_empty_data(self):
-        with self.assertRaises(ValueError):
-            self.builder.build(None)
+    def test_missing_file(self):
+        # Remove the required file
+        self.map_path.unlink()
+
+        # Verify import raises error
+        with self.assertRaises(FileNotFoundError):
+            self.importer.import_data(self.temp_path)
 
 
 if __name__ == "__main__":
-    TestAggregateIDToRawIDMapBuilder.run_tests()
+    TestAggregateIDToRawIDMapImporter.run_tests()

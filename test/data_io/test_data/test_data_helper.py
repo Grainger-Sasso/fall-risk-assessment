@@ -1062,7 +1062,8 @@ class MappingHelper:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         test_data = self.create_test_mapping_csv(source_ids, target_ids)
-        test_data.to_csv(path)
+        df = pd.DataFrame(test_data.data)
+        df.to_csv(path)
 
         return path
 
@@ -1103,7 +1104,8 @@ class RegistryHelper:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         test_data = self.create_test_registry_csv(ids)
-        test_data.to_csv(path)
+        df = pd.DataFrame(test_data.data)
+        df.to_csv(path)
 
         return path
 

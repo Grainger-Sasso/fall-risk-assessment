@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from src.data_io.builders.model_builders.registries.user.user_data_registry_builder import (
     UserDataRegistryBuilder,
 )
@@ -32,12 +33,8 @@ class TestUserDataRegistryBuilder(BaseTest):
         for ix, (user_id, path) in enumerate(result.registry.items()):
             self.assertIsInstance(user_id, UserIdentifier)
             self.assertIsInstance(path, Path)
-            self.assertEqual(
-                user_id.value, TestConstants.USER_REGISTRY_IDS.value[ix]
-            )
-            self.assertEqual(
-                str(path), TestConstants.REGISTRY_PATHS.value[ix]
-            )
+            self.assertEqual(user_id.value, TestConstants.USER_REGISTRY_IDS.value[ix])
+            self.assertEqual(str(path), TestConstants.REGISTRY_PATHS.value[ix])
 
     def test_build_empty_data(self):
         with self.assertRaises(ValueError):
@@ -45,4 +42,4 @@ class TestUserDataRegistryBuilder(BaseTest):
 
 
 if __name__ == "__main__":
-    TestUserDataRegistryBuilder.run_tests() 
+    TestUserDataRegistryBuilder.run_tests()
