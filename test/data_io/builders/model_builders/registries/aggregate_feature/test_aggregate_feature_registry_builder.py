@@ -36,8 +36,10 @@ class TestAggregateFeatureRegistryBuilder(BaseTest):
             TestConstants.REGISTRY_PATHS.value,
         ):
             self.assertIn(AggregateFeatureIdentifier(id), result.registry)
-            self.assertEqual(result.registry[AggregateFeatureIdentifier(id)], Path(path))
+            self.assertEqual(
+                result.registry[AggregateFeatureIdentifier(id)], Path(path)
+            )
 
 
 if __name__ == "__main__":
-    TestAggregateFeatureRegistryBuilder.run_tests() 
+    TestAggregateFeatureRegistryBuilder.run_tests()

@@ -19,7 +19,9 @@ class InstrumentIDToInstrumentSpecIDMapFileNames(Enum):
     INSTRUMENT_TO_INSTRUMENT_SPEC_ID_MAP = "instrument_to_instrument_spec_id_map"
 
 
-class InstrumentIDToInstrumentSpecIDMapImporter(Importer[InstrumentIDToInstrumentSpecIDMap]):
+class InstrumentIDToInstrumentSpecIDMapImporter(
+    Importer[InstrumentIDToInstrumentSpecIDMap]
+):
     """Imports map data from files."""
 
     def __init__(self):
@@ -49,6 +51,8 @@ class InstrumentIDToInstrumentSpecIDMapImporter(Importer[InstrumentIDToInstrumen
             )
 
         map_file: CSVFile = self.reader.read(
-            file_paths[InstrumentIDToInstrumentSpecIDMapFileNames.INSTRUMENT_TO_INSTRUMENT_SPEC_ID_MAP]
+            file_paths[
+                InstrumentIDToInstrumentSpecIDMapFileNames.INSTRUMENT_TO_INSTRUMENT_SPEC_ID_MAP
+            ]
         )
-        return self.model_builder.build(map_file) 
+        return self.model_builder.build(map_file)
