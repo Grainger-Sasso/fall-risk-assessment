@@ -1,7 +1,5 @@
 import os
-from enum import Enum
 from pathlib import Path
-from typing import Dict
 
 from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
     IMUDataFileBuilder,
