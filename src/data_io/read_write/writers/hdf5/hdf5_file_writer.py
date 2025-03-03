@@ -30,15 +30,6 @@ class HDF5FileWriter(FileWriter):
                 f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}.",
             )
 
-        # def recursively_write_hdf5(group: HDF5Group) -> h5py.Group:
-        #     output_group_items = []
-        #     for item in group.items:
-        #         if isinstance(item, HDF5Dataset):
-        #             output_group_items.append(
-        #                 output_dataset_attrs={key: val for key, val in item.attributes}
-        #             )
-        #     pass
-
         def recursively_write_hdf5(target: HDF5Group, h5_group: h5py.Group) -> None:
             """Recursively writes a Group object to an HDF5 group.
 
