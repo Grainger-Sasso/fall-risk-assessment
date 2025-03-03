@@ -36,7 +36,7 @@ class Identifier(ABC):
         self._value = value
 
     @abstractmethod
-    def validate(self) -> bool:
+    def validate(self, value: str) -> bool:
         """
         Validate the identifier. This method should be implemented by subclasses
         to provide specific validation logic for the type of identifier.
