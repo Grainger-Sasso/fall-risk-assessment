@@ -1,5 +1,6 @@
 from typing import Dict, Generic, List, TypeVar
 
+from src.database_manager.mappings.mapping import Mapping
 from src.identifiers.identifier import Identifier
 
 S = TypeVar("S", bound=Identifier)
@@ -9,7 +10,7 @@ T = TypeVar("T", bound=Identifier)
 class MappingManager(Generic[S, T]):
     """Manages relationships between different identifier types"""
 
-    def __init__(self, mapping: Dict[S, T]):
+    def __init__(self, mapping: Mapping):
         self._mapping = mapping
 
     def get_target_id(self, source_id: S) -> T:
