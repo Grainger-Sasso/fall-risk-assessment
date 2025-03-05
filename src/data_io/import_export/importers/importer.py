@@ -33,7 +33,7 @@ class Importer(Generic[T], ABC):
         self.file_suffixes: List[str] = file_suffixes
 
     @abstractmethod
-    def import_data(self, directory: Path) -> T:
+    def import_data(self, directory: Path, **kwargs) -> T:
         """
         Import data from a file and convert it to a model object. Generally,
         the import data method will include the following steps:

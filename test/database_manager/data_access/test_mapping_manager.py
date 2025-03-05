@@ -12,10 +12,7 @@ class TestMappingManager(BaseTest):
         self.helper = DatabaseManagerTestHelper()
 
         # Create test mapping using helper
-        self.test_mapping = self.helper.create_test_mapping(
-            TestConstants.TEST_SOURCE_IDS.value[:2],
-            TestConstants.TEST_TARGET_IDS.value[:2],
-        )
+        self.test_mapping = self.helper.create_test_mapping()
         self.manager = MappingManager[TestIdentifier, TestIdentifier](self.test_mapping)
 
     def test_get_target_id(self):

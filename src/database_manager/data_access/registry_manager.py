@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Type
 
-from src.database_manager.registries.registry import Registry
+from src.database_manager.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 
@@ -30,6 +30,6 @@ class RegistryManager:
         if type(identifier) not in self._registry_map:
             raise KeyError(f"Unable to resolve registry from ID: {identifier}")
         registry = self._registry_map[type(identifier)]
-        if identifier not in registry.registry.keys():
+        if identifier.value not in registry.registry.keys():
             raise KeyError(f"Unable to resolve path of ID: {identifier}")
-        return registry.registry[identifier]
+        return registry.registry[identifier.value]

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, Type
 
 from src.database_manager.data_access.registry_manager import RegistryManager
-from src.database_manager.registries.registry import Registry
+from src.database_manager.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
@@ -22,7 +22,7 @@ class TestRegistryManager(BaseTest):
 
     def test_get_path(self):
         # Test successful path retrieval
-        test_id = TestIdentifier(TestConstants.TEST_SOURCE_IDS.value[0])
+        test_id: TestIdentifier = self.helper.create_test_identifier()
         path = self.manager.get_path(test_id)
         self.assertEqual(path, Path(TestConstants.TEST_PATHS.value[0]))
 

@@ -1,12 +1,13 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Type
 
 from src.data_io.builders.model_builders.mapping.mapping_builder import MappingBuilder
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.import_export.importers.importer import Importer
 from src.data_io.read_write.readers.csv.csv_file_reader import CSVFileReader
 from src.database_manager.mapping.mapping import Mapping
+from src.identifiers.identifier import Identifier
 
 
 class MappingFileNames(Enum):
@@ -24,7 +25,12 @@ class MappingImporter(Importer[Mapping]):
         file_suffixes = ["csv"]
         super().__init__(reader, model_builder, file_suffixes)
 
-    def import_data(self, directory: Path) -> Mapping:
+    def import_data(
+        self,
+        directory: Path,
+        source_id_type: Type[Identifier],
+        target_id_type: Type[Identifier],
+    ) -> Mapping:
         """Import map data from directory.
 
         Args:
@@ -46,4 +52,4 @@ class MappingImporter(Importer[Mapping]):
                 )
             )
         map_file: CSVFile = self.reader.read(file_paths[MappingFileNames.MAPPING])
-        return self.model_builder.build(map_file)
+        return self.model_builder.build(map_file, source_id_type, target_id_type)

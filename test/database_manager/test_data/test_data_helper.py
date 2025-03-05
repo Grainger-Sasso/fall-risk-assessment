@@ -1,8 +1,8 @@
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List
 
-from src.database_manager.registries.registry import Registry
+from src.database_manager.mapping.mapping import Mapping
+from src.database_manager.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 
@@ -27,47 +27,37 @@ class TestIdentifier(Identifier):
         return True
 
 
-class TestRegistry(Registry):
-    """Test implementation of Registry"""
-
-    pass
-
-
 class DatabaseManagerTestHelper:
     """Helper class for creating test data for database manager tests"""
 
-    @staticmethod
-    def create_test_mapping(
-        source_ids: List[str], target_ids: List[str]
-    ) -> Dict[TestIdentifier, TestIdentifier]:
-        """Create test mapping between identifiers
+    def create_test_identifier(self) -> TestIdentifier:
+        return TestIdentifier(TestConstants.TEST_SOURCE_IDS.value[0])
 
-        Args:
-            source_ids: List of source identifier values
-            target_ids: List of target identifier values
+    def create_test_mapping(self) -> Mapping:
+        """Create test mapping between identifiers
 
         Returns:
             Dictionary mapping source to target identifiers
         """
-        return {
-            TestIdentifier(src): TestIdentifier(tgt)
-            for src, tgt in zip(source_ids, target_ids)
-        }
+        return Mapping(
+            {
+                src: tgt
+                for src, tgt in zip(
+                    TestConstants.TEST_SOURCE_IDS.value,
+                    TestConstants.TEST_TARGET_IDS.value,
+                )
+            }
+        )
 
-    @staticmethod
-    def create_test_registry() -> Dict[TestIdentifier, Path]:
+    def create_test_registry(self) -> Registry:
         """Create test registry mapping identifiers to paths
-
-        Args:
-            ids: List of identifier values
-            paths: List of path strings
 
         Returns:
             Dictionary mapping identifiers to paths
         """
-        return TestRegistry(
+        return Registry(
             {
-                TestIdentifier(id): Path(path)
+                id: Path(path)
                 for id, path in zip(
                     TestConstants.TEST_SOURCE_IDS.value[:2],
                     TestConstants.TEST_PATHS.value[:2],

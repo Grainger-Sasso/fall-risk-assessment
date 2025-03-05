@@ -7,7 +7,12 @@ from src.data_io.import_export.importers.mapping.mapping_importer import (
 )
 from src.database_manager.mapping.mapping import Mapping
 from test.base_test import BaseTest
-from test.data_io.test_data.test_data_helper import MappingHelper, TestConstants
+from test.data_io.test_data.test_data_helper import (
+    MappingHelper,
+    TestConstants,
+    TestSourceIdentifier,
+    TestTargetIdentifier,
+)
 
 
 class TestMappingImporter(BaseTest):
@@ -30,7 +35,9 @@ class TestMappingImporter(BaseTest):
 
     def test_import_data(self):
         # Import data from test directory
-        result = self.importer.import_data(self.temp_path)
+        result = self.importer.import_data(
+            self.temp_path, TestSourceIdentifier, TestTargetIdentifier
+        )
 
         # Assertions
         self.assertIsInstance(result, Mapping)
@@ -43,13 +50,16 @@ class TestMappingImporter(BaseTest):
             self.assertEqual(source_id, TestConstants.MAPPING_SOURCE_IDS.value[ix])
             self.assertEqual(target_id, TestConstants.MAPPING_TARGET_IDS.value[ix])
 
+        self.assertEqual(result.source_id_type, TestSourceIdentifier)
+        self.assertEqual(result.target_id_type, TestTargetIdentifier)
+
     def test_missing_file(self):
         # Remove the required file
         self.map_path.unlink()
 
         # Verify import raises error
         with self.assertRaises(FileNotFoundError):
-            self.importer.import_data(self.temp_path)
+            self.importer.import_data(self.temp_path, None, None)
 
 
 if __name__ == "__main__":

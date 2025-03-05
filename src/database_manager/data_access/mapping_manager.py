@@ -1,10 +1,10 @@
-from typing import Dict, List, Type
+from typing import Dict, Type
 
-from src.database_manager.mappings.mapping import Mapping
+from src.database_manager.mapping.mapping import Mapping
 from src.identifiers.identifier import Identifier
 
 
-class MappingManager():
+class MappingManager:
     """Manages relationships between different identifier types"""
 
     def __init__(self, mappings: Dict[Type[Identifier], Mapping]):
@@ -26,20 +26,9 @@ class MappingManager():
         Raises:
             KeyError: If source_id not found in mapping
         """
-        if source_id not in self._mapping:
-            raise KeyError(f"No mapping found for source id: {source_id}")
-        return self._mapping[source_id]
-
-    def get_target_ids(self, source_ids: List[S]) -> List[T]:
-        """Get target identifiers for a list of source identifiers
-
-        Args:
-            source_ids: List of source identifiers
-
-        Returns:
-            List of corresponding target identifiers
-
-        Raises:
-            KeyError: If any source_id not found in mapping
-        """
-        return [self.get_target_id(id) for id in source_ids]
+        if type(source_id) not in self._mappings:
+            raise KeyError(f"Unable to resolve mapping from ID: {source_id}")
+        mapping = self._mappings[type(source_id)]
+        if source_id.value not in mapping.map.keys():
+            raise KeyError(f"Unable to resolve target ID of source ID: {source_id}")
+        return mapping.map[source_id.value]

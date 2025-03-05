@@ -73,6 +73,7 @@ from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
+from src.identifiers.identifier import Identifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
@@ -243,6 +244,26 @@ class TestConstants(Enum):
 
     HDF5_GROUP_NAME = "test_group_name"
     HDF5_GROUP_ATTRIBUTES = {"attr1": "value1", "attr2": 99}
+
+
+class TestSourceIdentifier(Identifier):
+    """Test implementation of Identifier for testing"""
+
+    def __init__(self, value: str):
+        super().__init__(value)
+
+    def validate(self, value: str) -> bool:
+        return True
+
+
+class TestTargetIdentifier(Identifier):
+    """Test implementation of Identifier for testing"""
+
+    def __init__(self, value: str):
+        super().__init__(value)
+
+    def validate(self, value: str) -> bool:
+        return True
 
 
 class TestDataHelper:
