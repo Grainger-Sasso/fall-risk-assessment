@@ -2,6 +2,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List
 
+from src.database_manager.registries.registry import Registry
 from src.identifiers.identifier import Identifier
 
 
@@ -26,6 +27,12 @@ class TestIdentifier(Identifier):
         return True
 
 
+class TestRegistry(Registry):
+    """Test implementation of Registry"""
+
+    pass
+
+
 class DatabaseManagerTestHelper:
     """Helper class for creating test data for database manager tests"""
 
@@ -48,9 +55,7 @@ class DatabaseManagerTestHelper:
         }
 
     @staticmethod
-    def create_test_registry(
-        ids: List[str], paths: List[str]
-    ) -> Dict[TestIdentifier, Path]:
+    def create_test_registry() -> Dict[TestIdentifier, Path]:
         """Create test registry mapping identifiers to paths
 
         Args:
@@ -60,4 +65,12 @@ class DatabaseManagerTestHelper:
         Returns:
             Dictionary mapping identifiers to paths
         """
-        return {TestIdentifier(id): Path(path) for id, path in zip(ids, paths)}
+        return TestRegistry(
+            {
+                TestIdentifier(id): Path(path)
+                for id, path in zip(
+                    TestConstants.TEST_SOURCE_IDS.value[:2],
+                    TestConstants.TEST_PATHS.value[:2],
+                )
+            }
+        )

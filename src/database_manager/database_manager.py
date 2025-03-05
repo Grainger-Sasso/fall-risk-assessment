@@ -25,17 +25,17 @@ class DatabaseManager:
         # Import data
         return self._data_loader.load(id, path)
 
-    def update_data(self, id: Identifier, data: Any):
-        path = self._registry_manager.get_path(id)
-        # Delete the data at this path
-        # Write the new data to this path
+    # def update_data(self, id: Identifier, data: Any):
+    #     path = self._registry_manager.get_path(id)
+    #     # Delete the data at this path
+    #     # Write the new data to this path
 
-    def delete_data(self, id: Identifier):
-        path = self._registry_manager.get_path(id)
-        # Delete the data at this path
-        # Remove the entry from the registry
+    # def delete_data(self, id: Identifier):
+    #     path = self._registry_manager.get_path(id)
+    #     # Delete the data at this path
+    #     # Remove the entry from the registry
 
-    def register_data(self, data: Any):
-        #
-        # export 
-        pass
+    # def register_data(self, data: Any):
+    #     #
+    #     # export 
+    #     pass

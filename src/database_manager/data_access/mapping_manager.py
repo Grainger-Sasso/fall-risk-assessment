@@ -1,19 +1,20 @@
-from typing import Dict, Generic, List, TypeVar
+from typing import Dict, List, Type
 
 from src.database_manager.mappings.mapping import Mapping
 from src.identifiers.identifier import Identifier
 
-S = TypeVar("S", bound=Identifier)
-T = TypeVar("T", bound=Identifier)
 
-
-class MappingManager(Generic[S, T]):
+class MappingManager():
     """Manages relationships between different identifier types"""
 
-    def __init__(self, mapping: Mapping):
-        self._mapping = mapping
+    def __init__(self, mappings: Dict[Type[Identifier], Mapping]):
+        self._mappings: Dict[Type[Identifier], Mapping] = mappings
 
-    def get_target_id(self, source_id: S) -> T:
+    @property
+    def mappings(self) -> Dict[Type[Identifier], Mapping]:
+        return self._mappings
+
+    def get_target_id(self, source_id: Identifier) -> Identifier:
         """Get target identifier for a given source identifier
 
         Args:
