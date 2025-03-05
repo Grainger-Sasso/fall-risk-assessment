@@ -1,11 +1,7 @@
-from pathlib import Path
-from typing import Dict, Type
-
 from src.data_io.import_export.importers.data.imu.imu_data_importer import (
     IMUDataImporter,
 )
 from src.database_manager.data_access.import_manager import ImportManager
-from src.identifiers.identifier import Identifier
 from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
     DatabaseManagerTestHelper,
