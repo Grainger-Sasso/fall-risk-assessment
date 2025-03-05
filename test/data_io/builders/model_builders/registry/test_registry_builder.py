@@ -5,7 +5,11 @@ from src.data_io.builders.model_builders.registry.registry_builder import (
 )
 from src.database_manager.registry.registry import Registry
 from test.base_test import BaseTest
-from test.data_io.test_data.test_data_helper import RegistryHelper, TestConstants
+from test.data_io.test_data.test_data_helper import (
+    RegistryHelper,
+    TestConstants,
+    TestSourceIdentifier,
+)
 
 
 class TestAggregateFeatureRegistryBuilder(BaseTest):
@@ -18,7 +22,7 @@ class TestAggregateFeatureRegistryBuilder(BaseTest):
         test_data = self.helper.create_test_registry_csv()
 
         # Build registry
-        result = self.builder.build(test_data)
+        result = self.builder.build(test_data, TestSourceIdentifier)
 
         # Verify result type
         self.assertIsInstance(result, Registry)
@@ -30,6 +34,8 @@ class TestAggregateFeatureRegistryBuilder(BaseTest):
         ):
             self.assertIn(id, result.registry)
             self.assertEqual(result.registry[id], Path(path))
+
+        self.assertEqual(result.id_type, TestSourceIdentifier)
 
 
 if __name__ == "__main__":

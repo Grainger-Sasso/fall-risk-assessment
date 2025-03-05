@@ -7,7 +7,11 @@ from src.data_io.import_export.importers.registry.registry_importer import (
 )
 from src.database_manager.registry.registry import Registry
 from test.base_test import BaseTest
-from test.data_io.test_data.test_data_helper import RegistryHelper, TestConstants
+from test.data_io.test_data.test_data_helper import (
+    RegistryHelper,
+    TestConstants,
+    TestSourceIdentifier,
+)
 
 
 class TestRegistryImporter(BaseTest):
@@ -30,7 +34,7 @@ class TestRegistryImporter(BaseTest):
 
     def test_import_data(self):
         # Import data from test directory
-        result = self.importer.import_data(self.temp_path)
+        result = self.importer.import_data(self.temp_path, TestSourceIdentifier)
 
         # Assertions
         self.assertIsInstance(result, Registry)
@@ -43,6 +47,8 @@ class TestRegistryImporter(BaseTest):
         ):
             self.assertIn(id, result.registry)
             self.assertEqual(result.registry[id], Path(path))
+        
+        self.assertEqual(result.id_type, TestSourceIdentifier)
 
     def test_missing_file(self):
         # Remove the required file
@@ -50,7 +56,7 @@ class TestRegistryImporter(BaseTest):
 
         # Verify import raises error
         with self.assertRaises(FileNotFoundError):
-            self.importer.import_data(self.temp_path)
+            self.importer.import_data(self.temp_path, None)
 
 
 if __name__ == "__main__":
