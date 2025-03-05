@@ -26,7 +26,7 @@ from src.data_io.model_fields.instrument_specification.instrument_specification_
     InstrumentSpecificationFields,
 )
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
-from src.data_io.model_fields.registries.registry_fields import RegistryFields
+from src.data_io.model_fields.registry.registry_fields import RegistryFields
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
@@ -228,11 +228,7 @@ class TestConstants(Enum):
     REGISTRY_PATHS = ["path/to/file1", "path/to/file2", "path/to/file3"]
 
     # Registry IDs
-    USER_REGISTRY_IDS = ["user_1", "user_2", "user_3"]
-    IMU_REGISTRY_IDS = ["imu_1", "imu_2", "imu_3"]
-    RAW_FEATURE_REGISTRY_IDS = ["raw_1", "raw_2", "raw_3"]
-    AGG_FEATURE_REGISTRY_IDS = ["agg_1", "agg_2", "agg_3"]
-    INSTRUMENT_SPEC_REGISTRY_IDS = ["spec_1", "spec_2", "spec_3"]
+    REGISTRY_IDS = ["id_1", "id_2", "id_3"]
 
     ############### File I/O ###############
     # CSV Test Data
@@ -1087,7 +1083,7 @@ class RegistryHelper:
     """Helper class for creating test registry data."""
 
     def create_test_registry_file(
-        self, ids: List[str], path: Optional[Path] = None
+        self, path: Optional[Path] = None
     ) -> Path:
         """Create test registry file.
 
@@ -1103,13 +1099,13 @@ class RegistryHelper:
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        test_data = self.create_test_registry_csv(ids)
+        test_data = self.create_test_registry_csv()
         df = pd.DataFrame(test_data.data)
         df.to_csv(path)
 
         return path
 
-    def create_test_registry_csv(self, ids: List[str]) -> CSVFile:
+    def create_test_registry_csv(self) -> CSVFile:
         """Create test registry CSV file."""
         return CSVFile(
             fieldnames=[
@@ -1117,7 +1113,7 @@ class RegistryHelper:
                 RegistryFields.DIRECTORY.value,
             ],
             data={
-                RegistryFields.DATA_IDENTIFIER.value: ids,
+                RegistryFields.DATA_IDENTIFIER.value: TestConstants.REGISTRY_IDS.value,
                 RegistryFields.DIRECTORY.value: TestConstants.REGISTRY_PATHS.value,
             },
         )

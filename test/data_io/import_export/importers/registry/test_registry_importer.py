@@ -1,27 +1,25 @@
 import tempfile
 from pathlib import Path
 
-from src.data_io.import_export.importers.registries.imu.imu_data_registry_importer import (
-    IMUDataRegistryFileNames,
-    IMUDataRegistryImporter,
+from src.data_io.import_export.importers.registry.registry_importer import (
+    RegistryFileNames,
+    RegistryImporter,
 )
-from src.database_manager.registries.imu.imu_data_registry import IMUDataRegistry
-from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.database_manager.registry.registry import Registry
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import RegistryHelper, TestConstants
 
 
-class TestIMUDataRegistryImporter(BaseTest):
+class TestRegistryImporter(BaseTest):
     def setUp(self):
-        self.importer = IMUDataRegistryImporter()
+        self.importer = RegistryImporter()
         self.temp_dir = tempfile.mkdtemp()
         self.temp_path = Path(self.temp_dir)
         self.helper = RegistryHelper()
 
         # Create test file in temp directory
         self.registry_path = self.helper.create_test_registry_file(
-            TestConstants.IMU_REGISTRY_IDS.value,
-            self.temp_path / f"{IMUDataRegistryFileNames.IMU_DATA_REGISTRY.value}.csv",
+            self.temp_path / f"{RegistryFileNames.REGISTRY.value}.csv",
         )
 
     def tearDown(self):
@@ -35,18 +33,16 @@ class TestIMUDataRegistryImporter(BaseTest):
         result = self.importer.import_data(self.temp_path)
 
         # Assertions
-        self.assertIsInstance(result, IMUDataRegistry)
-        self.assertEqual(
-            len(result.registry), len(TestConstants.IMU_REGISTRY_IDS.value)
-        )
+        self.assertIsInstance(result, Registry)
+        self.assertEqual(len(result.registry), len(TestConstants.REGISTRY_IDS.value))
 
         # Test registry entries
         for id, path in zip(
-            TestConstants.IMU_REGISTRY_IDS.value,
+            TestConstants.REGISTRY_IDS.value,
             TestConstants.REGISTRY_PATHS.value,
         ):
-            self.assertIn(IMUDataIdentifier(id), result.registry)
-            self.assertEqual(result.registry[IMUDataIdentifier(id)], Path(path))
+            self.assertIn(id, result.registry)
+            self.assertEqual(result.registry[id], Path(path))
 
     def test_missing_file(self):
         # Remove the required file
@@ -58,4 +54,4 @@ class TestIMUDataRegistryImporter(BaseTest):
 
 
 if __name__ == "__main__":
-    TestIMUDataRegistryImporter.run_tests()
+    TestRegistryImporter.run_tests()
