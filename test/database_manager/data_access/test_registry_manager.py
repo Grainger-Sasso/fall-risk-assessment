@@ -8,7 +8,8 @@ from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
     DatabaseManagerTestHelper,
     TestConstants,
-    TestIdentifier,
+    TestSourceIdentifier,
+    TestTargetIdentifier,
 )
 
 
@@ -17,18 +18,21 @@ class TestRegistryManager(BaseTest):
         self.helper = DatabaseManagerTestHelper()
 
         registry = self.helper.create_test_registry()
-        registries: Dict[Type[Identifier], Registry] = {TestIdentifier: registry}
+        registries: Dict[Type[Identifier], Registry] = {registry.id_type: registry}
         self.manager = RegistryManager(registries)
 
     def test_get_path(self):
         # Test successful path retrieval
-        test_id: TestIdentifier = self.helper.create_test_identifier()
+        test_id: TestSourceIdentifier = self.helper.create_test_identifier()
         path = self.manager.get_path(test_id)
         self.assertEqual(path, Path(TestConstants.TEST_PATHS.value[0]))
 
         # Test nonexistent identifier
         with self.assertRaises(KeyError):
-            self.manager.get_path(TestIdentifier("nonexistent"))
+            self.manager.get_path(TestSourceIdentifier("nonexistent"))
+
+        with self.assertRaises(KeyError):
+            self.manager.get_path(TestTargetIdentifier("nonexistent"))
 
 
 if __name__ == "__main__":

@@ -31,4 +31,4 @@ class MappingManager:
         mapping = self._mappings[type(source_id)]
         if source_id.value not in mapping.map.keys():
             raise KeyError(f"Unable to resolve target ID of source ID: {source_id}")
-        return mapping.map[source_id.value]
+        return mapping.target_id_type(mapping.map[source_id.value])

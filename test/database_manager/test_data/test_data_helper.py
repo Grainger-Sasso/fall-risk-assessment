@@ -17,7 +17,17 @@ class TestConstants(Enum):
     TEST_PATHS = ["/test/path/1", "/test/path/2", "/test/path/3"]
 
 
-class TestIdentifier(Identifier):
+class TestSourceIdentifier(Identifier):
+    """Test implementation of Identifier for testing"""
+
+    def __init__(self, value: str):
+        super().__init__(value)
+
+    def validate(self, value: str) -> bool:
+        return True
+
+
+class TestTargetIdentifier(Identifier):
     """Test implementation of Identifier for testing"""
 
     def __init__(self, value: str):
@@ -30,8 +40,8 @@ class TestIdentifier(Identifier):
 class DatabaseManagerTestHelper:
     """Helper class for creating test data for database manager tests"""
 
-    def create_test_identifier(self) -> TestIdentifier:
-        return TestIdentifier(TestConstants.TEST_SOURCE_IDS.value[0])
+    def create_test_identifier(self) -> TestSourceIdentifier:
+        return TestSourceIdentifier(TestConstants.TEST_SOURCE_IDS.value[0])
 
     def create_test_mapping(self) -> Mapping:
         """Create test mapping between identifiers
@@ -46,7 +56,9 @@ class DatabaseManagerTestHelper:
                     TestConstants.TEST_SOURCE_IDS.value,
                     TestConstants.TEST_TARGET_IDS.value,
                 )
-            }
+            },
+            source_id_type=TestSourceIdentifier,
+            target_id_type=TestTargetIdentifier,
         )
 
     def create_test_registry(self) -> Registry:
@@ -62,5 +74,6 @@ class DatabaseManagerTestHelper:
                     TestConstants.TEST_SOURCE_IDS.value[:2],
                     TestConstants.TEST_PATHS.value[:2],
                 )
-            }
+            },
+            id_type=TestSourceIdentifier,
         )
