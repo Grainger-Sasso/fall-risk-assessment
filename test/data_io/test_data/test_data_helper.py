@@ -207,21 +207,9 @@ class TestConstants(Enum):
     SENSOR_MASS = 0.3  # grams
 
     ############### Mappings ###############
-    # IMU to User mapping
-    IMU_TO_USER_SOURCE_IDS = ["imu_1", "imu_2", "imu_3"]
-    IMU_TO_USER_TARGET_IDS = ["user_1", "user_2", "user_3"]
-
-    # Raw to IMU mapping
-    RAW_TO_IMU_SOURCE_IDS = ["raw_1", "raw_2", "raw_3"]
-    RAW_TO_IMU_TARGET_IDS = ["imu_1", "imu_2", "imu_3"]
-
-    # Aggregate to Raw mapping
-    AGG_TO_RAW_SOURCE_IDS = ["agg_1", "agg_2", "agg_3"]
-    AGG_TO_RAW_TARGET_IDS = ["raw_1", "raw_2", "raw_3"]
-
-    # Instrument to Spec mapping
-    INST_TO_SPEC_SOURCE_IDS = ["manufacturer1_serial1", "manufacturer2_serial2"]
-    INST_TO_SPEC_TARGET_IDS = ["spec_1", "spec_2"]
+    # Mapping params
+    MAPPING_SOURCE_IDS = ["source_id_1", "source_id_2", "source_id_3"]
+    MAPPING_TARGET_IDS = ["target_id_1", "target_id_2", "target_id_3"]
 
     ############### Registries ###############
     # Common registry paths
@@ -1039,9 +1027,7 @@ class InstrumentSpecificationHelper:
 class MappingHelper:
     """Helper class for creating test mapping data."""
 
-    def create_test_mapping_file(
-        self, source_ids: List[str], target_ids: List[str], path: Optional[Path] = None
-    ) -> Path:
+    def create_test_mapping_file(self, path: Optional[Path] = None) -> Path:
         """Create test mapping file.
 
         Args:
@@ -1057,15 +1043,13 @@ class MappingHelper:
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        test_data = self.create_test_mapping_csv(source_ids, target_ids)
+        test_data = self.create_test_mapping_csv()
         df = pd.DataFrame(test_data.data)
         df.to_csv(path)
 
         return path
 
-    def create_test_mapping_csv(
-        self, source_ids: List[str], target_ids: List[str]
-    ) -> CSVFile:
+    def create_test_mapping_csv(self) -> CSVFile:
         """Create test mapping CSV file."""
         return CSVFile(
             fieldnames=[
@@ -1073,8 +1057,8 @@ class MappingHelper:
                 MappingFields.TARGET_DATA_IDENTIFIER.value,
             ],
             data={
-                MappingFields.SOURCE_DATA_IDENTIFIER.value: source_ids,
-                MappingFields.TARGET_DATA_IDENTIFIER.value: target_ids,
+                MappingFields.SOURCE_DATA_IDENTIFIER.value: TestConstants.MAPPING_SOURCE_IDS.value,
+                MappingFields.TARGET_DATA_IDENTIFIER.value: TestConstants.MAPPING_TARGET_IDS.value,
             },
         )
 
@@ -1082,9 +1066,7 @@ class MappingHelper:
 class RegistryHelper:
     """Helper class for creating test registry data."""
 
-    def create_test_registry_file(
-        self, path: Optional[Path] = None
-    ) -> Path:
+    def create_test_registry_file(self, path: Optional[Path] = None) -> Path:
         """Create test registry file.
 
         Args:
