@@ -34,3 +34,8 @@ class Registry:
     @property
     def id_type(self) -> Type[Identifier]:
         return self._id_type
+
+    def get_path(self, identifier: Identifier) -> Path:
+        if identifier.value not in self.registry.keys():
+            raise KeyError(f"Unable to resolve path from ID: {identifier}")
+        return self.registry[identifier.value]

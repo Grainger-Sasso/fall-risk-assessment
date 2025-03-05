@@ -14,7 +14,7 @@ class MappingManager:
     def mappings(self) -> Dict[Type[Identifier], Mapping]:
         return self._mappings
 
-    def get_target_id(self, source_id: Identifier) -> Identifier:
+    def get_mapping(self, source_id: Identifier) -> Mapping:
         """Get target identifier for a given source identifier
 
         Args:
@@ -26,9 +26,7 @@ class MappingManager:
         Raises:
             KeyError: If source_id not found in mapping
         """
-        if type(source_id) not in self._mappings:
+        if type(source_id) not in self.mappings:
             raise KeyError(f"Unable to resolve mapping from ID: {source_id}")
-        mapping = self._mappings[type(source_id)]
-        if source_id.value not in mapping.map.keys():
-            raise KeyError(f"Unable to resolve target ID of source ID: {source_id}")
-        return mapping.target_id_type(mapping.map[source_id.value])
+        return self.mappings[type(source_id)]
+

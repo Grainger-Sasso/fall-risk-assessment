@@ -16,23 +16,22 @@ from test.database_manager.test_data.test_data_helper import (
 class TestRegistryManager(BaseTest):
     def setUp(self):
         self.helper = DatabaseManagerTestHelper()
-
-        registry = self.helper.create_test_registry()
-        registries: Dict[Type[Identifier], Registry] = {registry.id_type: registry}
+        self.registry = self.helper.create_test_registry()
+        registries: Dict[Type[Identifier], Registry] = {
+            self.registry.id_type: self.registry
+        }
         self.manager = RegistryManager(registries)
 
-    def test_get_path(self):
-        # Test successful path retrieval
+    def test_get_registry(self):
+        # Test successful registry retrieval
         test_id: TestSourceIdentifier = self.helper.create_test_identifier()
-        path = self.manager.get_path(test_id)
-        self.assertEqual(path, Path(TestConstants.TEST_PATHS.value[0]))
+        registry = self.manager.get_registry(test_id)
+        self.assertEqual(registry, self.registry)
 
+    def test_invalid_id_type(self):
         # Test nonexistent identifier
         with self.assertRaises(KeyError):
-            self.manager.get_path(TestSourceIdentifier("nonexistent"))
-
-        with self.assertRaises(KeyError):
-            self.manager.get_path(TestTargetIdentifier("nonexistent"))
+            self.manager.get_registry(TestTargetIdentifier("nonexistent"))
 
 
 if __name__ == "__main__":

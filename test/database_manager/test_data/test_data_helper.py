@@ -14,7 +14,7 @@ class TestConstants(Enum):
     TEST_TARGET_IDS = ["target_1", "target_2", "target_3"]
 
     # Test paths
-    TEST_PATHS = ["/test/path/1", "/test/path/2", "/test/path/3"]
+    TEST_PATHS = [Path("/test/path/1"), Path("/test/path/2"), Path("/test/path/3")]
 
 
 class TestSourceIdentifier(Identifier):

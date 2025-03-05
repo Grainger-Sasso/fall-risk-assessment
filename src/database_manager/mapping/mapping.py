@@ -41,3 +41,8 @@ class Mapping:
     @property
     def target_id_type(self) -> Type[Identifier]:
         return self._target_id_type
+
+    def get_target_id(self, source_id: Identifier) -> Identifier:
+        if source_id.value not in self.map.keys():
+            raise KeyError(f"Unable to resolve target ID of source ID: {source_id}")
+        return self.target_id_type(self.map[source_id.value])
