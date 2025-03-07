@@ -20,14 +20,14 @@ class TestMappingManager(BaseTest):
     def test_get_mapping(self):
         # Test successful mapping
         source_id = TestSourceIdentifier(TestConstants.TEST_SOURCE_IDS.value[0])
-        mapping = self.manager.get_mapping(source_id)
+        mapping = self.manager.get_provider(type(source_id))
         self.assertIsInstance(mapping, Mapping)
         self.assertEqual(mapping, self.test_mapping)
 
     def test_invalid_id(self):
         # Test nonexistent mapping
         with self.assertRaises(KeyError):
-            self.manager.get_mapping(TestTargetIdentifier("nonexistent"))
+            self.manager.get_provider(type(TestTargetIdentifier("nonexistent")))
 
 
 if __name__ == "__main__":

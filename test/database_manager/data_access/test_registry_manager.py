@@ -25,13 +25,13 @@ class TestRegistryManager(BaseTest):
     def test_get_registry(self):
         # Test successful registry retrieval
         test_id: TestSourceIdentifier = self.helper.create_test_identifier()
-        registry = self.manager.get_registry(test_id)
+        registry = self.manager.get_provider(type(test_id))
         self.assertEqual(registry, self.registry)
 
     def test_invalid_id_type(self):
         # Test nonexistent identifier
         with self.assertRaises(KeyError):
-            self.manager.get_registry(TestTargetIdentifier("nonexistent"))
+            self.manager.get_provider(type(TestTargetIdentifier("nonexistent")))
 
 
 if __name__ == "__main__":
