@@ -1,24 +1,13 @@
-import unittest
+import numpy as np  # type: ignore
 
-import numpy as np
-
-from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
-    IMUDataFileBuilder,
-)
 from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
-from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
-from src.data_types.instrument.sensor_type import SensorType
-from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
-    AnatomicalAxis,
-)
-from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
-    AnatomicalCoordinateSystem,
-)
-from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
+from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
+from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
     SensorCoordinateSystem,
 )
@@ -42,8 +31,16 @@ class TestIMUDataBuilder(BaseTest):
         self.assertIsInstance(result, IMUData)
 
         # Test metadata
+        self.assertIsInstance(result.metadata.imu_data_identifier, IMUDataIdentifier)
         self.assertEqual(
             result.metadata.imu_data_identifier.value, TestConstants.IMU_DATA_ID.value
+        )
+        self.assertIsInstance(result.metadata.user_identifier, UserIdentifier)
+        self.assertEqual(
+            result.metadata.user_identifier.value, TestConstants.USER_DATA_ID.value
+        )
+        self.assertIsInstance(
+            result.metadata.instrument_identifier, InstrumentIdentifier
         )
         self.assertEqual(
             result.metadata.instrument_identifier.name,

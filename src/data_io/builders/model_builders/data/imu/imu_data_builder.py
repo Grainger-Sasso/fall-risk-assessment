@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np  # type: ignore
 
@@ -14,6 +14,7 @@ from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
 from src.data_types.instrument.sensor_type import SensorType
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
+from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
 )
@@ -244,6 +245,8 @@ class IMUDataBuilder(ModelBuilder):
         """
         if IMUDataFields.IMU_DATA_IDENTIFIER.value not in input_file.attributes:
             raise ValueError("Missing IMU data identifier from IMU metadata")
+        if IMUDataFields.USER_IDENTIFIER.value not in input_file.attributes:
+            raise ValueError("Missing user identifier from IMU metadata")
         if IMUDataFields.INSTRUMENT_NAME.value not in input_file.attributes:
             raise ValueError("Missing instrument name from IMU metadata")
         if IMUDataFields.SERIAL_NUMBER.value not in input_file.attributes:
@@ -251,6 +254,10 @@ class IMUDataBuilder(ModelBuilder):
 
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
             input_file.attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value]
+        )
+
+        user_identifier: UserIdentifier = UserIdentifier(
+            input_file.attributes[IMUDataFields.USER_IDENTIFIER.value]
         )
 
         instrument_name: str = input_file.attributes[
@@ -262,7 +269,7 @@ class IMUDataBuilder(ModelBuilder):
         model_instrument_id: InstrumentIdentifier = InstrumentIdentifier(
             instrument_name, instrument_serial_number
         )
-        return IMUMetadata(imu_data_identifier, model_instrument_id)
+        return IMUMetadata(imu_data_identifier, user_identifier, model_instrument_id)
 
     def __build_sensor_metadata(self, sensor_data_group: HDF5Group) -> SensorMetadata:
         sensor_type: SensorType = self.sensor_name_to_sensor_type_map[

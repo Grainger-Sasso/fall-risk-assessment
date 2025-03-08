@@ -27,13 +27,18 @@ class TestIMUDataFileBuilder(BaseTest):
         # Assert parent group attributes
         imu_data_attr = result.attributes
         self.assertIsInstance(imu_data_attr, dict)
-        self.assertEqual(len(imu_data_attr.items()), 3)
+        self.assertEqual(len(imu_data_attr.items()), 4)
         self.assertIn(IMUDataFields.IMU_DATA_IDENTIFIER.value, imu_data_attr.keys())
+        self.assertIn(IMUDataFields.USER_IDENTIFIER.value, imu_data_attr.keys())
         self.assertIn(IMUDataFields.INSTRUMENT_NAME.value, imu_data_attr.keys())
         self.assertIn(IMUDataFields.SERIAL_NUMBER.value, imu_data_attr.keys())
         self.assertEqual(
             imu_data_attr[IMUDataFields.IMU_DATA_IDENTIFIER.value],
             TestConstants.IMU_DATA_ID.value,
+        )
+        self.assertEqual(
+            imu_data_attr[IMUDataFields.USER_IDENTIFIER.value],
+            TestConstants.USER_DATA_ID.value,
         )
         self.assertEqual(
             imu_data_attr[IMUDataFields.INSTRUMENT_NAME.value],

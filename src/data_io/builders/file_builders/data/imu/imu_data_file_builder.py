@@ -107,7 +107,9 @@ class IMUDataFileBuilder(FileBuilder):
             attributes=imu_data_group_attributes,
         )
 
-    def __build_sensor_data_group(self, epoch_imu_data: EpochIMUData) -> List[HDF5Group]:
+    def __build_sensor_data_group(
+        self, epoch_imu_data: EpochIMUData
+    ) -> List[HDF5Group]:
         """Build the sensor data group containing all sensor measurements.
 
         Args:
@@ -128,11 +130,13 @@ class IMUDataFileBuilder(FileBuilder):
                 self.__build_sensor_data_subgroup(sensor_data)
             )
 
-        return [HDF5Group(
-            name=sensor_data_group_name,
-            items=sensor_data_group_items,
-            attributes=sensor_data_group_attributes,
-        )]
+        return [
+            HDF5Group(
+                name=sensor_data_group_name,
+                items=sensor_data_group_items,
+                attributes=sensor_data_group_attributes,
+            )
+        ]
 
     def __build_sensor_data_subgroup(self, sensor_data: SensorData) -> HDF5Group:
         # Initialize sensor subgroup
@@ -170,10 +174,12 @@ class IMUDataFileBuilder(FileBuilder):
         self, imu_metadata: IMUMetadata
     ) -> Dict[str, Any]:
         imu_data_identifier: str = imu_metadata.imu_data_identifier.value
+        user_identifier: str = imu_metadata.user_identifier.value
         instrument_name = imu_metadata.instrument_identifier.name
         serial_number = imu_metadata.instrument_identifier.serial_number
         return {
             IMUDataFields.IMU_DATA_IDENTIFIER.value: imu_data_identifier,
+            IMUDataFields.USER_IDENTIFIER.value: user_identifier,
             IMUDataFields.INSTRUMENT_NAME.value: instrument_name,
             IMUDataFields.SERIAL_NUMBER.value: serial_number,
         }

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Type, TypeVar, Tuple
+from typing import Tuple, Type, TypeVar
 
 from src.data_io.import_export.importers.importer import Importer
 from src.database_manager.data_access.export_manager import ExportManager
@@ -11,6 +11,7 @@ from src.database_manager.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 T = TypeVar("T")
+
 
 class DatabaseManager:
     def __init__(
@@ -35,11 +36,10 @@ class DatabaseManager:
         path: Path = registry.get_path(identifier)
         # Import data from path
         return importer.import_data(path)
-    
-    def write_data(self, data: T, identifier: Identifier) -> Tuple(bool, str):
+
+    def write_data(self, data: T, identifier: Identifier) -> Tuple[bool, str]:
         # Get the corresponding registry
         pass
-
 
     # def update_data(self, id: Identifier, data: Any):
     #     path = self._registry_manager.get_path(id)
@@ -56,9 +56,8 @@ class DatabaseManager:
     #     # export
     #     pass
 
-
     ### Mapping Methods ###
-    #TODO
+    # TODO
     # get_all_imu_data_for_user [1:n mapping]
     # get_all_aggregate_features_for_raw_feature [1:n mapping]
     # get_all_raw_features_for_imu_data [1:n mapping]

@@ -24,5 +24,6 @@ class IMUDataFields(Enum):
     UNIT = "unit"
     AXIS_NAMES = "axis_names"
     IMU_DATA_IDENTIFIER = "imu_data_identifier"
+    USER_IDENTIFIER = "user_identifier"
     INSTRUMENT_NAME = "instrument_name"
     SERIAL_NUMBER = "serial_number"

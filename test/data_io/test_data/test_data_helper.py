@@ -374,6 +374,9 @@ class IMUDataHelper:
         test_attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value] = (
             TestConstants.IMU_DATA_ID.value
         )
+        test_attributes[IMUDataFields.USER_IDENTIFIER.value] = (
+            TestConstants.USER_DATA_ID.value
+        )
         test_attributes[IMUDataFields.INSTRUMENT_NAME.value] = (
             TestConstants.INSTRUMENT_NAME.value
         )
@@ -490,12 +493,15 @@ class IMUDataHelper:
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
             TestConstants.IMU_DATA_ID.value
         )
+        user_identifier: UserIdentifier = UserIdentifier(
+            TestConstants.USER_DATA_ID.value
+        )
         instrument_name: str = TestConstants.INSTRUMENT_NAME.value
         instrument_serial_number: str = TestConstants.SERIAL_NUMBER.value
         model_instrument_id: InstrumentIdentifier = InstrumentIdentifier(
             instrument_name, instrument_serial_number
         )
-        return IMUMetadata(imu_data_identifier, model_instrument_id)
+        return IMUMetadata(imu_data_identifier, user_identifier, model_instrument_id)
 
     def __build_sensor_metadata(self, sensor_type: SensorType) -> SensorMetadata:
         sampling_rate: float = TestConstants.SAMPLING_RATE.value
