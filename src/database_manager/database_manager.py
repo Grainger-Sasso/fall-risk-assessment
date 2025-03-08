@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Type, TypeVar, Tuple
 
 from src.data_io.import_export.importers.importer import Importer
 from src.database_manager.data_access.export_manager import ExportManager
@@ -10,6 +10,7 @@ from src.database_manager.mapping.mapping import Mapping
 from src.database_manager.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
+T = TypeVar("T")
 
 class DatabaseManager:
     def __init__(
@@ -25,14 +26,20 @@ class DatabaseManager:
         self._export_manager: ExportManager = export_manager
 
     ### Registry Methods ###
-    def get_data(self, identifier: Identifier) -> Any:
+    def get_data(self, identifier: Identifier) -> T:
+        data_type: Type[Identifier] = type(identifier)
         # Get corresponding registry and importer
-        registry: Registry = self._registry_manager.get_registry(identifier)
-        importer: Importer = self._import_manager.get_importer(type(identifier))
+        registry: Registry = self._registry_manager.get_provider(data_type)
+        importer: Importer = self._import_manager.get_provider(data_type)
         # Get path of data from registry using provided ID
         path: Path = registry.get_path(identifier)
+        # Import data from path
+        return importer.import_data(path)
+    
+    def write_data(self, data: T, identifier: Identifier) -> Tuple(bool, str):
+        # Get the corresponding registry
+        pass
 
-        return self._data_loader.load(id, path)
 
     # def update_data(self, id: Identifier, data: Any):
     #     path = self._registry_manager.get_path(id)
@@ -48,3 +55,11 @@ class DatabaseManager:
     #     #
     #     # export
     #     pass
+
+
+    ### Mapping Methods ###
+    #TODO
+    # get_all_imu_data_for_user [1:n mapping]
+    # get_all_aggregate_features_for_raw_feature [1:n mapping]
+    # get_all_raw_features_for_imu_data [1:n mapping]
+    # get_insturment_spec_for_instrument [1:1 mapping]

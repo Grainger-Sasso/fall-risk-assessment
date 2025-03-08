@@ -1,7 +1,6 @@
 from abc import ABC
 from typing import Dict, Generic, Type, TypeVar
 
-from src.data_io.import_export.importers.importer import Importer
 from src.identifiers.identifier import Identifier
 
 T = TypeVar("T")
