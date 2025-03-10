@@ -25,51 +25,57 @@ class Exporter(Generic[T], ABC):
         self.suffix: str = suffix
         self.sub_dir_name: str = sub_dir_name
 
-    def export_data(self, directory: Path, data: T) -> Tuple[bool, str]:
+    def export_data(self, ouput_parent_dir: Path, data: T) -> Path:
         """Exports data model object to provided directory
         Args:
             directory (Path): parent output directory
             data (T):
 
         Returns:
-            Tuple[bool, str]: success and message
+            Path: path to output subdirectory
         """
         try:
             # 1. Get object ID for subdirectory
             obj_id: Identifier = self._get_object_id(data)
 
-            # 2. Create subdirectory
-            subdir_path: Path = self._make_subdir(directory, obj_id)
+            # 2. Create output subdirectory
+            output_subdir_path: Path = self._make_subdir(ouput_parent_dir, obj_id)
 
             # 3. Generate file object for export
             file_obj: FileFormat = self.file_builder.build(data)
 
             # 4. Write file object to path
-            output_path: Path = self._construct_file_path(subdir_path)
-            return self.writer.write(output_path, file_obj)
+            output_path: Path = self._construct_file_path(output_subdir_path)
+            success, error = self.writer.write(output_path, file_obj)
+            if success:
+                return output_subdir_path
+            else:
+                raise IOError(f"File write failed: {error}")
 
         except Exception as e:
-            return False, f"Export failed: {str(e)}"
+            raise Exception(f"Export failed: {str(e)}")
 
-    def _make_subdir(self, directory: Path, id: Identifier) -> Path:
+    def _make_subdir(self, output_parent_dir: Path, id: Identifier) -> Path:
         try:
-            full_subdir_name = self.sub_dir_name + id.value
-            subdir_path = os.path.join(directory, full_subdir_name)
-            os.makedirs(subdir_path, exist_ok=True)
-            return Path(subdir_path)
+            output_subdir_name = self.sub_dir_name + id.value
+            output_subdir_path = os.path.join(output_parent_dir, output_subdir_name)
+            os.makedirs(output_subdir_path, exist_ok=True)
+            return Path(output_subdir_path)
         except PermissionError:
             # Occurs when user doesn't have permission to create directory
             raise PermissionError(
-                f"Permission denied: Unable to create directory at {subdir_path}"
+                f"Permission denied: Unable to create directory at {output_subdir_path}"
             )
         except OSError as e:
             # Catches other OS-related errors (disk full, invalid characters in path, etc.)
-            raise OSError(f"Failed to create directory at {subdir_path}: {str(e)}")
+            raise OSError(
+                f"Failed to create directory at {output_subdir_path}: {str(e)}"
+            )
 
     @abstractmethod
     def _get_object_id(self, data: T) -> Identifier:
         pass
 
     @abstractmethod
-    def _construct_file_path(self, subdir_path: Path) -> Path:
+    def _construct_file_path(self, output_subdir_path: Path) -> Path:
         pass

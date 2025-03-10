@@ -25,6 +25,6 @@ class IMUDataFileExporter(Exporter[IMUData]):
     def _get_object_id(self, data: IMUData) -> Identifier:
         return data.metadata.imu_data_identifier
 
-    def _construct_file_path(self, subdir_path: Path) -> Path:
+    def _construct_file_path(self, output_subdir_path: Path) -> Path:
         imu_file_name = f"{IMUDataFileNames.IMU_DATA.value}.{self.suffix}"
-        return Path(os.path.join(subdir_path, imu_file_name))
+        return Path(os.path.join(output_subdir_path, imu_file_name))

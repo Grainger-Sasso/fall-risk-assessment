@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Tuple, Type, TypeVar
 
 from src.data_io.import_export.importers.importer import Importer
+from src.data_model.data.imu.imu_data import IMUData
 from src.database_manager.data_access.export_manager import ExportManager
 from src.database_manager.data_access.import_manager import ImportManager
 from src.database_manager.data_access.mapping_manager import MappingManager
@@ -27,7 +28,7 @@ class DatabaseManager:
         self._export_manager: ExportManager = export_manager
 
     ### Registry Methods ###
-    def get_data(self, identifier: Identifier) -> T:
+    def import_data(self, identifier: Identifier) -> T:
         data_type: Type[Identifier] = type(identifier)
         # Get corresponding registry and importer
         registry: Registry = self._registry_manager.get_provider(data_type)
@@ -37,8 +38,36 @@ class DatabaseManager:
         # Import data from path
         return importer.import_data(path)
 
-    def write_data(self, data: T, identifier: Identifier) -> Tuple[bool, str]:
-        # Get the corresponding registry
+    def export_imu_data(
+        self, imu_data: IMUData, output_directory: Path
+    ) -> Tuple[bool, str]:
+        # Mapping
+        # The imu data -> user data must be updated with an entry for
+        # Registry
+        pass
+
+    def export_raw_feature(self):
+        # Export features
+        # Update raw feature registry
+        # Update Raw feature -> IMU Data mapping
+        pass
+
+    def export_raw_feature_list(self):
+        # Export features
+        # Update raw feature registry
+        # Update Raw feature -> IMU Data mapping
+        pass
+
+    def export_aggregate_feature(self):
+        # Export features
+        # Update aggregate feature registry
+        # Update aggregate feature -> raw feature mapping
+        pass
+
+    def export_aggregate_feature_list(self):
+        # Export features
+        # Update aggregate feature registry
+        # Update aggregate feature -> raw feature mapping
         pass
 
     # def update_data(self, id: Identifier, data: Any):

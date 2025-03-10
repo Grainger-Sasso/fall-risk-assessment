@@ -74,15 +74,18 @@ class TestRawFeatureFileExporter(BaseTest):
 
     def test_export_data(self):
         # Export the test data
-        success, message = self.exporter.export_data(self.temp_path, self.test_data)
+        output_subdir_path: Path = self.exporter.export_data(
+            self.temp_path, self.test_data
+        )
 
-        # Verify export succeeded
-        self.assertTrue(success, f"Export failed with message: {message}")
-
+        # Verify export succeeded with correct output path
+        self.assertIsInstance(output_subdir_path, Path)
         # Verify subdirectory was created with correct name
         expected_subdir = (
             self.temp_path / f"raw_features_{TestConstants.RAW_FEATURE_ID.value}"
         )
+        self.assertEqual(str(output_subdir_path), str(expected_subdir))
+
         self.assertTrue(expected_subdir.exists(), "Subdirectory not created")
         self.assertTrue(expected_subdir.is_dir(), "Subdirectory is not a directory")
 
@@ -92,7 +95,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertTrue(expected_file.is_file(), "Output is not a file")
 
         # Import the exported data
-        result: RawFeatureSetEntry = self.importer.import_data(expected_subdir)
+        result = self.importer.import_data(expected_subdir)
 
         # Assert raw feature set entry
         self.assertIsInstance(result, RawFeatureSetEntry)
@@ -213,12 +216,10 @@ class TestRawFeatureFileExporter(BaseTest):
         )
         conflict_path.touch()
 
-        # Attempt export
-        success, message = self.exporter.export_data(self.temp_path, self.test_data)
+        with self.assertRaises(Exception) as context:
+            self.exporter.export_data(self.temp_path, self.test_data)
 
-        # Verify export failed
-        self.assertFalse(success)
-        self.assertIn("Failed to create directory", message)
+        self.assertIn("Failed to create directory", str(context.exception))
 
         # Clean up
         conflict_path.unlink()
@@ -232,12 +233,10 @@ class TestRawFeatureFileExporter(BaseTest):
         # Then make parent directory read-only
         readonly_dir.chmod(0o444)
 
-        # Attempt export
-        success, message = self.exporter.export_data(readonly_dir, self.test_data)
+        with self.assertRaises(Exception) as context:
+            self.exporter.export_data(readonly_dir, self.test_data)
 
-        # Verify export failed
-        self.assertFalse(success)
-        self.assertIn("Permission denied", message)
+        self.assertIn("Permission denied", str(context.exception))
 
         # Clean up - restore permissions to allow deletion
         readonly_dir.chmod(0o777)

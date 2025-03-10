@@ -25,24 +25,18 @@ class TestDatabaseManager(BaseTest):
 
         # Create test registry
         self.registry = self.helper.create_test_registry()
-        self.registry_manager = RegistryManager({
-            TestSourceIdentifier: self.registry
-        })
+        self.registry_manager = RegistryManager({TestSourceIdentifier: self.registry})
 
         # Create test mapping
         self.mapping = self.helper.create_test_mapping()
-        self.mapping_manager = MappingManager({
-            TestSourceIdentifier: self.mapping
-        })
+        self.mapping_manager = MappingManager({TestSourceIdentifier: self.mapping})
 
         # Create mock importer
         self.mock_importer = MagicMock(spec=Importer)
         self.mock_importer.import_data.return_value = "test_data"
-        
+
         # Create import manager with mock importer
-        self.import_manager = ImportManager({
-            TestSourceIdentifier: self.mock_importer
-        })
+        self.import_manager = ImportManager({TestSourceIdentifier: self.mock_importer})
 
         # Create mock export manager
         self.export_manager = MagicMock(spec=ExportManager)
@@ -58,33 +52,33 @@ class TestDatabaseManager(BaseTest):
     def test_get_data(self):
         # Create test identifier
         test_id = self.helper.create_test_identifier()
-        
+
         # Get data using database manager
-        data = self.db_manager.get_data(test_id)
-        
+        data = self.db_manager.import_data(test_id)
+
         # Verify correct path was retrieved from registry
         expected_path = self.registry.get_path(test_id)
-        
+
         # Verify importer was called with correct path
         self.mock_importer.import_data.assert_called_once_with(expected_path)
-        
+
         # Verify returned data matches mock importer output
         self.assertEqual(data, "test_data")
 
     def test_get_data_invalid_id_type(self):
         # Test with invalid identifier type
         invalid_id = TestTargetIdentifier("invalid")
-        
+
         with self.assertRaises(KeyError):
-            self.db_manager.get_data(invalid_id)
+            self.db_manager.import_data(invalid_id)
 
     def test_get_data_nonexistent_id(self):
         # Test with nonexistent identifier
         nonexistent_id = TestSourceIdentifier("nonexistent")
-        
+
         with self.assertRaises(KeyError):
-            self.db_manager.get_data(nonexistent_id)
+            self.db_manager.import_data(nonexistent_id)
 
 
 if __name__ == "__main__":
-    TestDatabaseManager.run_tests() 
+    TestDatabaseManager.run_tests()

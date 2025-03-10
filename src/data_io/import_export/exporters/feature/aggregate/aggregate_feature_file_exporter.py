@@ -29,8 +29,8 @@ class AggregateFeatureFileExporter(Exporter[AggregateFeatureSetEntry]):
     def _get_object_id(self, data: AggregateFeatureSetEntry) -> Identifier:
         return data.metadata.aggregate_feature_identifier
 
-    def _construct_file_path(self, subdir_path: Path) -> Path:
+    def _construct_file_path(self, output_subdir_path: Path) -> Path:
         agg_feature_file_name = (
             f"{AggregateFeatureFileNames.AGGREGATE_FEATURES.value}.{self.suffix}"
         )
-        return Path(os.path.join(subdir_path, agg_feature_file_name))
+        return Path(os.path.join(output_subdir_path, agg_feature_file_name))

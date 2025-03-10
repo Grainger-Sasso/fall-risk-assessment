@@ -27,8 +27,8 @@ class RawFeatureFileExporter(Exporter[RawFeatureSetEntry]):
     def _get_object_id(self, data: RawFeatureSetEntry) -> Identifier:
         return data.metadata.raw_feature_identifier
 
-    def _construct_file_path(self, subdir_path: Path) -> Path:
+    def _construct_file_path(self, output_subdir_path: Path) -> Path:
         raw_feature_file_name = (
             f"{RawFeatureFileNames.RAW_FEATURES.value}.{self.suffix}"
         )
-        return Path(os.path.join(subdir_path, raw_feature_file_name))
+        return Path(os.path.join(output_subdir_path, raw_feature_file_name))

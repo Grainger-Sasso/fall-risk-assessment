@@ -64,13 +64,17 @@ class TestIMUDataFileExporter(BaseTest):
 
     def test_export_data(self):
         # Export the test data
-        success, message = self.exporter.export_data(self.temp_path, self.test_data)
+        output_subdir_path: Path = self.exporter.export_data(
+            self.temp_path, self.test_data
+        )
 
-        # Verify export succeeded
-        self.assertTrue(success, f"Export failed with message: {message}")
+        # Verify export succeeded with correct output path
+        self.assertIsInstance(output_subdir_path, Path)
+        expected_subdir = self.temp_path / f"imu_data_{TestConstants.IMU_DATA_ID.value}"
+
+        self.assertEqual(str(output_subdir_path), str(expected_subdir))
 
         # Verify subdirectory was created with correct name
-        expected_subdir = self.temp_path / f"imu_data_{TestConstants.IMU_DATA_ID.value}"
         self.assertTrue(expected_subdir.exists(), "Subdirectory not created")
         self.assertTrue(expected_subdir.is_dir(), "Subdirectory is not a directory")
 
@@ -162,12 +166,12 @@ class TestIMUDataFileExporter(BaseTest):
         conflict_path = self.temp_path / f"imu_data_{TestConstants.IMU_DATA_ID.value}"
         conflict_path.touch()  # Create file
 
-        # Attempt export
-        success, message = self.exporter.export_data(self.temp_path, self.test_data)
+        with self.assertRaises(Exception) as context:
+            self.exporter.export_data(self.temp_path, self.test_data)
 
-        # Verify export failed
-        self.assertFalse(success)
-        self.assertIn("Failed to create directory", message)
+        self.assertIn(
+            "Export failed: Failed to create directory at", str(context.exception)
+        )
 
         # Clean up
         conflict_path.unlink()
@@ -181,12 +185,13 @@ class TestIMUDataFileExporter(BaseTest):
         # Then make parent directory read-only
         readonly_dir.chmod(0o444)  # Read-only permissions
 
-        # Attempt export
-        success, message = self.exporter.export_data(readonly_dir, self.test_data)
+        with self.assertRaises(Exception) as context:
+            self.exporter.export_data(readonly_dir, self.test_data)
 
-        # Verify export failed
-        self.assertFalse(success)
-        self.assertIn("Permission denied", message)  # More generic error check
+        self.assertIn(
+            "Export failed: Permission denied: Unable to create directory at",
+            str(context.exception),
+        )
 
         # Clean up - restore permissions to allow deletion
         readonly_dir.chmod(0o777)
