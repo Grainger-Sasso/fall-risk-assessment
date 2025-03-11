@@ -73,17 +73,17 @@ class DatabaseManager:
         self,
         importer: Importer,
         exporter: Exporter,
-        source_registry_path: Path,
+        source_registry_subdir_path: Path,
         new_id_to_path_map: Dict[str, Path],
         data_type: Type[Identifier],
     ):
-        source_registry: Registry = importer.import_data(source_registry_path)
+        source_registry: Registry = importer.import_data(source_registry_subdir_path)
         source_id_to_path_map: Dict[str, Path] = source_registry.registry
         if not self.__any_new_ids_in_source(source_id_to_path_map, new_id_to_path_map):
             new_mapping: Dict[str, Path] = self.__construct_mapping(
                 source_id_to_path_map, new_id_to_path_map
             )
-            new_registry = Registry(new_mapping, data_type, source_registry_path)
+            new_registry = Registry(new_mapping, data_type, source_registry_subdir_path)
             exporter.export_data()
         else:
             raise ValueError(f"Attempting to add existing elements mapping")
