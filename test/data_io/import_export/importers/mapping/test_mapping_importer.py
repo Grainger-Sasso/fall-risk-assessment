@@ -53,6 +53,9 @@ class TestMappingImporter(BaseTest):
         self.assertEqual(result.source_id_type, TestSourceIdentifier)
         self.assertEqual(result.target_id_type, TestTargetIdentifier)
 
+        self.assertIsInstance(result.path, Path)
+        self.assertEqual(result.path, self.temp_path)
+
     def test_missing_file(self):
         # Remove the required file
         self.map_path.unlink()

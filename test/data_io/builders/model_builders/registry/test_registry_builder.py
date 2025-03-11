@@ -16,13 +16,14 @@ class TestAggregateFeatureRegistryBuilder(BaseTest):
     def setUp(self):
         self.builder = RegistryBuilder()
         self.helper = RegistryHelper()
+        self.test_path = Path("/test/path")
 
     def test_build(self):
         # Create test data
         test_data = self.helper.create_test_registry_csv()
 
         # Build registry
-        result = self.builder.build(test_data, TestSourceIdentifier)
+        result = self.builder.build(test_data, TestSourceIdentifier, self.test_path)
 
         # Verify result type
         self.assertIsInstance(result, Registry)
@@ -36,6 +37,9 @@ class TestAggregateFeatureRegistryBuilder(BaseTest):
             self.assertEqual(result.registry[id], Path(path))
 
         self.assertEqual(result.id_type, TestSourceIdentifier)
+
+        self.assertIsInstance(result.path, Path)
+        self.assertEqual(result.path, self.test_path)
 
 
 if __name__ == "__main__":

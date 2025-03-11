@@ -51,4 +51,6 @@ class RegistryImporter(Importer[Registry]):
         registry_file: CSVFile = self.reader.read(
             file_paths[RegistryFileNames.REGISTRY]
         )
-        return self.model_builder.build(registry_file, id_type)
+        return self.model_builder.build(
+            input_file=registry_file, id_type=id_type, subdir_path=directory
+        )

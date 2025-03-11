@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, Type
 
 from src.identifiers.identifier import Identifier
@@ -11,10 +12,13 @@ class Mapping:
         map: Dict[str, str],
         source_id_type: Type[Identifier],
         target_id_type: Type[Identifier],
+        subdir_path: Path,
     ):
         self._map: Dict[str, str] = map
         self._source_id_type: Type[Identifier] = source_id_type
         self._target_id_type: Type[Identifier] = target_id_type
+        # Path to subdir containing mapping
+        self._path: Path = subdir_path
 
     @property
     def map(self) -> Dict[str, str]:
@@ -41,6 +45,10 @@ class Mapping:
     @property
     def target_id_type(self) -> Type[Identifier]:
         return self._target_id_type
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def get_target_id(self, source_id: Identifier) -> Identifier:
         if source_id.value not in self.map.keys():

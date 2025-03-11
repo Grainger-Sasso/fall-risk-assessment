@@ -6,6 +6,9 @@ from src.data_io.import_export.importers.importer import Importer
 from src.database_manager.data_access.export_manager import ExportManager
 from src.database_manager.data_access.import_manager import ImportManager
 from src.database_manager.data_access.mapping_manager import MappingManager
+from src.database_manager.data_access.output_directory_manager import (
+    OutputDirectoryManager,
+)
 from src.database_manager.data_access.registry_manager import RegistryManager
 from src.database_manager.database_manager import DatabaseManager
 from src.database_manager.mapping.mapping import Mapping
@@ -41,12 +44,16 @@ class TestDatabaseManager(BaseTest):
         # Create mock export manager
         self.export_manager = MagicMock(spec=ExportManager)
 
+        # Create mock output dir manager
+        self.output_dir_manager = MagicMock(spec=OutputDirectoryManager)
+
         # Create database manager
         self.db_manager = DatabaseManager(
             registry_manager=self.registry_manager,
             mapping_manager=self.mapping_manager,
             import_manager=self.import_manager,
             export_manager=self.export_manager,
+            output_dir_manager=self.output_dir_manager,
         )
 
     def test_get_data(self):

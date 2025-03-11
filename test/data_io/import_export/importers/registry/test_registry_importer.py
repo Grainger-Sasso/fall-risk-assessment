@@ -50,6 +50,9 @@ class TestRegistryImporter(BaseTest):
         
         self.assertEqual(result.id_type, TestSourceIdentifier)
 
+        self.assertIsInstance(result.path, Path)
+        self.assertEqual(result.path, self.temp_path)
+
     def test_missing_file(self):
         # Remove the required file
         self.registry_path.unlink()

@@ -52,4 +52,12 @@ class MappingImporter(Importer[Mapping]):
                 )
             )
         map_file: CSVFile = self.reader.read(file_paths[MappingFileNames.MAPPING])
-        return self.model_builder.build(map_file, source_id_type, target_id_type)
+        # return self.model_builder.build(
+        #     map_file, source_id_type, target_id_type, directory
+        # )
+        return self.model_builder.build(
+            input_file=map_file,
+            source_id_type=source_id_type,
+            target_id_type=target_id_type,
+            subdir_path=directory,
+        )

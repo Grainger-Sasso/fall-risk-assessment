@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, List, Type
 
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
@@ -17,6 +18,7 @@ class MappingBuilder(ModelBuilder):
         input_file: CSVFile,
         source_id_type: Type[Identifier],
         target_id_type: Type[Identifier],
+        subdir_path: Path
     ) -> Mapping:
         if not isinstance(input_file, CSVFile):
             raise ValueError("Input must be an CSVFile")
@@ -29,4 +31,4 @@ class MappingBuilder(ModelBuilder):
         ]
         for s_id, t_id in zip(source_ids, target_ids):
             map[s_id] = t_id
-        return Mapping(map, source_id_type, target_id_type)
+        return Mapping(map, source_id_type, target_id_type, subdir_path)

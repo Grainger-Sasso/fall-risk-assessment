@@ -9,9 +9,13 @@ class Registry:
     Class for data registries - mappings between string data identifiers and file paths
     """
 
-    def __init__(self, registry: Dict[str, Path], id_type: Type[Identifier]):
+    def __init__(
+        self, registry: Dict[str, Path], id_type: Type[Identifier], subdir_path: Path
+    ):
         self._registry: Dict[str, Path] = registry
         self._id_type: Type[Identifier] = id_type
+        # Path to subdir containing mapping
+        self._path: Path = subdir_path
 
     @property
     def registry(self) -> Dict[str, Path]:
@@ -34,6 +38,10 @@ class Registry:
     @property
     def id_type(self) -> Type[Identifier]:
         return self._id_type
+
+    @property
+    def path(self) -> Path:
+        return self._path
 
     def get_path(self, identifier: Identifier) -> Path:
         if identifier.value not in self.registry.keys():

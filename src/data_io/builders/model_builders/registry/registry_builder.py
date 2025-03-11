@@ -11,15 +11,15 @@ from src.identifiers.identifier import Identifier
 class RegistryBuilder(ModelBuilder):
     version = "1.0"
 
-    def build(self, input_file: CSVFile, id_type: Type[Identifier]) -> Registry:
+    def build(self, input_file: CSVFile, id_type: Type[Identifier], subdir_path: Path) -> Registry:
         if not isinstance(input_file, CSVFile):
             raise ValueError("Invalid registry CSV file")
-        return self.build_registry(input_file, id_type)
+        return self.build_registry(input_file, id_type, subdir_path)
 
-    def build_registry(self, input_file: CSVFile, id_type: Type[Identifier]) -> Dict[str, Path]:
+    def build_registry(self, input_file: CSVFile, id_type: Type[Identifier], subdir_path: Path) -> Dict[str, Path]:
         registry: Dict[str, Path] = {}
         ids = input_file.data[RegistryFields.DATA_IDENTIFIER.value]
         paths = input_file.data[RegistryFields.DIRECTORY.value]
         for id, path in zip(ids, paths):
             registry[id] = Path(path)
-        return Registry(registry, id_type)
+        return Registry(registry, id_type, subdir_path)

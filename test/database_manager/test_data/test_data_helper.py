@@ -59,6 +59,7 @@ class DatabaseManagerTestHelper:
             },
             source_id_type=TestSourceIdentifier,
             target_id_type=TestTargetIdentifier,
+            subdir_path=TestConstants.TEST_PATHS.value[0],
         )
 
     def create_test_registry(self) -> Registry:
@@ -76,4 +77,5 @@ class DatabaseManagerTestHelper:
                 )
             },
             id_type=TestSourceIdentifier,
+            subdir_path=TestConstants.TEST_PATHS.value[0],
         )

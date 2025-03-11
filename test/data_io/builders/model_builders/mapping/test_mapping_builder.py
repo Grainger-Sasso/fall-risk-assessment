@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from src.data_io.builders.model_builders.mapping.mapping_builder import MappingBuilder
 from src.database_manager.mapping.mapping import Mapping
 from test.base_test import BaseTest
@@ -13,6 +15,7 @@ class TestMappingBuilder(BaseTest):
     def setUp(self):
         self.builder = MappingBuilder()
         self.data_helper = MappingHelper()
+        self.test_path = Path("/test/path")
 
     def test_build_valid_data(self):
         # Create test CSV data
@@ -20,7 +23,7 @@ class TestMappingBuilder(BaseTest):
 
         # Test building map
         result = self.builder.build(
-            csv_data, TestSourceIdentifier, TestTargetIdentifier
+            csv_data, TestSourceIdentifier, TestTargetIdentifier, self.test_path
         )
 
         # Assertions
@@ -37,9 +40,12 @@ class TestMappingBuilder(BaseTest):
         self.assertEqual(result.source_id_type, TestSourceIdentifier)
         self.assertEqual(result.target_id_type, TestTargetIdentifier)
 
+        self.assertIsInstance(result.path, Path)
+        self.assertEqual(result.path, self.test_path)
+
     def test_build_empty_data(self):
         with self.assertRaises(ValueError):
-            self.builder.build(None, None, None)
+            self.builder.build(None, None, None, None)
 
 
 if __name__ == "__main__":
