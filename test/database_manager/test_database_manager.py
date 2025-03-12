@@ -261,10 +261,65 @@ class TestDatabaseManager(BaseTest):
                 DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
             },
         )
-        
 
     def test_export_agg_feature_list(self):
-        pass
+        # Create test agg feature list
+        agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
+        # Assert the registry/mapping manager entries are none
+        imported_agg_feature_registry: Registry = self.registry_importer.import_data(
+            self.agg_feature_temp_path, AggregateFeatureIdentifier
+        )
+        self.assertTrue(not imported_agg_feature_registry.registry)
+        imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
+            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+        )
+        self.assertTrue(not imported_agg_feature_mapping.map)
+        # Import registry/mappings and assert none
+        self.assertTrue(
+            not self.registry_manager.get_provider(AggregateFeatureIdentifier).registry
+        )
+        self.assertTrue(not self.mapping_manager.get_provider(AggregateFeatureIdentifier).map)
+        # Call method under test
+        self.db_manager.export_aggregate_feature_list(agg_feature_list)
+        # Verify the correct exporter is called with expected path and data
+        expected_parent_dir = TestConstants.TEST_PATHS.value[0]
+        self.mock_exporter.export_data.assert_called_once_with(
+            expected_parent_dir, agg_feature_list[0]
+        )
+        # Assert the registry/mappings properly updated
+        imported_agg_feature_registry: Registry = self.registry_importer.import_data(
+            self.agg_feature_temp_path, AggregateFeatureIdentifier
+        )
+        self.assertEqual(
+            imported_agg_feature_registry.registry,
+            {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
+        )
+        imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
+            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+        )
+        self.assertEqual(
+            imported_agg_feature_mapping.map,
+            {
+                DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value
+            },
+        )
+        # Assert the registry/mappings managers properly updated
+        manager_agg_feature_registry: Registry = self.registry_manager.get_provider(
+            AggregateFeatureIdentifier
+        )
+        self.assertEqual(
+            manager_agg_feature_registry.registry,
+            {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
+        )
+        manager_agg_feature_mapping: Mapping = self.mapping_manager.get_provider(
+            AggregateFeatureIdentifier
+        )
+        self.assertEqual(
+            manager_agg_feature_mapping.map,
+            {
+                DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value,
+            },
+        )
 
 
 if __name__ == "__main__":
