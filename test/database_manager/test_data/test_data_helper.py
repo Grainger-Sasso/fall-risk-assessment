@@ -79,3 +79,26 @@ class DatabaseManagerTestHelper:
             id_type=TestSourceIdentifier,
             subdir_path=TestConstants.TEST_PATHS.value[0],
         )
+
+    def create_test_mapping_with_single_entry(self, index: int) -> Mapping:
+        """Create test mapping with single entry at given index"""
+        return Mapping(
+            {
+                TestConstants.TEST_SOURCE_IDS.value[index]: 
+                TestConstants.TEST_TARGET_IDS.value[index]
+            },
+            source_id_type=TestSourceIdentifier,
+            target_id_type=TestTargetIdentifier,
+            subdir_path=TestConstants.TEST_PATHS.value[0],
+        )
+
+    def create_test_registry_with_single_entry(self, index: int) -> Registry:
+        """Create test registry with single entry at given index"""
+        return Registry(
+            {
+                TestConstants.TEST_SOURCE_IDS.value[index]: 
+                TestConstants.TEST_PATHS.value[index]
+            },
+            id_type=TestSourceIdentifier,
+            subdir_path=TestConstants.TEST_PATHS.value[0],
+        )

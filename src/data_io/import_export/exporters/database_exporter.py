@@ -17,24 +17,28 @@ class DatabaseExporter(Generic[T], ABC):
         self.suffix: str = suffix
 
     def export_data(self, output_dir: Path, data: T) -> Path:
-        # Construct file object
-        file_data: FileFormat = self.file_builder.build(data)
-        # Check directory for file in the input path
-        file_name: str = self._get_file_name()
-        full_file_name = file_name + self.suffix
-        full_file_path = output_dir / full_file_name
-        if self._file_exists(output_dir, file_name, self.suffix):
-            # If file exists, create copy and delete existing file
-            copy_path: Path = self._copy_existing_file(output_dir, full_file_path)
-            self._delete_file(full_file_path)
-        # Write new file, delete copy if successful
-        success, e = self.writer.write(full_file_path, file_data)
-        if success:
-            self._delete_file(copy_path)
-        else:
-            raise IOError(f"File write failed: {e}")
+        try:
+            # Construct file object
+            # file_data: FileFormat = self.file_builder.build(data)
+            csv_file: FileFormat = self.file_builder.build(data)
+            # Check directory for file in the input path
+            file_name: str = self._get_file_name()
+            full_file_name = file_name + "." + self.suffix
+            full_file_path = output_dir / full_file_name
+            copy = False
+            if self._file_exists(full_file_path):
+                # If file exists, create copy and delete existing file
+                copy_path: Path = self._copy_existing_file(output_dir, full_file_path)
+                self._delete_file(full_file_path)
+                copy = True
+            # Write new file, delete copy if successful
+            self.writer.write(full_file_path, csv_file)
+            if copy:
+                self._delete_file(copy_path)
+            return full_file_path
 
-        return full_file_path
+        except Exception as e:
+            raise Exception(f"Export failed: {str(e)}")
 
     @abstractmethod
     def _get_file_name(self) -> str:

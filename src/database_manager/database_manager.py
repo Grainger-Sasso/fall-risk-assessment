@@ -1,9 +1,17 @@
 from pathlib import Path
 from typing import Dict, List, Type, TypeVar
 
+from src.data_io.import_export.exporters.database_exporter import DatabaseExporter
 from src.data_io.import_export.exporters.exporter import Exporter
+from src.data_io.import_export.exporters.mapping.mapping_exporter import MappingExporter
+from src.data_io.import_export.exporters.registry.registry_exporter import (
+    RegistryExporter,
+)
 from src.data_io.import_export.importers.importer import Importer
 from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.features.aggregate.aggregate_feature_set_entry import (
+    AggregateFeatureSetEntry,
+)
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.database_manager.data_access.export_manager import ExportManager
 from src.database_manager.data_access.import_manager import ImportManager
@@ -14,7 +22,12 @@ from src.database_manager.data_access.output_directory_manager import (
 from src.database_manager.data_access.registry_manager import RegistryManager
 from src.database_manager.mapping.mapping import Mapping
 from src.database_manager.registry.registry import Registry
+from src.identifiers.feature.aggregate_feature_identifier import (
+    AggregateFeatureIdentifier,
+)
+from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.identifier import Identifier
+from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 
 S = TypeVar("S")
 T = TypeVar("T")
@@ -35,7 +48,7 @@ class DatabaseManager:
         self.export_manager: ExportManager = export_manager
         self.output_dir_manager: OutputDirectoryManager = output_dir_manager
 
-    ### Registry Methods ###
+    ### I/O Methods ###
     def import_data(self, identifier: Identifier) -> T:
         data_type: Type[Identifier] = type(identifier)
         # Get corresponding registry and importer
@@ -47,12 +60,14 @@ class DatabaseManager:
         return importer.import_data(path)
 
     def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]):
-        data_type = type(RawFeatureSetEntry)
+        data_type = RawFeatureIdentifier
         # Export features
         exporter: Exporter = self.export_manager.get_provider(data_type)
         output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
         feature_id_to_output_path_map: Dict[str, Path] = {}
-        feature_id_to_imu_data_id_map: Dict[Identifier, Identifier] = {}
+        feature_id_to_imu_data_id_map: Dict[RawFeatureIdentifier, IMUDataIdentifier] = (
+            {}
+        )
         for feature in raw_feature_list:
             feature_id = feature.metadata.raw_feature_identifier
             imu_data_id = feature.metadata.imu_data_identifier
@@ -60,53 +75,123 @@ class DatabaseManager:
             feature_id_to_output_path_map[feature_id.value] = output_path
             feature_id_to_imu_data_id_map[feature_id.value] = imu_data_id.value
         # Update raw feature registry
+        raw_feature_registry: Registry = self.registry_manager.get_provider(data_type)
+        registry_exporter: RegistryExporter = RegistryExporter()
+        self._update_registry(
+            registry_exporter,
+            raw_feature_registry,
+            feature_id_to_output_path_map,
+            data_type,
+        )
         # Update Raw feature -> IMU Data mapping
-        pass
+        raw_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
+        mapping_exporter: MappingExporter = MappingExporter()
+        self._update_mapping(
+            mapping_exporter,
+            raw_feature_mapping,
+            feature_id_to_imu_data_id_map,
+            data_type,
+            IMUDataIdentifier,
+        )
 
-    def export_aggregate_feature_list(self):
+    def export_aggregate_feature_list(
+        self, agg_feature_list: List[AggregateFeatureSetEntry]
+    ):
+        data_type = AggregateFeatureIdentifier
         # Export features
-        # Update aggregate feature registry
-        # Update aggregate feature -> raw feature mapping
-        pass
+        exporter: Exporter = self.export_manager.get_provider(data_type)
+        output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
+        feature_id_to_output_path_map: Dict[str, Path] = {}
+        agg_id_to_raw_id_map: Dict[AggregateFeatureIdentifier, RawFeatureIdentifier] = (
+            {}
+        )
+        for feature in agg_feature_list:
+            agg_feature_id = feature.metadata.aggregate_feature_identifier
+            raw_feature_id = feature.metadata.raw_feature_identifier
+            output_path = exporter.export_data(output_parent_dir, feature)
+            feature_id_to_output_path_map[agg_feature_id.value] = output_path
+            agg_id_to_raw_id_map[agg_feature_id.value] = raw_feature_id.value
+        # Update agg feature registry
+        agg_feature_registry: Registry = self.registry_manager.get_provider(data_type)
+        registry_exporter: RegistryExporter = RegistryExporter()
+        self._update_registry(
+            registry_exporter,
+            agg_feature_registry,
+            feature_id_to_output_path_map,
+            data_type,
+        )
+        # Update agg feature -> raw feature mapping
+        agg_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
+        mapping_exporter: MappingExporter = MappingExporter()
+        self._update_mapping(
+            mapping_exporter,
+            agg_feature_mapping,
+            agg_id_to_raw_id_map,
+            data_type,
+            RawFeatureIdentifier,
+        )
 
     def _update_registry(
         self,
-        importer: Importer,
-        exporter: Exporter,
-        source_registry_subdir_path: Path,
+        exporter: DatabaseExporter,
+        source_registry: Registry,
         new_id_to_path_map: Dict[str, Path],
         data_type: Type[Identifier],
     ):
-        source_registry: Registry = importer.import_data(source_registry_subdir_path)
         source_id_to_path_map: Dict[str, Path] = source_registry.registry
-        if not self.__any_new_ids_in_source(source_id_to_path_map, new_id_to_path_map):
-            new_mapping: Dict[str, Path] = self.__construct_mapping(
+        source_registry_subdir_path: Path = source_registry.path
+        if not self._any_new_ids_in_source(source_id_to_path_map, new_id_to_path_map):
+            new_mapping: Dict[str, Path] = self._construct_new_mapping(
                 source_id_to_path_map, new_id_to_path_map
             )
             new_registry = Registry(new_mapping, data_type, source_registry_subdir_path)
-            exporter.export_data()
+            exporter.export_data(source_registry_subdir_path, new_registry)
+            # Update registry manager
+            self.registry_manager.set_provider(data_type, new_registry)
         else:
             raise ValueError(f"Attempting to add existing elements mapping")
 
     def _update_mapping(
-        mapping: Mapping, source_id_to_target_id_map: Dict[Identifier, Identifier]
+        self,
+        exporter: DatabaseExporter,
+        source_mapping: Mapping,
+        new_source_id_to_target_id_map: Dict[str, Path],
+        data_type: Type[Identifier],
+        target_id_type: Type[Identifier],
     ):
-        pass
+        source_id_to_target_id_map: Dict[str, Path] = source_mapping.map
+        source_mapping_subdir_path: Path = source_mapping.path
+        if not self._any_new_ids_in_source(
+            source_id_to_target_id_map, new_source_id_to_target_id_map
+        ):
+            new_mapping: Dict[str, Path] = self._construct_new_mapping(
+                source_id_to_target_id_map, new_source_id_to_target_id_map
+            )
+            new_dataset_mapping = Mapping(
+                new_mapping, data_type, target_id_type, source_mapping_subdir_path
+            )
+            exporter.export_data(source_mapping_subdir_path, new_dataset_mapping)
+            # Update mapping manager
+            self.mapping_manager.set_provider(data_type, new_dataset_mapping)
+        else:
+            raise ValueError(f"Attempting to add existing elements mapping")
 
-    def __any_new_ids_in_source(
+    def _any_new_ids_in_source(
         self, source_mapping: Dict[S, T], current_mapping: Dict[S, T]
     ) -> bool:
         return any(
             [new_id in source_mapping.keys() for new_id in current_mapping.keys()]
         )
 
-    def __construct_new_mapping(
+    def _construct_new_mapping(
         self, source_mapping: Dict[S, T], current_mapping: Dict[S, T]
     ) -> Dict[S, T]:
         new_mapping = {k: v for k, v in source_mapping.items()}
         for k, v in current_mapping.items():
             new_mapping[k] = v
         return new_mapping
+
+    ###
 
     # def update_data(self, id: Identifier, data: Any):
     #     path = self._registry_manager.get_path(id)

@@ -22,3 +22,9 @@ class DataAccessManager(Generic[T], ABC):
         if data_type not in self.providers:
             raise KeyError(f"Unable to resolve provider from ID: {data_type}")
         return self.providers[data_type]
+    
+
+    def set_provider(self, data_type: Type[Identifier], provider: T):
+        if data_type not in self.providers:
+            raise KeyError(f"Unable to resolve provider from ID: {data_type}")
+        self.providers[data_type] = provider

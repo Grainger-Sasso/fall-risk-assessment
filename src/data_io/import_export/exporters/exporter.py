@@ -46,11 +46,8 @@ class Exporter(Generic[T], ABC):
 
             # 4. Write file object to path
             output_path: Path = self._construct_file_path(output_subdir_path)
-            success, error = self.writer.write(output_path, file_obj)
-            if success:
-                return output_subdir_path
-            else:
-                raise IOError(f"File write failed: {error}")
+            self.writer.write(output_path, file_obj)
+            return output_subdir_path
 
         except Exception as e:
             raise Exception(f"Export failed: {str(e)}")
