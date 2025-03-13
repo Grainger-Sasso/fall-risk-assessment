@@ -79,6 +79,7 @@ from src.identifiers.instrument.instrument_identifier import InstrumentIdentifie
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
     InstrumentSpecificationIdentifier,
 )
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
@@ -175,6 +176,7 @@ class TestConstants(Enum):
     USER_SEX = "male"  # lowercase to match Sex enum values
     USER_WEIGHT = 70.0  # kg
     USER_HEIGHT = 1.75  # m
+    CLINICAL_ID = "test_clinical_ID"
 
     ############### Dataset ###############
     DATASET_NAME = "test_dataset"
@@ -824,6 +826,9 @@ class UserDataHelper:
                 ClinicalDemographicDataFields.HEIGHT.value: {
                     ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_HEIGHT.value
                 },
+                ClinicalDemographicDataFields.IDENTIFIER.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.CLINICAL_ID.value
+                },
             }
         )
 
@@ -834,6 +839,7 @@ class UserDataHelper:
             sex=Sex(TestConstants.USER_SEX.value),
             weight=Kilogram(TestConstants.USER_WEIGHT.value),
             height=Meter(TestConstants.USER_HEIGHT.value),
+            clinical_identifier=ClinicalIdentifier(TestConstants.CLINICAL_ID.value),
         )
 
 

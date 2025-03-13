@@ -10,5 +10,6 @@ class ClinicalDemographicDataFields(Enum):
     SEX = "sex"
     WEIGHT = "weight"
     HEIGHT = "height"
+    IDENTIFIER = "identifier"
     VALUE = "value"
     UNIT = "unit"

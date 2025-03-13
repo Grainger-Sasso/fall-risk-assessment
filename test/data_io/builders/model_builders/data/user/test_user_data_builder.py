@@ -7,6 +7,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import TestConstants, UserDataHelper
@@ -38,6 +39,10 @@ class TestUserDataBuilder(BaseTest):
         self.assertEqual(demo_data.sex, Sex(TestConstants.USER_SEX.value.lower()))
         self.assertEqual(demo_data.weight.value, TestConstants.USER_WEIGHT.value)
         self.assertEqual(demo_data.height.value, TestConstants.USER_HEIGHT.value)
+        self.assertIsInstance(demo_data.clinical_identifier, ClinicalIdentifier)
+        self.assertEqual(
+            demo_data.clinical_identifier.value, TestConstants.CLINICAL_ID.value
+        )
 
         # Test clinical assessment
         self.assertIsInstance(result.clinical_assessments, list)

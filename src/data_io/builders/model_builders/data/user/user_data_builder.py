@@ -10,6 +10,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.units.si.kilogram import Kilogram
 from src.util.mechanics.units.si.meter import Meter
@@ -23,11 +24,15 @@ class UserDataBuilder(ModelBuilder):
     def build(
         self, input_file: JSONDictFile, clinical_demo_file: JSONDictFile
     ) -> UserData:
-        if not isinstance(input_file, JSONDictFile) or not isinstance(clinical_demo_file, JSONDictFile):
+        if not isinstance(input_file, JSONDictFile) or not isinstance(
+            clinical_demo_file, JSONDictFile
+        ):
             raise ValueError("Invalid User data JSON file")
         return self.__build_user_data(input_file, clinical_demo_file)
-    
-    def __build_user_data(self, input_file: JSONDictFile, clinical_demo_file: JSONDictFile) -> UserData:
+
+    def __build_user_data(
+        self, input_file: JSONDictFile, clinical_demo_file: JSONDictFile
+    ) -> UserData:
         user_identifier: UserIdentifier = UserIdentifier(
             input_file.data[UserDataFields.USER_DATA_IDENTIFIER.value]
         )
@@ -63,4 +68,11 @@ class UserDataBuilder(ModelBuilder):
                 ClinicalDemographicDataFields.VALUE.value
             ]
         )
-        return ClinicalDemographicData(name, age, sex, weight, height)
+        clinical_identifier: ClinicalIdentifier = ClinicalIdentifier(
+            clinical_demo_file.data[ClinicalDemographicDataFields.IDENTIFIER.value][
+                ClinicalDemographicDataFields.VALUE.value
+            ]
+        )
+        return ClinicalDemographicData(
+            name, age, sex, weight, height, clinical_identifier
+        )

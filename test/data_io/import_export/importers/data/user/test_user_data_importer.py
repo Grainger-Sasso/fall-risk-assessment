@@ -10,6 +10,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
     ClinicalDemographicData,
 )
 from src.data_model.data.user.user_data import UserData
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import TestConstants, UserDataHelper
 
@@ -26,7 +27,8 @@ class TestUserDataImporter(BaseTest):
             self.temp_path / f"{UserDataFileNames.USER_DATA.value}.json"
         )
         self.clinical_data_path = self.helper.create_test_clinical_demographic_file(
-            self.temp_path / f"{UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value}.json"
+            self.temp_path
+            / f"{UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value}.json"
         )
 
     def tearDown(self):
@@ -65,6 +67,13 @@ class TestUserDataImporter(BaseTest):
         self.assertEqual(
             result.clinical_demographic_data.weight.value,
             TestConstants.USER_WEIGHT.value,
+        )
+        self.assertIsInstance(
+            result.clinical_demographic_data.clinical_identifier, ClinicalIdentifier
+        )
+        self.assertEqual(
+            result.clinical_demographic_data.clinical_identifier.value,
+            TestConstants.CLINICAL_ID.value,
         )
 
     def test_missing_file(self):

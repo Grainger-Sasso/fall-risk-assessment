@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
+
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from src.util.mechanics.units.si.kilogram import Kilogram
 from src.util.mechanics.units.si.meter import Meter
 
@@ -20,3 +22,4 @@ class ClinicalDemographicData:
     sex: Sex
     weight: Kilogram
     height: Meter
+    clinical_identifier: ClinicalIdentifier
