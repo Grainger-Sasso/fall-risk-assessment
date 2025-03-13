@@ -60,76 +60,108 @@ class DatabaseManager:
         return importer.import_data(path)
 
     def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]):
+        if not raw_feature_list:
+            raise ValueError("Feature list cannot be empty")
+
         data_type = RawFeatureIdentifier
+        # Get output directory
+        output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
+        if output_parent_dir is None:
+            raise ValueError("No output directory configured")
+
         # Export features
         exporter: Exporter = self.export_manager.get_provider(data_type)
-        output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
         feature_id_to_output_path_map: Dict[str, Path] = {}
         feature_id_to_imu_data_id_map: Dict[RawFeatureIdentifier, IMUDataIdentifier] = (
             {}
         )
-        for feature in raw_feature_list:
-            feature_id = feature.metadata.raw_feature_identifier
-            imu_data_id = feature.metadata.imu_data_identifier
-            output_path = exporter.export_data(output_parent_dir, feature)
-            feature_id_to_output_path_map[feature_id.value] = output_path
-            feature_id_to_imu_data_id_map[feature_id.value] = imu_data_id.value
-        # Update raw feature registry
-        raw_feature_registry: Registry = self.registry_manager.get_provider(data_type)
-        registry_exporter: RegistryExporter = RegistryExporter()
-        self._update_registry(
-            registry_exporter,
-            raw_feature_registry,
-            feature_id_to_output_path_map,
-            data_type,
-        )
-        # Update Raw feature -> IMU Data mapping
-        raw_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
-        mapping_exporter: MappingExporter = MappingExporter()
-        self._update_mapping(
-            mapping_exporter,
-            raw_feature_mapping,
-            feature_id_to_imu_data_id_map,
-            data_type,
-            IMUDataIdentifier,
-        )
+
+        try:
+            for feature in raw_feature_list:
+                feature_id = feature.metadata.raw_feature_identifier
+                imu_data_id = feature.metadata.imu_data_identifier
+                output_path = exporter.export_data(output_parent_dir, feature)
+                feature_id_to_output_path_map[feature_id.value] = output_path
+                feature_id_to_imu_data_id_map[feature_id.value] = imu_data_id.value
+
+            # Update raw feature registry
+            raw_feature_registry: Registry = self.registry_manager.get_provider(
+                data_type
+            )
+            registry_exporter: RegistryExporter = RegistryExporter()
+            self._update_registry(
+                registry_exporter,
+                raw_feature_registry,
+                feature_id_to_output_path_map,
+                data_type,
+            )
+
+            # Update Raw feature -> IMU Data mapping
+            raw_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
+            mapping_exporter: MappingExporter = MappingExporter()
+            self._update_mapping(
+                mapping_exporter,
+                raw_feature_mapping,
+                feature_id_to_imu_data_id_map,
+                data_type,
+                IMUDataIdentifier,
+            )
+        except Exception as e:
+            # Re-raise any exceptions that occur during export
+            raise Exception(f"Export failed: {str(e)}")
 
     def export_aggregate_feature_list(
         self, agg_feature_list: List[AggregateFeatureSetEntry]
     ):
+        if not agg_feature_list:
+            raise ValueError("Feature list cannot be empty")
+
         data_type = AggregateFeatureIdentifier
+        # Get output directory
+        output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
+        if output_parent_dir is None:
+            raise ValueError("No output directory configured")
+
         # Export features
         exporter: Exporter = self.export_manager.get_provider(data_type)
-        output_parent_dir: Path = self.output_dir_manager.get_provider(data_type)
         feature_id_to_output_path_map: Dict[str, Path] = {}
         agg_id_to_raw_id_map: Dict[AggregateFeatureIdentifier, RawFeatureIdentifier] = (
             {}
         )
-        for feature in agg_feature_list:
-            agg_feature_id = feature.metadata.aggregate_feature_identifier
-            raw_feature_id = feature.metadata.raw_feature_identifier
-            output_path = exporter.export_data(output_parent_dir, feature)
-            feature_id_to_output_path_map[agg_feature_id.value] = output_path
-            agg_id_to_raw_id_map[agg_feature_id.value] = raw_feature_id.value
-        # Update agg feature registry
-        agg_feature_registry: Registry = self.registry_manager.get_provider(data_type)
-        registry_exporter: RegistryExporter = RegistryExporter()
-        self._update_registry(
-            registry_exporter,
-            agg_feature_registry,
-            feature_id_to_output_path_map,
-            data_type,
-        )
-        # Update agg feature -> raw feature mapping
-        agg_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
-        mapping_exporter: MappingExporter = MappingExporter()
-        self._update_mapping(
-            mapping_exporter,
-            agg_feature_mapping,
-            agg_id_to_raw_id_map,
-            data_type,
-            RawFeatureIdentifier,
-        )
+
+        try:
+            for feature in agg_feature_list:
+                agg_feature_id = feature.metadata.aggregate_feature_identifier
+                raw_feature_id = feature.metadata.raw_feature_identifier
+                output_path = exporter.export_data(output_parent_dir, feature)
+                feature_id_to_output_path_map[agg_feature_id.value] = output_path
+                agg_id_to_raw_id_map[agg_feature_id.value] = raw_feature_id.value
+
+            # Update agg feature registry
+            agg_feature_registry: Registry = self.registry_manager.get_provider(
+                data_type
+            )
+            registry_exporter: RegistryExporter = RegistryExporter()
+            self._update_registry(
+                registry_exporter,
+                agg_feature_registry,
+                feature_id_to_output_path_map,
+                data_type,
+            )
+
+            # Update agg feature -> raw feature mapping
+            agg_feature_mapping: Mapping = self.mapping_manager.get_provider(data_type)
+            mapping_exporter: MappingExporter = MappingExporter()
+            self._update_mapping(
+                mapping_exporter,
+                agg_feature_mapping,
+                agg_id_to_raw_id_map,
+                data_type,
+                RawFeatureIdentifier,
+            )
+        except Exception as e:
+            # Re-raise any exceptions that occur during export
+            raise Exception(f"Export failed: {str(e)}")
 
     def _update_registry(
         self,
