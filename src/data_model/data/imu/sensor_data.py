@@ -21,6 +21,7 @@ class SensorData:
 
     data: List[UniaxialSensorData]
     time: np.ndarray
+    idle_mask: np.ndarray
     metadata: SensorMetadata
     _anatomical_axis_map: Dict[AnatomicalCoordinateSystem, UniaxialSensorData] = field(
         init=False, repr=False
@@ -31,7 +32,9 @@ class SensorData:
 
     def __post_init__(self):
         # Create the axis maps during initialization
-        self._anatomical_axis_map = {axis.anatomical_axis.name: axis for axis in self.data}
+        self._anatomical_axis_map = {
+            axis.anatomical_axis.name: axis for axis in self.data
+        }
         self._sensor_axis_map = {axis.sensor_axis.name: axis for axis in self.data}
 
     def _get_data_by_axis(self, axis_map: Dict, axis_value) -> UniaxialSensorData:

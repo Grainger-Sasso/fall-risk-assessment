@@ -105,6 +105,7 @@ class TestConstants(Enum):
     SAMPLING_RATE = 100.0
     UNIT = "test_unit"
     TIME_DATA = [float(i) / 10 for i in range(0, 11, 1)]
+    IDLE_MASK = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
     IMU_DATA = [
         [0.0 for i in range(10)],
         [1.0 for i in range(10)],
@@ -408,6 +409,13 @@ class IMUDataHelper:
             data=TestConstants.TIME_DATA.value,
             attributes={},
         )
+        # Build idle mask dataset
+        idle_mask_dataset = HDF5Dataset(
+            name=IMUDataFields.IDLE_MASK.value,
+            data=TestConstants.IDLE_MASK.value,
+            attributes={},
+        )
+
         # Build imu data dataset
         imu_data_dataset = HDF5Dataset(
             name=IMUDataFields.DATA.value,
@@ -426,7 +434,7 @@ class IMUDataHelper:
         # Build sensor data group
         return HDF5Group(
             name=sensor_name.value,
-            items=[time_dataset, imu_data_dataset],
+            items=[time_dataset, idle_mask_dataset, imu_data_dataset],
             attributes=sensor_data_group_attr,
         )
 
@@ -460,13 +468,15 @@ class IMUDataHelper:
         # Get time data.
         time: np.ndarray = np.array(TestConstants.TIME_DATA.value)
 
+        idle_mask: np.ndarray = np.array(TestConstants.IDLE_MASK.value)
+
         # Build uniaxial sensor data list
         uniaxial_sensor_data_list: List[UniaxialSensorData] = (
             self.__build_uniaxial_sensor_data_list()
         )
         # Build metadata
         sensor_metadata: SensorMetadata = self.__build_sensor_metadata(sensor_type)
-        return SensorData(uniaxial_sensor_data_list, time, sensor_metadata)
+        return SensorData(uniaxial_sensor_data_list, time, idle_mask, sensor_metadata)
 
     def __build_uniaxial_sensor_data_list(self) -> List[UniaxialSensorData]:
         sensor_data: np.ndarray = np.array(TestConstants.IMU_DATA.value)

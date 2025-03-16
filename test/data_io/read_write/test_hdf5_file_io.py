@@ -122,10 +122,13 @@ class TestHDF5FileIO(BaseTest):
         # Assert for each group, assert time, data, and attributes
         for sub_group in sensor_group.items:
             # Assert subgroup datasets
-            self.assertEqual(len(sub_group.items), 2)
+            self.assertEqual(len(sub_group.items), 3)
             self.assertIn(
                 IMUDataFields.TIME.value,
                 [group.name for group in sub_group.items],
+            )
+            self.assertIn(
+                IMUDataFields.IDLE_MASK.value, [group.name for group in sub_group.items]
             )
             self.assertIn(
                 IMUDataFields.DATA.value,
@@ -134,6 +137,9 @@ class TestHDF5FileIO(BaseTest):
             time = sub_group.get_item_by_name(IMUDataFields.TIME.value)
             np.testing.assert_array_equal(time.data, TestConstants.TIME_DATA.value)
             self.assertEqual(time.attributes, {})
+            idle_mask = sub_group.get_item_by_name(IMUDataFields.IDLE_MASK.value)
+            np.testing.assert_array_equal(idle_mask.data, TestConstants.IDLE_MASK.value)
+            self.assertEqual(idle_mask.attributes, {})
             sensor_data = sub_group.get_item_by_name(IMUDataFields.DATA.value)
             np.testing.assert_array_equal(
                 sensor_data.data, TestConstants.IMU_DATA.value
@@ -226,6 +232,9 @@ class TestHDF5FileIO(BaseTest):
             # Test sensor time data
             np.testing.assert_array_equal(
                 sensor_data.time, TestConstants.TIME_DATA.value
+            )
+            np.testing.assert_array_equal(
+                sensor_data.idle_mask, TestConstants.IDLE_MASK.value
             )
             # Test getting data by each axis
             for ix, axis in enumerate(

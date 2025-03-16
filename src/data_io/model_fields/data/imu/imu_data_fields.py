@@ -11,6 +11,7 @@ class IMUDataFields(Enum):
     MAGNETOMETER = "magnetometer"
     DATA = "data"
     TIME = "time"
+    IDLE_MASK = "idle_mask"
     SENSOR_TYPE = "sensor_type"
     ORIENTATION_MAP_SENSOR = "orientation_map_sensor"
     ORIENTATION_MAP_ANATOMICAL = "orientation_map_anatomical"

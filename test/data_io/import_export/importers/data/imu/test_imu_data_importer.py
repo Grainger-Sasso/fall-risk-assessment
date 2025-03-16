@@ -93,6 +93,9 @@ class TestIMUDataImporter(BaseTest):
             np.testing.assert_array_equal(
                 sensor_data.time, TestConstants.TIME_DATA.value
             )
+            np.testing.assert_array_equal(
+                sensor_data.idle_mask, TestConstants.IDLE_MASK.value
+            )
 
             # Test getting data by each axis
             for ix, axis in enumerate(

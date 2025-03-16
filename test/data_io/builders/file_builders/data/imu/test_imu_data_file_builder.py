@@ -66,10 +66,13 @@ class TestIMUDataFileBuilder(BaseTest):
         # Assert for each group, assert time, data, and attributes
         for sub_group in sensor_group.items:
             # Assert subgroup datasets
-            self.assertEqual(len(sub_group.items), 2)
+            self.assertEqual(len(sub_group.items), 3)
             self.assertIn(
                 IMUDataFields.TIME.value,
                 [group.name for group in sub_group.items],
+            )
+            self.assertIn(
+                IMUDataFields.IDLE_MASK.value, [group.name for group in sub_group.items]
             )
             self.assertIn(
                 IMUDataFields.DATA.value,
@@ -78,6 +81,9 @@ class TestIMUDataFileBuilder(BaseTest):
             time = sub_group.get_item_by_name(IMUDataFields.TIME.value)
             self.assertEqual(time.data, TestConstants.TIME_DATA.value)
             self.assertEqual(time.attributes, {})
+            idle_mask = sub_group.get_item_by_name(IMUDataFields.IDLE_MASK.value)
+            self.assertEqual(idle_mask.data, TestConstants.IDLE_MASK.value)
+            self.assertEqual(idle_mask.attributes, {})
             sensor_data = sub_group.get_item_by_name(IMUDataFields.DATA.value)
             self.assertEqual(sensor_data.data, TestConstants.IMU_DATA.value)
             self.assertEqual(sensor_data.attributes, {})

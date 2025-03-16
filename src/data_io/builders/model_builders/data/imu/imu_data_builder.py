@@ -156,6 +156,16 @@ class IMUDataBuilder(ModelBuilder):
 
         if len(time) == 0:
             raise ValueError("Empty time data")
+        
+        try:
+            idle_mask: np.ndarray = np.array(
+                sensor_data_group.get_item_by_name(IMUDataFields.IDLE_MASK.value).data
+            )
+        except ValueError as e:
+            raise ValueError(f"Missing idle mask data: {e}")
+
+        if len(idle_mask) == 0:
+            raise ValueError("Empty idle mask data")
 
         # Build metadata
         sensor_metadata: SensorMetadata = self.__build_sensor_metadata(
@@ -171,7 +181,7 @@ class IMUDataBuilder(ModelBuilder):
                 sensor_data_group, model_orientation_map
             )
         )
-        return SensorData(uniaxial_sensor_data_list, time, sensor_metadata)
+        return SensorData(uniaxial_sensor_data_list, time, idle_mask, sensor_metadata)
 
     def __build_uniaxial_sensor_data_list(
         self,

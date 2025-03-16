@@ -147,6 +147,10 @@ class IMUDataFileBuilder(FileBuilder):
         time: HDF5Dataset = HDF5Dataset(
             name=IMUDataFields.TIME.value, data=sensor_data.time.tolist(), attributes={}
         )
+        # Build idle mask dataset and add to sensor data subgroup items
+        idle_mask: HDF5Dataset = HDF5Dataset(
+            name=IMUDataFields.IDLE_MASK.value, data=sensor_data.idle_mask.tolist(), attributes={}
+        )
         # Build data dataset and add to sensor data subgroup items
         sensor_axis_names: List[SensorAxis] = []
         axis_data: List[List[Any]] = []
@@ -159,7 +163,7 @@ class IMUDataFileBuilder(FileBuilder):
             attributes={},
         )
         # Add time and data datasets to sensor data subgroup's items
-        sensor_data_subgroup_items = [time, data_dataset]
+        sensor_data_subgroup_items = [time, idle_mask, data_dataset]
         # Build sensor metadata attributes
         sensor_data_subgroup_attributes = self.__build_sensor_metadata_attributes(
             sensor_data, sensor_axis_names

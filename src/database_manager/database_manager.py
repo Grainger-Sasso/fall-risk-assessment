@@ -181,7 +181,7 @@ class DatabaseManager:
             # Update registry manager
             self.registry_manager.set_provider(data_type, new_registry)
         else:
-            raise ValueError(f"Attempting to add existing elements mapping")
+            raise ValueError(f"Attempting to add existing elements to registry")
 
     def _update_mapping(
         self,
@@ -206,7 +206,7 @@ class DatabaseManager:
             # Update mapping manager
             self.mapping_manager.set_provider(data_type, new_dataset_mapping)
         else:
-            raise ValueError(f"Attempting to add existing elements mapping")
+            raise ValueError(f"Attempting to add existing elements to mapping")
 
     def _any_new_ids_in_source(
         self, source_mapping: Dict[S, T], current_mapping: Dict[S, T]
