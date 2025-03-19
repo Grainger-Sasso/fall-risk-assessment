@@ -12,6 +12,8 @@ from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
     IMUDataFileBuilder,
 )
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
+from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
+from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
@@ -42,7 +44,9 @@ class GT3XToH5Converter:
 
     def __init__(self):
         self.file_builder = IMUDataFileBuilder()
+        self.model_builder = IMUDataBuilder()
         self.file_writer = HDF5FileWriter()
+        self.file_reader = HDF5FileReader()
 
     def convert_gt3x_to_h5(self, input_file_path: Path, output_file_path: Path) -> None:
         """Read GT3X file and extract accelerometer data and metadata
@@ -66,9 +70,8 @@ class GT3XToH5Converter:
 
         try:
             with FileReader(str(input_file_path)) as gt3x_file:
-                file: HDF5Group = self.build_h5_file(gt3x_file)
-                h5_file: HDF5Group = self.build_h5_file(file)
-                self.write_h5_file(h5_file)
+                h5_file: HDF5Group = self.build_h5_file(gt3x_file)
+                self.write_h5_file(h5_file, output_file_path)
 
                 # downsampled_data = self._downsample_data(accelerometer_data, 10)
                 # self.plot_triaxial_data_with_idle_highlight(
@@ -141,6 +144,12 @@ class GT3XToH5Converter:
 
     def write_h5_file(self, file: HDF5Group, output_file_path):
         self.file_writer.write(output_file_path, file)
+
+    def test_read_converted_file(self, path: Path):
+        h5_file: HDF5Group = self.file_reader.read(path)
+        imu_data: IMUDataBuilder = self.model_builder.build(h5_file)
+        print('')
+        pass
 
     def plot_triaxial_data(self, time, x_data, y_data, z_data):
         plt.figure(figsize=(10, 6))
@@ -406,7 +415,8 @@ def main():
     )
 
     gt3x_converter = GT3XToH5Converter()
-    gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
+    # gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
+    gt3x_converter.test_read_converted_file(output_file_path)
 
 
 if __name__ == "__main__":
