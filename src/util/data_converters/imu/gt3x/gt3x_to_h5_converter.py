@@ -8,11 +8,43 @@ import numpy as np
 import pandas as pd
 from pygt3x.reader import FileReader
 
+from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
+    IMUDataFileBuilder,
+)
+from src.data_io.formats.hdf5.hdf5_group import HDF5Group
+from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
+from src.data_model.data.imu.epoch_imu_data import EpochIMUData
+from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
+from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
+from src.data_model.data.imu.sensor_data import SensorData
+from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
+from src.data_types.instrument.sensor_type import SensorType
+from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument.instrument_identifier import (
+    InstrumentIdentifier,
+)
+from src.identifiers.user.user_identifier import UserIdentifier
+from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
+    AnatomicalAxis,
+)
+from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
+    AnatomicalCoordinateSystem,
+)
+from src.util.mechanics.coordinates.system.sensor.sensor_axis import SensorAxis
+from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
+    SensorCoordinateSystem,
+)
+
 
 class GT3XToH5Converter:
     """Converter for GT3X accelerometer files to HDF5 format"""
 
-    def read_gt3x(self, file_path: Path) -> Tuple[pd.DataFrame, Dict]:
+    def __init__(self):
+        self.file_builder = IMUDataFileBuilder()
+        self.file_writer = HDF5FileWriter()
+
+    def convert_gt3x_to_h5(self, input_file_path: Path, output_file_path: Path) -> None:
         """Read GT3X file and extract accelerometer data and metadata
 
         Args:
@@ -26,63 +58,89 @@ class GT3XToH5Converter:
             ValueError: If file does not exist or is not a GT3X file
             zipfile.BadZipFile: If file is corrupted
         """
-        if not file_path.exists():
-            raise ValueError(f"File does not exist: {file_path}")
+        if not input_file_path.exists():
+            raise ValueError(f"File does not exist: {input_file_path}")
 
-        if file_path.suffix.lower() != ".gt3x":
-            raise ValueError(f"File is not a GT3X file: {file_path}")
+        if input_file_path.suffix.lower() != ".gt3x":
+            raise ValueError(f"File is not a GT3X file: {input_file_path}")
 
         try:
-            with FileReader(str(file_path)) as gt3x_file:
-                accelerometer_data = gt3x_file.acceleration
-                downsampled_data = self._downsample_data(accelerometer_data, 10)
-                self.plot_triaxial_data_with_idle_highlight(
-                    downsampled_data[:, 0],
-                    downsampled_data[:, 1],
-                    downsampled_data[:, 2],
-                    downsampled_data[:, 3],
-                    downsampled_data[:, 4],
-                )
-                # Downsample by factor of 10
+            with FileReader(str(input_file_path)) as gt3x_file:
+                file: HDF5Group = self.build_h5_file(gt3x_file)
+                h5_file: HDF5Group = self.build_h5_file(file)
+                self.write_h5_file(h5_file)
 
-                # # Split the data into its components
-                # time = downsampled_data[:, 0]  # First column is time
-                # x_data = downsampled_data[:, 1]  # Second column is x-axis
-                # y_data = downsampled_data[:, 2]  # Third column is y-axis
-                # z_data = downsampled_data[:, 3]  # Fourth column is z-axis
-                # sleep_data = downsampled_data[:, 4]  # Fifth column is sleep mode
-
-                # # Plot the data showing gaps where sensor is in sleep mode
-                # self.plot_triaxial_data_with_gaps_single(
-                #     time, x_data, y_data, z_data, sleep_data
+                # downsampled_data = self._downsample_data(accelerometer_data, 10)
+                # self.plot_triaxial_data_with_idle_highlight(
+                #     downsampled_data[:, 0],
+                #     downsampled_data[:, 1],
+                #     downsampled_data[:, 2],
+                #     downsampled_data[:, 3],
+                #     downsampled_data[:, 4],
                 # )
 
-            #     print(
-            #         datetime.datetime.fromtimestamp(
-            #             gt3x_file.acceleration[0][0]
-            #         ).strftime("%c")
-            #     )
-            #     print(
-            #         datetime.datetime.fromtimestamp(
-            #             gt3x_file.acceleration[-1][0]
-            #         ).strftime("%c")
-            #     )
-            #     print(gt3x_file.acceleration[1][0] - gt3x_file.acceleration[0][0])
-            #     print(gt3x_file)
-
-            # with zipfile.ZipFile(file_path, "r") as zip_ref:
-            #     # Extract metadata from info.txt
-            #     metadata = self._parse_metadata(
-            #         zip_ref.read("info.txt").decode("utf-8")
-            #     )
-
-            #     # Extract accelerometer data from log.bin
-            #     data = self._parse_activity_data(zip_ref.read("log.bin"))
-
-            #     return data, metadata
-
         except zipfile.BadZipFile:
-            raise zipfile.BadZipFile(f"File is corrupted: {file_path}")
+            raise zipfile.BadZipFile(f"File is corrupted: {input_file_path}")
+
+    def build_h5_file(self, gt3x_file: FileReader) -> HDF5Group:
+        sensor_data: SensorData = self._build_sensor_data(gt3x_file)
+        start_time = sensor_data.time[0]
+        end_time = sensor_data.time[-1]
+        epoch_imu_data = EpochIMUData(
+            data=[sensor_data], epoch_start_time=start_time, epoch_end_time=end_time
+        )
+        imu_metadata = IMUMetadata(
+            imu_data_identifier=IMUDataIdentifier("dummy_imu_id"),
+            user_identifier=UserIdentifier("dummy_user_id"),
+            instrument_identifier=InstrumentIdentifier("actigraph", "0123"),
+        )
+        imu_data = IMUData(
+            data=[epoch_imu_data],
+            metadata=imu_metadata,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        return self.file_builder.build(imu_data)
+
+    def _build_sensor_data(self, gt3x_file: FileReader) -> SensorData:
+        # Get time and idle mask from data
+        time_data: np.ndarray = gt3x_file.acceleration[:, 0]
+        idle_data: np.ndarray = gt3x_file.acceleration[:, 4]
+        # Get triaxial accelerometer data and convert to Uniaxial data
+        # MD
+        x_data: np.ndarray = gt3x_file.acceleration[:, 1]
+        # Vertical
+        y_data: np.ndarray = gt3x_file.acceleration[:, 2]
+        # AP
+        z_data: np.ndarray = gt3x_file.acceleration[:, 3]
+        x_uniaxial = UniaxialSensorData(
+            anatomical_axis=AnatomicalAxis(AnatomicalCoordinateSystem.MEDIOLATERAL),
+            sensor_axis=SensorAxis(SensorCoordinateSystem.X),
+            data=x_data,
+        )
+        y_uniaxial = UniaxialSensorData(
+            anatomical_axis=AnatomicalAxis(AnatomicalCoordinateSystem.VERTICAL),
+            sensor_axis=SensorAxis(SensorCoordinateSystem.Y),
+            data=y_data,
+        )
+        z_uniaxial = UniaxialSensorData(
+            anatomical_axis=AnatomicalAxis(AnatomicalCoordinateSystem.ANTEROPOSTERIOR),
+            sensor_axis=SensorAxis(SensorCoordinateSystem.Z),
+            data=z_data,
+        )
+
+        sensor_metadata = SensorMetadata(
+            sensor_type=SensorType.ACCELEROMETER, sampling_rate=100.0, unit=""
+        )
+        return SensorData(
+            data=[x_uniaxial, y_uniaxial, z_uniaxial],
+            time=time_data,
+            idle_mask=idle_data,
+            metadata=sensor_metadata,
+        )
+
+    def write_h5_file(self, file: HDF5Group, output_file_path):
+        self.file_writer.write(output_file_path, file)
 
     def plot_triaxial_data(self, time, x_data, y_data, z_data):
         plt.figure(figsize=(10, 6))
@@ -293,16 +351,62 @@ class GT3XToH5Converter:
 
         return downsampled
 
+    # def convert_using_zipfile(self):
+    # Downsample by factor of 10
+
+    # # Split the data into its components
+    # time = downsampled_data[:, 0]  # First column is time
+    # x_data = downsampled_data[:, 1]  # Second column is x-axis
+    # y_data = downsampled_data[:, 2]  # Third column is y-axis
+    # z_data = downsampled_data[:, 3]  # Fourth column is z-axis
+    # sleep_data = downsampled_data[:, 4]  # Fifth column is sleep mode
+
+    # # Plot the data showing gaps where sensor is in sleep mode
+    # self.plot_triaxial_data_with_gaps_single(
+    #     time, x_data, y_data, z_data, sleep_data
+    # )
+
+    #     print(
+    #         datetime.datetime.fromtimestamp(
+    #             gt3x_file.acceleration[0][0]
+    #         ).strftime("%c")
+    #     )
+    #     print(
+    #         datetime.datetime.fromtimestamp(
+    #             gt3x_file.acceleration[-1][0]
+    #         ).strftime("%c")
+    #     )
+    #     print(gt3x_file.acceleration[1][0] - gt3x_file.acceleration[0][0])
+    #     print(gt3x_file)
+
+    # with zipfile.ZipFile(file_path, "r") as zip_ref:
+    #     # Extract metadata from info.txt
+    #     metadata = self._parse_metadata(
+    #         zip_ref.read("info.txt").decode("utf-8")
+    #     )
+
+    #     # Extract accelerometer data from log.bin
+    #     data = self._parse_activity_data(zip_ref.read("log.bin"))
+
+    #     return data, metadata
+
 
 def main():
     twenty_min_recording_path = Path(
         "/Users/graingersasso/Desktop/upstate_data/test_sample/FaFRA_CS_013/MOS2E20210841 (2024-12-13).gt3x"
     )
+    # multidaty_recording_path = Path(
+    #     "/Users/graingersasso/Desktop/upstate_data/test_sample/FaFRA_CS_013/Activity Data/MOS2E20210841 (2024-12-19).gt3x"
+    # )
     multidaty_recording_path = Path(
-        "/Users/graingersasso/Desktop/upstate_data/test_sample/FaFRA_CS_013/Activity Data/MOS2E20210841 (2024-12-19).gt3x"
+        "/Users/graingersasso/Desktop/fafra_testing/test_data/upstate_data/FaFRA_CS_013/Activity Data/MOS2E20210841 (2024-12-19).gt3x"
     )
+    output_file_path = Path(
+        "/Users/graingersasso/Desktop/fafra_testing/test_data/fafra_data/dummy_test_data/test_cs_013_imu_data.h5"
+    )
+
     gt3x_converter = GT3XToH5Converter()
-    data, metadata = gt3x_converter.read_gt3x(multidaty_recording_path)
+    gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
 
 
 if __name__ == "__main__":
