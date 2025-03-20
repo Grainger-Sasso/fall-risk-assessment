@@ -450,7 +450,7 @@ def main():
     )
 
     gt3x_converter = GT3XToH5Converter()
-    gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
+    # gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
     gt3x_converter.test_read_converted_file(output_file_path)
 
 

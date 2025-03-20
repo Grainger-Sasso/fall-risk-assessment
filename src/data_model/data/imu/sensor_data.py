@@ -60,3 +60,7 @@ class SensorData:
         Retrieve data corresponding to a specific sensor axis.
         """
         return self._get_data_by_axis(self._sensor_axis_map, sensor_axis)
+    
+    def get_triaxial_data(self):
+        
+        pass
