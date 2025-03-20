@@ -11,8 +11,8 @@ from pygt3x.reader import FileReader
 from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
     IMUDataFileBuilder,
 )
-from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
+from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
@@ -47,6 +47,8 @@ class GT3XToH5Converter:
         self.model_builder = IMUDataBuilder()
         self.file_writer = HDF5FileWriter()
         self.file_reader = HDF5FileReader()
+        # Scale factor to be applied to accelerometer data to convert to units of g
+        self.scale_factor = 256.0
 
     def convert_gt3x_to_h5(self, input_file_path: Path, output_file_path: Path) -> None:
         """Read GT3X file and extract accelerometer data and metadata
@@ -70,6 +72,13 @@ class GT3XToH5Converter:
 
         try:
             with FileReader(str(input_file_path)) as gt3x_file:
+                print("########## GT3X #############")
+                print(gt3x_file.acceleration[0, 0])
+                print(gt3x_file.acceleration[-1, 0])
+                print(len(gt3x_file.acceleration[:, 1]))
+                print(gt3x_file.acceleration[:10, 1])
+                acc_data = gt3x_file.to_pandas(calibrate=False)
+
                 h5_file: HDF5Group = self.build_h5_file(gt3x_file)
                 self.write_h5_file(h5_file, output_file_path)
 
@@ -86,16 +95,26 @@ class GT3XToH5Converter:
             raise zipfile.BadZipFile(f"File is corrupted: {input_file_path}")
 
     def build_h5_file(self, gt3x_file: FileReader) -> HDF5Group:
+        if gt3x_file.info.acceleration_scale != self.scale_factor:
+            raise ValueError(
+                "Scale factor in metadata doesn't match expected scale factor"
+            )
         sensor_data: SensorData = self._build_sensor_data(gt3x_file)
         start_time = sensor_data.time[0]
         end_time = sensor_data.time[-1]
         epoch_imu_data = EpochIMUData(
             data=[sensor_data], epoch_start_time=start_time, epoch_end_time=end_time
         )
+        # Build metadata
+        info = gt3x_file.info
+        sensor_name = "actigraph_" + info.device_type
+        sensor_serial_number = info.serial_number
         imu_metadata = IMUMetadata(
             imu_data_identifier=IMUDataIdentifier("dummy_imu_id"),
             user_identifier=UserIdentifier("dummy_user_id"),
-            instrument_identifier=InstrumentIdentifier("actigraph", "0123"),
+            instrument_identifier=InstrumentIdentifier(
+                sensor_name, sensor_serial_number
+            ),
         )
         imu_data = IMUData(
             data=[epoch_imu_data],
@@ -111,11 +130,11 @@ class GT3XToH5Converter:
         idle_data: np.ndarray = gt3x_file.acceleration[:, 4]
         # Get triaxial accelerometer data and convert to Uniaxial data
         # MD
-        x_data: np.ndarray = gt3x_file.acceleration[:, 1]
+        x_data: np.ndarray = gt3x_file.acceleration[:, 1] / self.scale_factor
         # Vertical
-        y_data: np.ndarray = gt3x_file.acceleration[:, 2]
+        y_data: np.ndarray = gt3x_file.acceleration[:, 2] / self.scale_factor
         # AP
-        z_data: np.ndarray = gt3x_file.acceleration[:, 3]
+        z_data: np.ndarray = gt3x_file.acceleration[:, 3] / self.scale_factor
         x_uniaxial = UniaxialSensorData(
             anatomical_axis=AnatomicalAxis(AnatomicalCoordinateSystem.MEDIOLATERAL),
             sensor_axis=SensorAxis(SensorCoordinateSystem.X),
@@ -133,7 +152,7 @@ class GT3XToH5Converter:
         )
 
         sensor_metadata = SensorMetadata(
-            sensor_type=SensorType.ACCELEROMETER, sampling_rate=100.0, unit=""
+            sensor_type=SensorType.ACCELEROMETER, sampling_rate=100.0, unit="g"
         )
         return SensorData(
             data=[x_uniaxial, y_uniaxial, z_uniaxial],
@@ -147,8 +166,24 @@ class GT3XToH5Converter:
 
     def test_read_converted_file(self, path: Path):
         h5_file: HDF5Group = self.file_reader.read(path)
-        imu_data: IMUDataBuilder = self.model_builder.build(h5_file)
-        print('')
+        imu_data: IMUData = self.model_builder.build(h5_file)
+        print("########## h5 #############")
+        print(imu_data.data[0].epoch_start_time)
+        print(imu_data.data[0].epoch_end_time)
+        print(
+            len(
+                imu_data.data[0]
+                .data[0]
+                .get_data_by_sensor_axis(SensorCoordinateSystem.X)
+                .data
+            )
+        )
+        print(
+            imu_data.data[0]
+            .data[0]
+            .get_data_by_sensor_axis(SensorCoordinateSystem.X)
+            .data[:10]
+        )
         pass
 
     def plot_triaxial_data(self, time, x_data, y_data, z_data):
@@ -415,7 +450,7 @@ def main():
     )
 
     gt3x_converter = GT3XToH5Converter()
-    # gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
+    gt3x_converter.convert_gt3x_to_h5(multidaty_recording_path, output_file_path)
     gt3x_converter.test_read_converted_file(output_file_path)
 
 

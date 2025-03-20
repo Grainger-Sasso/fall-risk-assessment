@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import Dict, List
 
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_types.instrument.sensor_type import SensorType
@@ -24,3 +24,6 @@ class EpochIMUData:
         Returns the start and end time as a list.
         """
         return [self.epoch_start_time, self.epoch_end_time]
+
+    def get_sensor_data_from_type(self, sensor_type: SensorType):
+        return self._sensor_data_map[sensor_type]
