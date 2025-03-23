@@ -63,6 +63,7 @@ class SKDHFeatureExtractionPipeline:
             )
         )
         res = pipeline.run(time=time, accel=accel, height=1.52)
+        print(res)
 
     def _build_pipeline(self, output_file_path: Path) -> skdh.Pipeline:
         """Extracts features
