@@ -1,7 +1,7 @@
 import datetime
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,16 +49,25 @@ class GT3XToH5Converter:
         self.file_reader = HDF5FileReader()
         # Scale factor to be applied to accelerometer data to convert to units of g
         self.scale_factor = 256.0
+        self.sampling_rate = 100.0
+        self.user_id = "dummy_user_id"
 
-    def convert_gt3x_to_h5(self, input_file_path: Path, output_file_path: Path) -> None:
-        """Read GT3X file and extract accelerometer data and metadata
+    def convert_gt3x_to_h5(
+        self,
+        input_file_path: Path,
+        output_file_path: Path,
+        scale_factor: Optional[float] = None,
+        sampling_rate: Optional[float] = None,
+        user_id: Optional[str] = None,
+    ) -> None:
+        """Convert GT3X file to H5 format with optional parameters
 
         Args:
-            file_path (Path): Path to GT3X file
-
-        Returns:
-            Tuple[pd.DataFrame, Dict]: DataFrame containing accelerometer data and
-                dictionary containing metadata
+            input_file_path (Path): Path to GT3X file
+            output_file_path (Path): Path to output H5 file
+            scale_factor (Optional[float], optional): Custom scale factor. Defaults to None.
+            sampling_rate (Optional[float], optional): Custom sampling rate. Defaults to None.
+            user_id (Optional[str], optional): Custom user identifier. Defaults to None.
 
         Raises:
             ValueError: If file does not exist or is not a GT3X file
@@ -71,6 +80,11 @@ class GT3XToH5Converter:
             raise ValueError(f"File is not a GT3X file: {input_file_path}")
 
         try:
+            # Use provided values or fall back to defaults
+            self.scale_factor = scale_factor or 256.0
+            self.sampling_rate = sampling_rate or 100.0
+            self.user_id = user_id or "dummy_user_id"
+
             with FileReader(str(input_file_path)) as gt3x_file:
                 print("########## GT3X #############")
                 print(gt3x_file.acceleration[0, 0])
@@ -111,7 +125,7 @@ class GT3XToH5Converter:
         sensor_serial_number = info.serial_number
         imu_metadata = IMUMetadata(
             imu_data_identifier=IMUDataIdentifier("dummy_imu_id"),
-            user_identifier=UserIdentifier("dummy_user_id"),
+            user_identifier=UserIdentifier(self.user_id),
             instrument_identifier=InstrumentIdentifier(
                 sensor_name, sensor_serial_number
             ),
@@ -152,7 +166,9 @@ class GT3XToH5Converter:
         )
 
         sensor_metadata = SensorMetadata(
-            sensor_type=SensorType.ACCELEROMETER, sampling_rate=100.0, unit="g"
+            sensor_type=SensorType.ACCELEROMETER,
+            sampling_rate=self.sampling_rate,
+            unit="g",
         )
         return SensorData(
             data=[x_uniaxial, y_uniaxial, z_uniaxial],

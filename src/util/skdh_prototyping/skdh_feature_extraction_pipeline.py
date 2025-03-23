@@ -1,12 +1,13 @@
 import datetime
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import skdh
+from skdh.gait.gait_metrics import gait_metrics
 from pygt3x.reader import FileReader
 
 from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
@@ -31,6 +32,7 @@ from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
 )
+from src.util.skdh_prototyping.output_gait_feature_keys import OutputGaitFeatureKeys
 from src.util.mechanics.coordinates.system.anatomical.anatomical_coordinate_system import (
     AnatomicalCoordinateSystem,
 )
@@ -47,9 +49,12 @@ class SKDHFeatureExtractionPipeline:
         self.file_writer = HDF5FileWriter()
         self.file_reader = HDF5FileReader()
 
-    def extract_metrics(self, input_file_path: Path, output_file_path: Path) -> Path:
+    def extract_metrics(
+        self, input_file_path: Path, output_file_path: Optional[Path] = None
+    ) -> Path:
         h5_file: HDF5Group = self.file_reader.read(input_file_path)
         imu_data: IMUData = self.model_builder.build(h5_file)
+        del(h5_file)
         pipeline: skdh.Pipeline = self._build_pipeline(output_file_path)
         sensor_data: SensorData = imu_data.data[0].data[0]
         time = sensor_data.time
@@ -63,9 +68,11 @@ class SKDHFeatureExtractionPipeline:
             )
         )
         res = pipeline.run(time=time, accel=accel, height=1.52)
-        print(res)
+        gait_res: Dict = res['GaitLumbar']
 
-    def _build_pipeline(self, output_file_path: Path) -> skdh.Pipeline:
+        
+
+    def _build_pipeline(self, output_file_path: Optional[Path]) -> skdh.Pipeline:
         """Extracts features
 
         Args:
@@ -90,13 +97,16 @@ class SKDHFeatureExtractionPipeline:
         pipeline.add(skdh.preprocessing.GetDayWindowIndices(bases=[0], periods=[24]))
         pipeline.add(skdh.preprocessing.CalibrateAccelerometer())
         pipeline.add(skdh.context.PredictGaitLumbarLgbm())
-        pipeline.add(
-            skdh.gait.GaitLumbar(),  # default parameters
-            save_file=str(
-                output_file_path
-            ),  # automatically save gait results to a file
-            # this will use the CSV file name as the start of the output file name
-        )
+        if output_file_path:
+            pipeline.add(
+                skdh.gait.GaitLumbar(),  # default parameters
+                save_file=str(
+                    output_file_path
+                ),  # automatically save gait results to a file
+                # this will use the CSV file name as the start of the output file name
+            )
+        else:
+            pipeline.add(skdh.gait.GaitLumbar())
         return pipeline
 
 
@@ -108,7 +118,8 @@ def main():
         "/Users/graingersasso/Desktop/fafra_testing/test_data/fafra_data/test_features/test_gait_results.csv"
     )
     extractor = SKDHFeatureExtractionPipeline()
-    extractor.extract_metrics(test_file_path, output_path)
+    # extractor.extract_metrics(test_file_path, output_path)
+    extractor.extract_metrics(test_file_path)
 
 
 if __name__ == "__main__":
