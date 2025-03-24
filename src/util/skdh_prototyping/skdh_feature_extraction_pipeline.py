@@ -121,7 +121,23 @@ class SKDHFeatureExtractionPipeline:
         )
         res = pipeline.run(time=time, accel=accel, height=1.52)
         gait_res: Dict = res[self.gait_res_key]
+        print(
+            self.get_unique_bouts_count(
+                gait_res, 0, len(gait_res[GaitFeatureKeys.DAY_N.value])
+            )
+        )
         self.aggregate_multi_day_metrics(gait_res)
+
+    def get_unique_bouts_count(self, gait_res, start, stop):
+        unique_bout_ids = []
+        for i in range(start, stop):
+            bout_id = (
+                str(gait_res[GaitFeatureKeys.DAY_N.value][i])
+                + "_"
+                + str(gait_res[GaitFeatureKeys.BOUT_N.value][i])
+            )
+            unique_bout_ids.append(bout_id)
+        return len(set(unique_bout_ids))
 
     def aggregate_multi_day_metrics(
         self, gait_res: Dict
@@ -135,38 +151,56 @@ class SKDHFeatureExtractionPipeline:
         day_n_list = gait_res[GaitFeatureKeys.DAY_N.value]
         # Traverse days
         while day_start_ix < len(day_n_list):
-            day_end_ix = day_start_ix
+            # print(f"Day number: {day_n}")
+            day_end_ix = day_start_ix + 1
             # Traverse days to find end day index
-            while day_n_list[day_end_ix] == day_n and day_end_ix < len(day_n_list):
+            while day_end_ix < len(day_n_list) and day_n_list[day_end_ix] == day_n:
                 day_end_ix += 1
             # Aggregate bouts, add to result
-            multi_day_metrics.extend(
-                self.aggregate_single_day_metrics(gait_res, day_start_ix, day_end_ix)
+            bout_metrics = self.aggregate_single_day_metrics(
+                gait_res, day_start_ix, day_end_ix
             )
+            multi_day_metrics.extend(bout_metrics)
+            # print(
+            #     f"Bout count: {self.get_unique_bouts_count(gait_res, day_start_ix, day_end_ix)}"
+            # )
+            # print(f"Bouts calc'd: {len(bout_metrics)}")
             # Increment day_n and day_start_ix
             day_n += 1
             day_start_ix = day_end_ix
         # Return results
+        # Verify total botus:  17 + 58 + 36 + 40 + 18 = 169 total bouts
+        print(len(multi_day_metrics))
         return multi_day_metrics
 
     def aggregate_single_day_metrics(
         self, gait_res, day_start_ix: int, day_end_ix: int
-    ) -> List[Dict[GaitFeatureKeys, float]]:
+    ) -> List[Dict[GaitFeatureKeys, np.float64]]:
         single_day_metrics = []
         bout_n_list = gait_res[GaitFeatureKeys.BOUT_N.value]
         bout_start_ix = day_start_ix
         bout_n = 1
-        while bout_start_ix < len(bout_n_list):
+        while bout_start_ix < len(bout_n_list) and bout_start_ix < day_end_ix:
             bout_metrics = {}
-            bout_end_ix = bout_start_ix
-            while bout_n_list[bout_end_ix] == bout_n and bout_end_ix < len(bout_n_list):
+            bout_end_ix = bout_start_ix + 1
+            while (
+                bout_end_ix < day_end_ix
+                and bout_n_list[bout_end_ix] == bout_n
+            ):
                 bout_end_ix += 1
+            # print(f"BOUT N: {bout_n}")
+            # print(f"BOUT START: {bout_start_ix}")
+            # print(f"BOUT END: {bout_end_ix}")
+
             for event_metric in self.event_gait_metrics:
-                bout_metrics[event_metric] = np.mean(
+                # Take mean of metrics ignoring nan values
+                bout_metrics[event_metric] = np.nanmean(
                     gait_res[event_metric.value][bout_start_ix:bout_end_ix]
                 )
             for bout_metric in self.bout_gait_metrics:
-                bout_metrics[bout_metric] = gait_res[bout_metric.value][bout_start_ix]
+                bout_metrics[bout_metric] = np.float64(
+                    gait_res[bout_metric.value][bout_start_ix]
+                )
             single_day_metrics.append(bout_metrics)
             bout_n += 1
             bout_start_ix = bout_end_ix
