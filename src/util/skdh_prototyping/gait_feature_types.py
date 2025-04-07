@@ -1,7 +1,7 @@
-from enum import Enum, auto
+from enum import Enum
 
 
-class GaitFeatureKeys(Enum):
+class GaitFeatureTypes(Enum):
     # Time and Day related features
     DAY_N = "Day N"
     DATE = "Date"
