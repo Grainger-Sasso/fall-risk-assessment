@@ -6,7 +6,8 @@ class RawFeatureFields(Enum):
 
     RAW_FEATURE = "raw_feature"
     FEATURES = "features"
-    FEATURE_EPOCHS = "feature_epochs"
+    EPOCH_STARTS = "epoch_starts"
+    EPOCH_ENDS = "epoch_ends"
     FEATURE_NAMES = "feature_names"
     RAW_FEATURE_IDENTIFIER = "raw_feature_identifier"
     IMU_DATA_IDENTIFIER = "imu_data_identifier"

@@ -72,10 +72,12 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
             raise ValueError("No epoch features found in data")
 
         # Get epochs, feature names, and N-D matrix of feature data
-        epochs = []
+        epoch_starts = []
+        epoch_ends = []
         feature_data = []
         for raw_epoch_feature in data.raw_epoch_features:
-            epochs.append(raw_epoch_feature.epoch_start_time)
+            epoch_starts.append(raw_epoch_feature.epoch_start_time)
+            epoch_ends.append(raw_epoch_feature.epoch_end_time)
             epoch_data = [
                 raw_feature.value for raw_feature in raw_epoch_feature.raw_features
             ]
@@ -91,9 +93,14 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
             name=RawFeatureFields.FEATURES.value, data=feature_data, attributes={}
         )
 
-        # Build feature epoch dataset
-        feature_epoch_dataset: HDF5Dataset = HDF5Dataset(
-            name=RawFeatureFields.FEATURE_EPOCHS.value, data=epochs, attributes={}
+        # Build epoch starts dataset
+        epoch_starts_dataset: HDF5Dataset = HDF5Dataset(
+            name=RawFeatureFields.EPOCH_STARTS.value, data=epoch_starts, attributes={}
+        )
+
+        # Build epoch ends dataset
+        epoch_ends_dataset: HDF5Dataset = HDF5Dataset(
+            name=RawFeatureFields.EPOCH_ENDS.value, data=epoch_ends, attributes={}
         )
 
         # Build feature name dataset
@@ -101,7 +108,12 @@ class RawFeatureSetEntryFileBuilder(FileBuilder):
             name=RawFeatureFields.FEATURE_NAMES.value, data=feature_names, attributes={}
         )
 
-        return [feature_dataset, feature_epoch_dataset, feature_names_dataset]
+        return [
+            feature_dataset,
+            epoch_starts_dataset,
+            epoch_ends_dataset,
+            feature_names_dataset,
+        ]
 
     def __build_raw_feature_group_attributes(
         self, metadata: RawFeatureSetEntryMetadata

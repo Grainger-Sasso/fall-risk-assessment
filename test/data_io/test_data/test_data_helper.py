@@ -155,6 +155,7 @@ class TestConstants(Enum):
         RawFeatureType.PLACEHOLDER.value,
     ]
     EPOCH_START_TIMES = [0.0, 1.0, 2.0]
+    EPOCH_END_TIMES = [10.0, 11.0, 12.0]
     STAT_NAMES = [
         DescriptiveStatisticType.PLACEHOLDER.value,
         DescriptiveStatisticType.PLACEHOLDER.value,
@@ -166,6 +167,7 @@ class TestConstants(Enum):
     RAW_FEATURE_ID = "test_raw_feature_id"
     AGG_FEATURE_ID = "test_agg_feature_id"
     RAW_FEATURE_START_TIME = 0.0
+    RAW_FEATURE_END_TIME = 10.0
     RAW_FEATURE_EPOCH_LEN = 1.0
     PLACEHOLDER_STAT_VALUE = 1.0
     PLACEHOLDER_FEATURE_VALUE = 2.0
@@ -667,12 +669,13 @@ class FeatureDataHelper:
         # Build feature names (rows, feature names)
         feature_names: HDF5Dataset = self.__build_raw_feature_names()
         # Build stat names (cols, stat names)
-        feature_epochs: HDF5Dataset = self.__build_raw_feature_epochs()
+        epoch_starts: HDF5Dataset = self.__build_epoch_starts()
+        epoch_ends: HDF5Dataset = self.__build_epoch_ends()
         # Build attributes
         attributes: Dict[str, str] = self.__build_raw_attributes()
         return HDF5Group(
             name=RawFeatureFields.RAW_FEATURE.value,
-            items=[feature_dataset, feature_names, feature_epochs],
+            items=[feature_dataset, feature_names, epoch_starts, epoch_ends],
             attributes=attributes,
         )
 
@@ -690,10 +693,17 @@ class FeatureDataHelper:
             attributes={},
         )
 
-    def __build_raw_feature_epochs(self) -> HDF5Dataset:
+    def __build_epoch_starts(self) -> HDF5Dataset:
         return HDF5Dataset(
-            name=RawFeatureFields.FEATURE_EPOCHS.value,
+            name=RawFeatureFields.EPOCH_STARTS.value,
             data=TestConstants.EPOCH_START_TIMES.value,
+            attributes={},
+        )
+
+    def __build_epoch_ends(self) -> HDF5Dataset:
+        return HDF5Dataset(
+            name=RawFeatureFields.EPOCH_ENDS.value,
+            data=TestConstants.EPOCH_END_TIMES.value,
             attributes={},
         )
 
@@ -717,15 +727,12 @@ class FeatureDataHelper:
             RawEpochFeatures(
                 raw_features=self.__build_raw_feature_list(),
                 epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value,
-                epoch_end_time=TestConstants.RAW_FEATURE_START_TIME.value
-                + TestConstants.RAW_FEATURE_EPOCH_LEN.value,
+                epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value,
             ),
             RawEpochFeatures(
                 raw_features=self.__build_raw_feature_list(),
                 epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value + 0.1,
-                epoch_end_time=TestConstants.RAW_FEATURE_START_TIME.value
-                + TestConstants.RAW_FEATURE_EPOCH_LEN.value
-                + 0.1,
+                epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value + 0.1,
             ),
         ]
 

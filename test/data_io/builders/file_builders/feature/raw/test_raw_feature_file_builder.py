@@ -60,7 +60,7 @@ class TestRawFeatureFileBuilder(BaseTest):
         # Assert parent group items
         feature_items = result.items
         self.assertIsInstance(feature_items, list)
-        self.assertEqual(len(feature_items), 3)
+        self.assertEqual(len(feature_items), 4)
         features = result.get_item_by_name(RawFeatureFields.FEATURES.value)
         self.assertIsInstance(features, HDF5Dataset)
         self.assertEqual(
@@ -86,16 +86,27 @@ class TestRawFeatureFileBuilder(BaseTest):
         )
         self.assertEqual(feature_names.attributes, {})
 
-        epochs = result.get_item_by_name(RawFeatureFields.FEATURE_EPOCHS.value)
-        self.assertIsInstance(epochs, HDF5Dataset)
+        epoch_starts = result.get_item_by_name(RawFeatureFields.EPOCH_STARTS.value)
+        self.assertIsInstance(epoch_starts, HDF5Dataset)
         self.assertEqual(
-            epochs.data,
+            epoch_starts.data,
             [
                 TestConstants.RAW_FEATURE_START_TIME.value,
                 TestConstants.RAW_FEATURE_START_TIME.value + 0.1,
             ],
         )
-        self.assertEqual(epochs.attributes, {})
+        self.assertEqual(epoch_starts.attributes, {})
+
+        epoch_ends = result.get_item_by_name(RawFeatureFields.EPOCH_ENDS.value)
+        self.assertIsInstance(epoch_ends, HDF5Dataset)
+        self.assertEqual(
+            epoch_ends.data,
+            [
+                TestConstants.RAW_FEATURE_END_TIME.value,
+                TestConstants.RAW_FEATURE_END_TIME.value + 0.1,
+            ],
+        )
+        self.assertEqual(epoch_ends.attributes, {})
 
     def test_build_empty_feature(self):
         with self.assertRaises(ValueError):

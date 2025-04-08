@@ -99,8 +99,11 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
             features: np.ndarray = np.array(
                 input_file.get_item_by_name(RawFeatureFields.FEATURES.value).data
             )
-            feature_epochs: np.ndarray = np.array(
-                input_file.get_item_by_name(RawFeatureFields.FEATURE_EPOCHS.value).data
+            epoch_starts: np.ndarray = np.array(
+                input_file.get_item_by_name(RawFeatureFields.EPOCH_STARTS.value).data
+            )
+            epoch_ends: np.ndarray = np.array(
+                input_file.get_item_by_name(RawFeatureFields.EPOCH_ENDS.value).data
             )
             feature_names: np.ndarray = np.array(
                 input_file.get_item_by_name(RawFeatureFields.FEATURE_NAMES.value).data
@@ -110,22 +113,34 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
 
         if len(features) == 0:
             raise ValueError("Empty features array")
-        if len(feature_epochs) == 0:
-            raise ValueError("Empty epochs array")
+        if len(epoch_starts) == 0:
+            raise ValueError("Empty epoch start time array")
+        if len(epoch_ends) == 0:
+            raise ValueError("Empty epoch end time array")
         if len(feature_names) == 0:
             raise ValueError("Empty feature names array")
-        if features.shape[0] != len(feature_epochs):
-            raise ValueError("Number of features does not match number of epochs")
+        if features.shape[0] != len(epoch_starts):
+            raise ValueError(
+                "Number of features does not match number of epoch start times"
+            )
+        if features.shape[0] != len(epoch_ends):
+            raise ValueError(
+                "Number of features does not match number of epoch end times"
+            )
         if features.shape[1] != len(feature_names):
             raise ValueError(
                 "Number of features does not match number of feature names"
             )
 
         raw_epoch_feature_list: List[RawEpochFeatures] = []
-        for row_index, epoch in enumerate(feature_epochs):
+        for row_index in range(len(epoch_starts)):
             raw_epoch_feature_list.append(
                 self.__build_raw_epoch_features(
-                    features, feature_names, row_index, epoch, epoch_len
+                    features,
+                    feature_names,
+                    row_index,
+                    epoch_starts[row_index],
+                    epoch_ends[row_index],
                 )
             )
         return raw_epoch_feature_list
@@ -135,8 +150,8 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         features: np.ndarray,
         feature_col_names: np.ndarray,
         row_index: int,
-        epoch: float,
-        epoch_len: float,
+        epoch_start: float,
+        epoch_end: float,
     ) -> RawEpochFeatures:
         """Build raw epoch features from feature data.
 
@@ -145,7 +160,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
             feature_col_names (np.ndarray): Array of feature names
             row_index (int): Index of current epoch in features array
             epoch (float): Start time of the epoch
-            epoch_len (float): Length of the epoch in seconds
+            epoch_end (float): End time of the epoch
 
         Returns:
             RawEpochFeatures: Constructed epoch features
@@ -171,9 +186,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         if not raw_feature_list:
             raise ValueError("No features constructed for epoch")
 
-        # Get epoch start and end time
-        epoch_start_time, epoch_end_time = (epoch, epoch + epoch_len)
-        return RawEpochFeatures(raw_feature_list, epoch_start_time, epoch_end_time)
+        return RawEpochFeatures(raw_feature_list, epoch_start, epoch_end)
 
     def __build_raw_feature_set_entry_metadata(
         self, input_file_attributes: Dict[str, Any]

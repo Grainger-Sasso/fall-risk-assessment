@@ -138,8 +138,7 @@ class TestRawFeatureFileExporter(BaseTest):
         )
         self.assertEqual(
             feature_0.epoch_end_time,
-            TestConstants.RAW_FEATURE_START_TIME.value
-            + TestConstants.RAW_FEATURE_EPOCH_LEN.value,
+            TestConstants.RAW_FEATURE_END_TIME.value,
         )
         self.assertIsInstance(feature_0.raw_features, list)
         self.assertEqual(
@@ -177,9 +176,7 @@ class TestRawFeatureFileExporter(BaseTest):
         )
         self.assertEqual(
             feature_1.epoch_end_time,
-            TestConstants.RAW_FEATURE_START_TIME.value
-            + TestConstants.RAW_FEATURE_EPOCH_LEN.value
-            + 0.1,
+            TestConstants.RAW_FEATURE_END_TIME.value + 0.1,
         )
         self.assertIsInstance(feature_1.raw_features, list)
         self.assertEqual(

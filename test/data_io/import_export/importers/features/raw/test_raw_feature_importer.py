@@ -104,8 +104,7 @@ class TestRawFeatureImporter(BaseTest):
             )
             self.assertEqual(
                 epoch_feature.epoch_end_time,
-                TestConstants.EPOCH_START_TIMES.value[epoch_ix]
-                + TestConstants.RAW_FEATURE_EPOCH_LEN.value,
+                TestConstants.EPOCH_END_TIMES.value[epoch_ix],
             )
             self.assertIsInstance(epoch_feature.raw_features, list)
             self.assertEqual(
