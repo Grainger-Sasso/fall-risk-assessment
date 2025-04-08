@@ -46,8 +46,7 @@ from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system impor
 from src.util.skdh_prototyping.descriptive_statistic_types import (
     DescriptiveStatisticsTypes,
 )
-from src.util.skdh_prototyping.gait_feature_types import GaitFeatureTypes
-
+from src.util.skdh_prototyping.gait_feature_types import RawFeatureType
 
 
 class SKDHFeatureExtractionPipeline:
@@ -57,55 +56,55 @@ class SKDHFeatureExtractionPipeline:
         self.file_writer = HDF5FileWriter()
         self.file_reader = HDF5FileReader()
         self.gait_res_key = "GaitLumbar"
-        self.event_gait_metrics: List[GaitFeatureTypes] = [
-            GaitFeatureTypes.STRIDE_TIME,
-            GaitFeatureTypes.STRIDE_TIME_ASYMMETRY,
-            GaitFeatureTypes.STANCE_TIME,
-            GaitFeatureTypes.STANCE_TIME_ASYMMETRY,
-            GaitFeatureTypes.SWING_TIME,
-            GaitFeatureTypes.SWING_TIME_ASYMMETRY,
-            GaitFeatureTypes.STEP_TIME,
-            GaitFeatureTypes.STEP_TIME_ASYMMETRY,
-            GaitFeatureTypes.INITIAL_DOUBLE_SUPPORT,
-            GaitFeatureTypes.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
-            GaitFeatureTypes.TERMINAL_DOUBLE_SUPPORT,
-            GaitFeatureTypes.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
-            GaitFeatureTypes.DOUBLE_SUPPORT,
-            GaitFeatureTypes.DOUBLE_SUPPORT_ASYMMETRY,
-            GaitFeatureTypes.SINGLE_SUPPORT,
-            GaitFeatureTypes.SINGLE_SUPPORT_ASYMMETRY,
-            GaitFeatureTypes.M2_DELTA_H,
-            GaitFeatureTypes.M2_DELTA_H_PRIME,
-            GaitFeatureTypes.STEP_LENGTH,
-            GaitFeatureTypes.STEP_LENGTH_ASYMMETRY,
-            GaitFeatureTypes.STRIDE_LENGTH,
-            GaitFeatureTypes.STRIDE_LENGTH_ASYMMETRY,
-            GaitFeatureTypes.GAIT_SPEED,
-            GaitFeatureTypes.GAIT_SPEED_ASYMMETRY,
-            GaitFeatureTypes.CADENCE,
-            GaitFeatureTypes.M1_DELTA_H,
-            GaitFeatureTypes.STEP_LENGTH_M1,
-            GaitFeatureTypes.STEP_LENGTH_M1_ASYMMETRY,
-            GaitFeatureTypes.STRIDE_LENGTH_M1,
-            GaitFeatureTypes.STRIDE_LENGTH_M1_ASYMMETRY,
-            GaitFeatureTypes.GAIT_SPEED_M1,
-            GaitFeatureTypes.GAIT_SPEED_M1_ASYMMETRY,
-            GaitFeatureTypes.INTRA_STEP_COVARIANCE_V,
-            GaitFeatureTypes.INTRA_STRIDE_COVARIANCE_V,
-            GaitFeatureTypes.HARMONIC_RATIO_V,
-            GaitFeatureTypes.STRIDE_SPARC,
+        self.event_gait_metrics: List[RawFeatureType] = [
+            RawFeatureType.STRIDE_TIME,
+            RawFeatureType.STRIDE_TIME_ASYMMETRY,
+            RawFeatureType.STANCE_TIME,
+            RawFeatureType.STANCE_TIME_ASYMMETRY,
+            RawFeatureType.SWING_TIME,
+            RawFeatureType.SWING_TIME_ASYMMETRY,
+            RawFeatureType.STEP_TIME,
+            RawFeatureType.STEP_TIME_ASYMMETRY,
+            RawFeatureType.INITIAL_DOUBLE_SUPPORT,
+            RawFeatureType.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
+            RawFeatureType.TERMINAL_DOUBLE_SUPPORT,
+            RawFeatureType.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
+            RawFeatureType.DOUBLE_SUPPORT,
+            RawFeatureType.DOUBLE_SUPPORT_ASYMMETRY,
+            RawFeatureType.SINGLE_SUPPORT,
+            RawFeatureType.SINGLE_SUPPORT_ASYMMETRY,
+            RawFeatureType.M2_DELTA_H,
+            RawFeatureType.M2_DELTA_H_PRIME,
+            RawFeatureType.STEP_LENGTH,
+            RawFeatureType.STEP_LENGTH_ASYMMETRY,
+            RawFeatureType.STRIDE_LENGTH,
+            RawFeatureType.STRIDE_LENGTH_ASYMMETRY,
+            RawFeatureType.GAIT_SPEED,
+            RawFeatureType.GAIT_SPEED_ASYMMETRY,
+            RawFeatureType.CADENCE,
+            RawFeatureType.M1_DELTA_H,
+            RawFeatureType.STEP_LENGTH_M1,
+            RawFeatureType.STEP_LENGTH_M1_ASYMMETRY,
+            RawFeatureType.STRIDE_LENGTH_M1,
+            RawFeatureType.STRIDE_LENGTH_M1_ASYMMETRY,
+            RawFeatureType.GAIT_SPEED_M1,
+            RawFeatureType.GAIT_SPEED_M1_ASYMMETRY,
+            RawFeatureType.INTRA_STEP_COVARIANCE_V,
+            RawFeatureType.INTRA_STRIDE_COVARIANCE_V,
+            RawFeatureType.HARMONIC_RATIO_V,
+            RawFeatureType.STRIDE_SPARC,
         ]
-        self.bout_gait_metrics: List[GaitFeatureTypes] = [
-            GaitFeatureTypes.BOUT_DURATION,
-            GaitFeatureTypes.BOUT_STEPS,
-            GaitFeatureTypes.GAIT_CYCLES,
-            GaitFeatureTypes.DEBUG_MEAN_STEP_FREQ,
-            GaitFeatureTypes.BOUT_PHASE_COORDINATION_INDEX,
-            GaitFeatureTypes.BOUT_GAIT_SYMMETRY_INDEX,
-            GaitFeatureTypes.BOUT_STEP_REGULARITY_V,
-            GaitFeatureTypes.BOUT_STRIDE_REGULARITY_V,
-            GaitFeatureTypes.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
-            GaitFeatureTypes.BOUT_REGULARITY_INDEX_V,
+        self.bout_gait_metrics: List[RawFeatureType] = [
+            RawFeatureType.BOUT_DURATION,
+            RawFeatureType.BOUT_STEPS,
+            RawFeatureType.GAIT_CYCLES,
+            RawFeatureType.DEBUG_MEAN_STEP_FREQ,
+            RawFeatureType.BOUT_PHASE_COORDINATION_INDEX,
+            RawFeatureType.BOUT_GAIT_SYMMETRY_INDEX,
+            RawFeatureType.BOUT_STEP_REGULARITY_V,
+            RawFeatureType.BOUT_STRIDE_REGULARITY_V,
+            RawFeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
+            RawFeatureType.BOUT_REGULARITY_INDEX_V,
         ]
 
     def extract_metrics(
@@ -130,29 +129,29 @@ class SKDHFeatureExtractionPipeline:
         gait_res: Dict = res[self.gait_res_key]
         print(
             self.get_unique_bouts_count(
-                gait_res, 0, len(gait_res[GaitFeatureTypes.DAY_N.value])
+                gait_res, 0, len(gait_res[RawFeatureType.DAY_N.value])
             )
         )
-        multi_day_metrics: List[Dict[GaitFeatureTypes, float]] = (
+        multi_day_metrics: List[Dict[RawFeatureType, float]] = (
             self.aggregate_multi_day_metrics(gait_res)
         )
         output_features = self.compute_aggregate_features(multi_day_metrics)
 
         # Example: Visualize multiple gait parameters
         parameters_to_plot = [
-            GaitFeatureTypes.GAIT_SPEED,
-            GaitFeatureTypes.STRIDE_LENGTH,
-            GaitFeatureTypes.CADENCE,
-            GaitFeatureTypes.STRIDE_TIME,
+            RawFeatureType.GAIT_SPEED,
+            RawFeatureType.STRIDE_LENGTH,
+            RawFeatureType.CADENCE,
+            RawFeatureType.STRIDE_TIME,
         ]
         self.visualize_gait_parameters(output_features, parameters_to_plot, n_cols=2)
 
         print("")
 
     def compute_aggregate_features(
-        self, multi_day_metrics: List[Dict[GaitFeatureTypes, float]]
+        self, multi_day_metrics: List[Dict[RawFeatureType, float]]
     ) -> List[AggregateFeatureSetEntry]:
-        raw_feature_types: List[GaitFeatureTypes] = multi_day_metrics[0].keys()
+        raw_feature_types: List[RawFeatureType] = multi_day_metrics[0].keys()
         output_features = {}
         for raw_feature_type in raw_feature_types:
             feature_values = np.array(
@@ -166,7 +165,7 @@ class SKDHFeatureExtractionPipeline:
 
     def aggregate_multi_day_metrics(
         self, gait_res: Dict
-    ) -> List[Dict[GaitFeatureTypes, float]]:
+    ) -> List[Dict[RawFeatureType, float]]:
         """Aggregates multi-day, event-level metrics into collection of bout-level metrics
 
         Args:
@@ -176,12 +175,12 @@ class SKDHFeatureExtractionPipeline:
             List[Dict[GaitFeatureKeys, float]]: _description_
         """
         # Init results dictionary (dayN - boutN)
-        multi_day_metrics: List[Dict[GaitFeatureTypes, float]] = []
+        multi_day_metrics: List[Dict[RawFeatureType, float]] = []
         # Initialize pointers for to traverse days and bouts
         day_start_ix = 0
         day_n = 1
         # Reference bout numbers and days from resutls
-        day_n_list = gait_res[GaitFeatureTypes.DAY_N.value]
+        day_n_list = gait_res[RawFeatureType.DAY_N.value]
         # Traverse days
         while day_start_ix < len(day_n_list):
             # [1, 1, 1, 2, 2, 3]
@@ -207,9 +206,9 @@ class SKDHFeatureExtractionPipeline:
 
     def aggregate_single_day_metrics(
         self, gait_res, day_start_ix: int, day_end_ix: int
-    ) -> List[Dict[GaitFeatureTypes, np.float64]]:
+    ) -> List[Dict[RawFeatureType, np.float64]]:
         single_day_metrics = []
-        bout_n_list = gait_res[GaitFeatureTypes.BOUT_N.value]
+        bout_n_list = gait_res[RawFeatureType.BOUT_N.value]
         bout_start_ix = day_start_ix
         bout_n = 1
         while bout_start_ix < len(bout_n_list) and bout_start_ix < day_end_ix:
@@ -230,8 +229,12 @@ class SKDHFeatureExtractionPipeline:
                 bout_metrics[bout_metric] = np.float64(
                     gait_res[bout_metric.value][bout_start_ix]
                 )
-            bout_metrics[GaitFeatureTypes.BOUT_START_TIMESTAMP] = gait_res[GaitFeatureTypes.IC_TIME.value][bout_start_ix]
-            bout_metrics[GaitFeatureTypes.BOUT_END_TIMESTAMP] = gait_res[GaitFeatureTypes.IC_TIME.value][bout_end_ix]
+            bout_metrics[RawFeatureType.BOUT_START_TIMESTAMP] = gait_res[
+                RawFeatureType.IC_TIME.value
+            ][bout_start_ix].timestamp()
+            bout_metrics[RawFeatureType.BOUT_END_TIMESTAMP] = gait_res[
+                RawFeatureType.IC_TIME.value
+            ][bout_end_ix].timestamp()
             single_day_metrics.append(bout_metrics)
             bout_n += 1
             bout_start_ix = bout_end_ix
@@ -250,9 +253,9 @@ class SKDHFeatureExtractionPipeline:
         unique_bout_ids = []
         for i in range(start, stop):
             bout_id = (
-                str(gait_res[GaitFeatureTypes.DAY_N.value][i])
+                str(gait_res[RawFeatureType.DAY_N.value][i])
                 + "_"
-                + str(gait_res[GaitFeatureTypes.BOUT_N.value][i])
+                + str(gait_res[RawFeatureType.BOUT_N.value][i])
             )
             unique_bout_ids.append(bout_id)
         return len(set(unique_bout_ids))
@@ -297,7 +300,7 @@ class SKDHFeatureExtractionPipeline:
     def visualize_gait_parameters(
         self,
         output_features: Dict,
-        gait_parameters: List[GaitFeatureTypes],
+        gait_parameters: List[RawFeatureType],
         n_cols: int = 2,
     ):
         """Creates multiple box and whisker plots for specified gait parameters.

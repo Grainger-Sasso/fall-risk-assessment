@@ -1,11 +1,23 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
+from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.user.user_data import UserData
+from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
 )
+from src.data_model.features.aggregate.descriptive_statistic import DescriptiveStatistic
+from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_metadata import (
+    AggregateFeatureSetEntryMetadata,
+)
+from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
+    RawFeatureSetEntryMetadata,
+)
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_feature import RawFeature
+from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
@@ -26,6 +38,7 @@ class FeatureIDGenerator:
 
 class GaitFeatureProcessor:
     def __init__(self):
+        self.feature_id_generator = FeatureIDGenerator()
         self.event_gait_features: List[RawFeatureType] = [
             RawFeatureType.STRIDE_TIME,
             RawFeatureType.STRIDE_TIME_ASYMMETRY,
@@ -76,25 +89,83 @@ class GaitFeatureProcessor:
             RawFeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
             RawFeatureType.BOUT_REGULARITY_INDEX_V,
         ]
+        self.raw_feature_types: List[RawFeatureType] = zip(
+            self.bout_gait_features, self.event_gait_features
+        )
 
-    def process_features(self, gait_res: Dict[str, Any]):
+    def process_features(
+        self, gait_res: Dict[str, Any], imu_data: IMUData, user_data: UserData
+    ) -> Tuple[RawFeatureSetEntry, AggregateFeatureSetEntry]:
         multiday_features: List[Dict[RawFeatureType, float]] = (
             self._aggregate_multiday_features(gait_res)
         )
-        raw_feature_types: List[RawFeatureType] = multiday_features[0].keys()
-        agg_features: Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]] = (
-            self._compute_aggregate_features(multiday_features, raw_feature_types)
+        agg_feature_dict: Dict[
+            RawFeatureType, Dict[DescriptiveStatisticType, float]
+        ] = self._compute_aggregate_features(multiday_features)
+        raw_feature_set_entry = self._convert_multiday_to_raw_features(
+            multiday_features, imu_data, user_data
         )
+        agg_feature_set_entry = self._convert_agg_features_to_data_model(
+            agg_feature_dict, imu_data, user_data
+        )
+        return raw_feature_set_entry, agg_feature_set_entry
 
     def _convert_multiday_to_raw_features(
-        self, multiday_features: List[Dict[RawFeatureType, float]]
-    ):
-        pass
+        self,
+        multiday_features: List[Dict[RawFeatureType, float]],
+        imu_data: IMUData,
+        user_data: UserData,
+    ) -> RawFeatureSetEntry:
+        # Build list of epoch features
+        epoch_features: List[RawEpochFeatures] = []
+        for features in multiday_features:
+            raw_features: List[RawFeature] = []
+            for raw_feature_type in self.raw_feature_types:
+                raw_features.append(
+                    RawFeature(raw_feature_type, features[raw_feature_type])
+                )
+            epoch_features.append(
+                RawEpochFeatures(
+                    raw_features,
+                    features[RawFeatureType.BOUT_START_TIMESTAMP],
+                    features[RawFeatureType.BOUT_END_TIMESTAMP],
+                )
+            )
+        # Build raw feature metadata
+        metadata = RawFeatureSetEntryMetadata(
+            raw_feature_identifier=self.feature_id_generator.generate_raw_feature_id(),
+            user_identifier=user_data.user_identifier,
+            imu_data_identifier=imu_data.get_imu_data_id(),
+            start_time=epoch_features[0].epoch_start_time,
+            # DUMMY VALUE, TO REMOVE
+            epoch_length=1.0,
+        )
+        return RawFeatureSetEntry(raw_epoch_features=epoch_features, metadata=metadata)
 
     def _convert_agg_features_to_data_model(
-        self, agg_features: Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]]
-    ):
-        pass
+        self,
+        agg_feature_dict: Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]],
+        imu_data: IMUData,
+        user_data: UserData,
+        raw_feature_id: RawFeatureIdentifier,
+    ) -> AggregateFeatureSetEntry:
+        # Build agg feature list
+        agg_feature_list: List[AggregateFeature] = []
+        for feature_type, stats in agg_feature_dict.items():
+            stat_list = []
+            for stat_type, stat_value in stats.items():
+                stat_list.append(DescriptiveStatistic(stat_type, stat_value))
+            agg_feature_list(AggregateFeature(stat_list, feature_type))
+        # Build agg feature metadata
+        metadata = AggregateFeatureSetEntryMetadata(
+            aggregate_feature_identifier=self.feature_id_generator.generate_agg_feature_id(),
+            raw_feature_identifier=raw_feature_id,
+            user_identifier=user_data.user_identifier,
+            imu_data_identifier=imu_data.get_imu_data_id(),
+        )
+        return AggregateFeatureSetEntry(
+            aggregate_features=agg_feature_list, metadata=metadata
+        )
 
     def _aggregate_multiday_features(
         self, gait_res: Dict[str, Any]
@@ -153,6 +224,12 @@ class GaitFeatureProcessor:
                 bout_features[bout_metric] = np.float64(
                     gait_res[bout_metric.value][bout_start_ix]
                 )
+            bout_features[RawFeatureType.BOUT_START_TIMESTAMP] = gait_res[
+                RawFeatureType.IC_TIME.value
+            ][bout_start_ix].timestamp()
+            bout_features[RawFeatureType.BOUT_END_TIMESTAMP] = gait_res[
+                RawFeatureType.IC_TIME.value
+            ][bout_end_ix].timestamp()
             single_day_features.append(bout_features)
             bout_n += 1
             bout_start_ix = bout_end_ix
@@ -161,12 +238,11 @@ class GaitFeatureProcessor:
     def _compute_aggregate_features(
         self,
         multiday_features: List[Dict[RawFeatureType, float]],
-        raw_feature_types: List[RawFeatureType],
     ) -> Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]]:
         aggregate_features: Dict[
             RawFeatureType, Dict[DescriptiveStatisticType, float]
         ] = {}
-        for raw_feature_type in raw_feature_types:
+        for raw_feature_type in self.raw_feature_types:
             feature_values = np.array(
                 [features[raw_feature_type] for features in multiday_features]
             )

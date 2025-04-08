@@ -19,7 +19,6 @@ class GaitFeatureExtractor:
         self.pipeline: skdh.Pipeline = self._build_pipeline()
         self.feature_processor = GaitFeatureProcessor()
         self.gait_res_key = "GaitLumbar"
-        pass
 
     def extract_gait_features(self, imu_data: IMUData, user_data: UserData) -> Dict[str, Any]:
         sensor_data: SensorData = imu_data.data[0].data[0]

@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class GaitFeatureTypes(Enum):
+class RawFeatureType(Enum):
     # Time and Day related features
     DAY_N = "Day N"
     DATE = "Date"
