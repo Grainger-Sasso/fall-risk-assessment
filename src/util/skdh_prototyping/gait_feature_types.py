@@ -17,6 +17,8 @@ class GaitFeatureTypes(Enum):
     BOUT_STEPS = "Bout Steps"
     GAIT_CYCLES = "Gait Cycles"
     IC_TIME = "IC Time"
+    BOUT_START_TIMESTAMP = "Bout Start Timestamp"
+    BOUT_END_TIMESTAMP = "Bout End Timestamp"
 
     # Debug features
     DEBUG_MEAN_STEP_FREQ = "debug:mean step freq"

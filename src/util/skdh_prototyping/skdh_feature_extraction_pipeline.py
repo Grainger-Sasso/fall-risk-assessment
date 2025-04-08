@@ -47,7 +47,7 @@ from src.util.skdh_prototyping.descriptive_statistic_types import (
     DescriptiveStatisticsTypes,
 )
 from src.util.skdh_prototyping.gait_feature_types import GaitFeatureTypes
-from src.util.skdh_prototyping.output_gait_feature_keys import OutputGaitFeatureKeys
+
 
 
 class SKDHFeatureExtractionPipeline:
@@ -230,6 +230,8 @@ class SKDHFeatureExtractionPipeline:
                 bout_metrics[bout_metric] = np.float64(
                     gait_res[bout_metric.value][bout_start_ix]
                 )
+            bout_metrics[GaitFeatureTypes.BOUT_START_TIMESTAMP] = gait_res[GaitFeatureTypes.IC_TIME.value][bout_start_ix]
+            bout_metrics[GaitFeatureTypes.BOUT_END_TIMESTAMP] = gait_res[GaitFeatureTypes.IC_TIME.value][bout_end_ix]
             single_day_metrics.append(bout_metrics)
             bout_n += 1
             bout_start_ix = bout_end_ix
