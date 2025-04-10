@@ -127,7 +127,7 @@ class TestAggregateFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_0.feature_type, RawFeatureType)
         self.assertEqual(
             feature_0.feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_0.descriptive_statistics, list)
         self.assertEqual(
@@ -157,7 +157,7 @@ class TestAggregateFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_1.feature_type, RawFeatureType)
         self.assertEqual(
             feature_1.feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_1.descriptive_statistics, list)
         self.assertEqual(

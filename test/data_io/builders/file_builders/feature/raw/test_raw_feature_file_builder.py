@@ -82,7 +82,7 @@ class TestRawFeatureFileBuilder(BaseTest):
         self.assertIsInstance(feature_names, HDF5Dataset)
         self.assertEqual(
             feature_names.data,
-            [RawFeatureType.PLACEHOLDER.value, RawFeatureType.PLACEHOLDER.value],
+            [RawFeatureType.DAY_N.value, RawFeatureType.DAY_N.value],
         )
         self.assertEqual(feature_names.attributes, {})
 

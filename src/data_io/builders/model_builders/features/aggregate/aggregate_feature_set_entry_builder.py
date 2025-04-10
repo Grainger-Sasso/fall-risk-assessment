@@ -35,10 +35,6 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
 
     Attributes:
         version (str): Version identifier for the builder
-        stat_name_to_descriptive_stat_type_map (Dict[str, DescriptiveStatisticType]):
-            Maps statistic names to types
-        feature_name_to_raw_feature_type_map (Dict[str, RawFeatureType]):
-            Maps feature names to types
     """
 
     version: str = "1.0"
@@ -51,12 +47,6 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
             Mappings need to be populated with actual feature types and names.
         """
         super().__init__()
-        self.stat_name_to_descriptive_stat_type_map: Dict[
-            str, DescriptiveStatisticType
-        ] = {DescriptiveStatisticType.PLACEHOLDER.value: DescriptiveStatisticType.PLACEHOLDER}
-        self.feature_name_to_raw_feature_type_map: Dict[str, RawFeatureType] = {
-            RawFeatureType.PLACEHOLDER.value: RawFeatureType.PLACEHOLDER
-        }
 
     def build(self, input_file: HDF5Group) -> AggregateFeatureSetEntry:
         """Build aggregate feature set entry from HDF5 group.
@@ -109,7 +99,9 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
                 input_file.get_item_by_name(AggregateFeatureFields.FEATURES.value).data
             )
             feature_row_indices: np.ndarray = np.array(
-                input_file.get_item_by_name(AggregateFeatureFields.FEATURE_NAMES.value).data
+                input_file.get_item_by_name(
+                    AggregateFeatureFields.FEATURE_NAMES.value
+                ).data
             )
             feature_col_names: np.ndarray = np.array(
                 input_file.get_item_by_name(
@@ -124,12 +116,13 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
 
         aggregate_feature_list: List[AggregateFeature] = []
         for row_index, feature_name in enumerate(feature_row_indices):
-            if feature_name not in self.feature_name_to_raw_feature_type_map:
-                raise ValueError(f"Unknown feature type: {feature_name}")
-
-            raw_feature_type: RawFeatureType = (
-                self.feature_name_to_raw_feature_type_map[feature_name]
-            )
+            try:
+                raw_feature_type: RawFeatureType = RawFeatureType(feature_name)
+            except ValueError:
+                # Raise an error if the string is not a valid enum member
+                raise ValueError(
+                    f"'{feature_name}' is not a valid member of {RawFeatureType.__name__}"
+                )
             aggregate_feature_list.append(
                 self.__build_aggregate_feature(
                     features, raw_feature_type, row_index, feature_col_names
@@ -160,12 +153,15 @@ class AggregateFeatureSetEntryBuilder(ModelBuilder):
         """
         descriptive_statistic_list: List[DescriptiveStatistic] = []
         for col_index, stat_name in enumerate(feature_col_names):
-            if stat_name not in self.stat_name_to_descriptive_stat_type_map:
-                raise ValueError(f"Unknown statistic type: {stat_name}")
-
-            statistic_type: DescriptiveStatisticType = (
-                self.stat_name_to_descriptive_stat_type_map[stat_name]
-            )
+            try:
+                statistic_type: DescriptiveStatisticType = DescriptiveStatisticType(
+                    stat_name
+                )
+            except ValueError:
+                # Raise an error if the string is not a valid enum member
+                raise ValueError(
+                    f"'{stat_name}' is not a valid member of {DescriptiveStatisticType.__name__}"
+                )
             statistic_value: float = features[row_index][col_index]
             descriptive_statistic_list.append(
                 DescriptiveStatistic(statistic_type, statistic_value)

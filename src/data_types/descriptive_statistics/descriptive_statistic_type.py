@@ -8,8 +8,6 @@ class DescriptiveStatisticType(Enum):
     """
     Collection of descriptive statistic types
     """
-
-    PLACEHOLDER = "placeholder"
     # mean, median, std, min, max, percentiles (25th, 75th), coeff of variation, inter-quartile range
     MEAN = "mean"
     MEDIAN = "median"

@@ -149,7 +149,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_0.raw_features[0].feature_type, RawFeatureType)
         self.assertEqual(
             feature_0.raw_features[0].feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_0.raw_features[0].value, float)
         self.assertEqual(
@@ -160,7 +160,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_0.raw_features[1].feature_type, RawFeatureType)
         self.assertEqual(
             feature_0.raw_features[1].feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_0.raw_features[1].value, float)
         self.assertEqual(
@@ -187,7 +187,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_1.raw_features[0].feature_type, RawFeatureType)
         self.assertEqual(
             feature_1.raw_features[0].feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_1.raw_features[0].value, float)
         self.assertEqual(
@@ -198,7 +198,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertIsInstance(feature_1.raw_features[1].feature_type, RawFeatureType)
         self.assertEqual(
             feature_1.raw_features[1].feature_type.value,
-            RawFeatureType.PLACEHOLDER.value,
+            RawFeatureType.DAY_N.value,
         )
         self.assertIsInstance(feature_1.raw_features[1].value, float)
         self.assertEqual(

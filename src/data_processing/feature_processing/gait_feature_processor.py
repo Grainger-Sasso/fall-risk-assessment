@@ -151,7 +151,10 @@ class GaitFeatureProcessor:
             multiday_features, imu_data, user_data
         )
         agg_feature_set_entry = self._convert_agg_features_to_data_model(
-            agg_feature_dict, imu_data, user_data, raw_feature_set_entry.metadata.raw_feature_identifier
+            agg_feature_dict,
+            imu_data,
+            user_data,
+            raw_feature_set_entry.metadata.raw_feature_identifier,
         )
         return raw_feature_set_entry, agg_feature_set_entry
 
@@ -292,7 +295,7 @@ class GaitFeatureProcessor:
                 [features[raw_feature_type] for features in multiday_features]
             )
             descriptive_stats: Dict[DescriptiveStatisticType, float] = {}
-            for type in [type for type in DescriptiveStatisticType if type is not DescriptiveStatisticType.PLACEHOLDER]:
+            for type in DescriptiveStatisticType:
                 descriptive_stats[type] = type(feature_values)
             aggregate_features[raw_feature_type] = descriptive_stats
         return aggregate_features

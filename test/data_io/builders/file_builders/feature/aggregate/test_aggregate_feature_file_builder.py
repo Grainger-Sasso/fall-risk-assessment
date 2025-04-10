@@ -81,7 +81,7 @@ class TestAggregateFeatureFileBuilder(BaseTest):
         )
         self.assertEqual(
             feature_names.data,
-            [RawFeatureType.PLACEHOLDER.value, RawFeatureType.PLACEHOLDER.value],
+            [RawFeatureType.DAY_N.value, RawFeatureType.DAY_N.value],
         )
         stat_names: HDF5Dataset = result.get_item_by_name(
             AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES.value
@@ -89,8 +89,8 @@ class TestAggregateFeatureFileBuilder(BaseTest):
         self.assertEqual(
             stat_names.data,
             [
-                DescriptiveStatisticType.PLACEHOLDER.value,
-                DescriptiveStatisticType.PLACEHOLDER.value,
+                DescriptiveStatisticType.MEAN.value,
+                DescriptiveStatisticType.MEAN.value,
             ],
         )
         features: HDF5Dataset = result.get_item_by_name(

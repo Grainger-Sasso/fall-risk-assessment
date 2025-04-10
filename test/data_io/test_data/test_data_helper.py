@@ -150,16 +150,16 @@ class TestConstants(Enum):
 
     ############### Feature DATA ###############
     RAW_FEATURE_NAMES = [
-        RawFeatureType.PLACEHOLDER.value,
-        RawFeatureType.PLACEHOLDER.value,
-        RawFeatureType.PLACEHOLDER.value,
+        RawFeatureType.DAY_N.value,
+        RawFeatureType.DAY_N.value,
+        RawFeatureType.DAY_N.value,
     ]
     EPOCH_START_TIMES = [0.0, 1.0, 2.0]
     EPOCH_END_TIMES = [10.0, 11.0, 12.0]
     STAT_NAMES = [
-        DescriptiveStatisticType.PLACEHOLDER.value,
-        DescriptiveStatisticType.PLACEHOLDER.value,
-        DescriptiveStatisticType.PLACEHOLDER.value,
+        DescriptiveStatisticType.MEAN.value,
+        DescriptiveStatisticType.MEAN.value,
+        DescriptiveStatisticType.MEAN.value,
     ]
     FEATURE_DATA = [[0.0, 0.1, 0.2], [0.1, 0.2, 0.3], [0.2, 0.3, 0.4]]
     FEATURE_IMU_DATA_ID = "test_feature_imu_data_id"
@@ -606,22 +606,22 @@ class FeatureDataHelper:
         return [
             AggregateFeature(
                 descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=RawFeatureType.PLACEHOLDER,
+                feature_type=RawFeatureType.DAY_N,
             ),
             AggregateFeature(
                 descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=RawFeatureType.PLACEHOLDER,
+                feature_type=RawFeatureType.DAY_N,
             ),
         ]
 
     def __build_descriptive_statistics_list(self) -> List[DescriptiveStatistic]:
         return [
             DescriptiveStatistic(
-                statistic_type=DescriptiveStatisticType.PLACEHOLDER,
+                statistic_type=DescriptiveStatisticType.MEAN,
                 value=TestConstants.PLACEHOLDER_STAT_VALUE.value,
             ),
             DescriptiveStatistic(
-                statistic_type=DescriptiveStatisticType.PLACEHOLDER,
+                statistic_type=DescriptiveStatisticType.MEAN,
                 value=TestConstants.PLACEHOLDER_STAT_VALUE.value + 1.0,
             ),
         ]
@@ -739,11 +739,11 @@ class FeatureDataHelper:
     def __build_raw_feature_list(self) -> List[RawFeature]:
         return [
             RawFeature(
-                feature_type=RawFeatureType.PLACEHOLDER,
+                feature_type=RawFeatureType.DAY_N,
                 value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value,
             ),
             RawFeature(
-                feature_type=RawFeatureType.PLACEHOLDER,
+                feature_type=RawFeatureType.DAY_N,
                 value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value + 1.0,
             ),
         ]

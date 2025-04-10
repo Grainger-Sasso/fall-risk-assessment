@@ -25,8 +25,6 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
 
     Attributes:
         version (str): Version identifier for the builder
-        feature_name_to_raw_feature_type_map (Dict[str, RawFeatureType]):
-            Maps feature names to types
     """
 
     version: str = "1.0"
@@ -39,9 +37,6 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
             Mapping needs to be populated with actual feature types and names.
         """
         super().__init__()
-        self.feature_name_to_raw_feature_type_map: Dict[str, RawFeatureType] = {
-            "placeholder": RawFeatureType.PLACEHOLDER
-        }
 
     def build(self, input_file: HDF5Group) -> RawFeatureSetEntry:
         """Build raw feature set entry from HDF5 group.
@@ -174,14 +169,16 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         # Build raw feature list
         raw_feature_list: List[RawFeature] = []
         for col_index, feature_name in enumerate(feature_col_names):
-            if feature_name not in self.feature_name_to_raw_feature_type_map:
-                raise ValueError(f"Unknown feature type: {feature_name}")
+            try:
+                raw_feature_type: RawFeatureType = RawFeatureType(feature_name)
+            except ValueError:
+                # Raise an error if the string is not a valid enum member
+                raise ValueError(
+                    f"'{feature_name}' is not a valid member of {RawFeatureType.__name__}"
+                )
 
             feature_value: float = features[row_index][col_index]
-            feature_type: RawFeatureType = self.feature_name_to_raw_feature_type_map[
-                feature_name
-            ]
-            raw_feature_list.append(RawFeature(feature_type, feature_value))
+            raw_feature_list.append(RawFeature(raw_feature_type, feature_value))
 
         if not raw_feature_list:
             raise ValueError("No features constructed for epoch")
