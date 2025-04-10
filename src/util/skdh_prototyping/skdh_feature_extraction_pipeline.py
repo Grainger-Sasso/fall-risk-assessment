@@ -1,7 +1,10 @@
 import datetime
+import math
+from src.data_io.read_write.writers.json.json_dict_file_writer import JSONDictFileWriter
+from src.data_io.formats.json.json_dict_file import JSONDictFile
 import zipfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -127,26 +130,73 @@ class SKDHFeatureExtractionPipeline:
         )
         res = pipeline.run(time=time, accel=accel, height=1.52)
         gait_res: Dict = res[self.gait_res_key]
-        print(
-            self.get_unique_bouts_count(
-                gait_res, 0, len(gait_res[RawFeatureType.DAY_N.value])
-            )
-        )
-        multi_day_metrics: List[Dict[RawFeatureType, float]] = (
-            self.aggregate_multi_day_metrics(gait_res)
-        )
-        output_features = self.compute_aggregate_features(multi_day_metrics)
+        output_gait_res = {}
+        for feature_name, feature_value in gait_res.items():
+            feature_value = feature_value[0:200]
+            if isinstance(feature_value, pd.DatetimeIndex):
+                # Convert DatetimeIndex to list of strings
+                output_gait_res[feature_name] = feature_value.strftime('%Y-%m-%d %H:%M:%S').tolist()
+            elif isinstance(feature_value, np.ndarray):
+                output_gait_res[feature_name] = self.safe_convert_for_json(feature_value)
+            else:
+                output_gait_res[feature_name] = feature_value
+        writer = JSONDictFileWriter()
+        writer.write(Path("/Users/graingersasso/Desktop/fafra_testing/test_results/test_features/test_features_smal.json"), JSONDictFile(output_gait_res))
 
-        # Example: Visualize multiple gait parameters
-        parameters_to_plot = [
-            RawFeatureType.GAIT_SPEED,
-            RawFeatureType.STRIDE_LENGTH,
-            RawFeatureType.CADENCE,
-            RawFeatureType.STRIDE_TIME,
-        ]
-        self.visualize_gait_parameters(output_features, parameters_to_plot, n_cols=2)
+        # print(
+        #     self.get_unique_bouts_count(
+        #         gait_res, 0, len(gait_res[RawFeatureType.DAY_N.value])
+        #     )
+        # )
+        # multi_day_metrics: List[Dict[RawFeatureType, float]] = (
+        #     self.aggregate_multi_day_metrics(gait_res)
+        # )
+        # output_features = self.compute_aggregate_features(multi_day_metrics)
 
-        print("")
+        # # Example: Visualize multiple gait parameters
+        # parameters_to_plot = [
+        #     RawFeatureType.GAIT_SPEED,
+        #     RawFeatureType.STRIDE_LENGTH,
+        #     RawFeatureType.CADENCE,
+        #     RawFeatureType.STRIDE_TIME,
+        # ]
+        # self.visualize_gait_parameters(output_features, parameters_to_plot, n_cols=2)
+
+        # print("")
+
+    def safe_convert_for_json(self, obj: Any) -> Any:
+        # Handle numpy arrays
+        if isinstance(obj, np.ndarray):
+            return [self.safe_convert_for_json(x) for x in obj]
+        
+        # Handle lists and tuples
+        if isinstance(obj, (list, tuple)):
+            return [self.safe_convert_for_json(x) for x in obj]
+        
+        # Handle dictionaries
+        if isinstance(obj, dict):
+            # Check for "IC Time" and convert to datetime.time
+            if "IC Time" in obj:
+                obj["IC Time"] = [
+                    datetime.strptime(t, "%H:%M:%S").time() if t is not None else None
+                    for t in obj["IC Time"]
+                ]
+            return {k: self.safe_convert_for_json(v) for k, v in obj.items()}
+        
+        # Handle numpy types
+        if isinstance(obj, np.generic):
+            obj = obj.item()
+        
+        # Handle NaN values - check multiple types of NaN
+        if isinstance(obj, float):
+            if math.isnan(obj) or np.isnan(obj):
+                return None
+        
+        # Handle numpy NaN
+        if obj is np.nan:
+            return None
+        
+        return obj
 
     def compute_aggregate_features(
         self, multi_day_metrics: List[Dict[RawFeatureType, float]]
