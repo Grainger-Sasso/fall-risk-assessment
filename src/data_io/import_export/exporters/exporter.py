@@ -52,9 +52,9 @@ class Exporter(Generic[T], ABC):
         except Exception as e:
             raise Exception(f"Export failed: {str(e)}")
 
-    def _make_subdir(self, output_parent_dir: Path, id: Identifier) -> Path:
+    def _make_subdir(self, output_parent_dir: Path, obj_id: Identifier) -> Path:
         try:
-            output_subdir_name = self.sub_dir_name + id.value
+            output_subdir_name = self.sub_dir_name + obj_id.value
             output_subdir_path = os.path.join(output_parent_dir, output_subdir_name)
             os.makedirs(output_subdir_path, exist_ok=True)
             return Path(output_subdir_path)
