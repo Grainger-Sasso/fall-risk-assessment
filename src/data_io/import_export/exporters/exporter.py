@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Generic, Tuple, TypeVar
+from typing import Generic, TypeVar
 
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.formats.file_format import FileFormat
