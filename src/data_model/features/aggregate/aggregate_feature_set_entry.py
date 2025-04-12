@@ -1,15 +1,17 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from src.data_model.assessment_data import AssessmentData
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_metadata import (
     AggregateFeatureSetEntryMetadata,
 )
+from src.data_types.feature.raw_feature_type import RawFeatureType
+from src.identifiers.identifier import Identifier
 
 
 @dataclass
-class AggregateFeatureSetEntry:
+class AggregateFeatureSetEntry(AssessmentData):
     """
     Represents aggregate features of feature types of a given raw feature set entry
     """
@@ -36,3 +38,6 @@ class AggregateFeatureSetEntry:
             Optional[AggregateFeature]: The corresponding AggregateFeature, or None if not found.
         """
         return self._feature_map.get(feature_type)
+
+    def get_data_id(self) -> Identifier:
+        return self.metadata.aggregate_feature_identifier

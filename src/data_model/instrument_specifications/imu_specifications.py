@@ -1,17 +1,19 @@
-from typing import List, Dict
 from dataclasses import dataclass, field
+from typing import Dict, List
 
-from src.identifiers.instrument_specification.instrument_specification_identifier import (
-    InstrumentSpecificationIdentifier,
-)
-from src.data_types.instrument.sensor_type import SensorType
+from src.data_model.assessment_data import AssessmentData
 from src.data_model.instrument_specifications.sensor_specifications import (
     SensorSpecification,
+)
+from src.data_types.instrument.sensor_type import SensorType
+from src.identifiers.identifier import Identifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
 )
 
 
 @dataclass
-class IMUSpecifications:
+class IMUSpecifications(AssessmentData):
     """
     Represents the specifications of an IMU device.
     """
@@ -36,3 +38,6 @@ class IMUSpecifications:
         if sensor_type not in self._sensor_type_to_specification_map:
             raise ValueError(f"{sensor_type} not present in data")
         return self._sensor_type_to_specification_map[sensor_type]
+
+    def get_data_id(self) -> Identifier:
+        return self.specification_id

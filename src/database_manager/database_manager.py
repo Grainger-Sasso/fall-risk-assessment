@@ -59,7 +59,15 @@ class DatabaseManager:
         # Import data from path
         return importer.import_data(path)
 
-    def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]):
+    def export_data(self, assessment_data):
+        # Reference data_type from type(assessment_data)
+        # Get exporter, output dir, registry, mapping (from type of assessment_data)
+        # Export data with exporter by passing output dir and data object
+        # Call update registry method on registry 
+        # Call update mapping on mapping
+        pass
+    
+    def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]): 
         if not raw_feature_list:
             raise ValueError("Feature list cannot be empty")
 

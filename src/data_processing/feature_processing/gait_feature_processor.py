@@ -183,7 +183,7 @@ class GaitFeatureProcessor:
         metadata = RawFeatureSetEntryMetadata(
             raw_feature_identifier=self.feature_id_generator.generate_raw_feature_id(),
             user_identifier=user_data.user_identifier,
-            imu_data_identifier=imu_data.get_imu_data_id(),
+            imu_data_identifier=imu_data.get_data_id(),
             start_time=epoch_features[0].epoch_start_time,
             # DUMMY VALUE, TO REMOVE
             epoch_length=1.0,
@@ -209,7 +209,7 @@ class GaitFeatureProcessor:
             aggregate_feature_identifier=self.feature_id_generator.generate_agg_feature_id(),
             raw_feature_identifier=raw_feature_id,
             user_identifier=user_data.user_identifier,
-            imu_data_identifier=imu_data.get_imu_data_id(),
+            imu_data_identifier=imu_data.get_data_id(),
         )
         return AggregateFeatureSetEntry(
             aggregate_features=agg_feature_list, metadata=metadata
