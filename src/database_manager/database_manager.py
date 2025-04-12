@@ -8,6 +8,7 @@ from src.data_io.import_export.exporters.registry.registry_exporter import (
     RegistryExporter,
 )
 from src.data_io.import_export.importers.importer import Importer
+from src.data_model.assessment_data import AssessmentData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
@@ -59,15 +60,19 @@ class DatabaseManager:
         # Import data from path
         return importer.import_data(path)
 
-    def export_data(self, assessment_data):
+    def export_data(self, assessment_data: List[AssessmentData]):
         # Reference data_type from type(assessment_data)
         # Get exporter, output dir, registry, mapping (from type of assessment_data)
+        # For every item in assessment data
         # Export data with exporter by passing output dir and data object
-        # Call update registry method on registry 
+        # Call update registry method on registry
         # Call update mapping on mapping
+        # After all items exported ->
+        # Export updated registry
+        # Export updated mapping
         pass
-    
-    def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]): 
+
+    def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]):
         if not raw_feature_list:
             raise ValueError("Feature list cannot be empty")
 
@@ -95,13 +100,6 @@ class DatabaseManager:
             # Update raw feature registry
             raw_feature_registry: Registry = self.registry_manager.get_provider(
                 data_type
-            )
-            registry_exporter: RegistryExporter = RegistryExporter()
-            self._update_registry(
-                registry_exporter,
-                raw_feature_registry,
-                feature_id_to_output_path_map,
-                data_type,
             )
 
             # Update Raw feature -> IMU Data mapping
@@ -195,16 +193,16 @@ class DatabaseManager:
         self,
         exporter: DatabaseExporter,
         source_mapping: Mapping,
-        new_source_id_to_target_id_map: Dict[str, Path],
+        new_source_id_to_target_id_map: Dict[str, str],
         data_type: Type[Identifier],
         target_id_type: Type[Identifier],
     ):
-        source_id_to_target_id_map: Dict[str, Path] = source_mapping.map
+        source_id_to_target_id_map: Dict[str, str] = source_mapping.map
         source_mapping_subdir_path: Path = source_mapping.path
         if not self._any_new_ids_in_source(
             source_id_to_target_id_map, new_source_id_to_target_id_map
         ):
-            new_mapping: Dict[str, Path] = self._construct_new_mapping(
+            new_mapping: Dict[str, str] = self._construct_new_mapping(
                 source_id_to_target_id_map, new_source_id_to_target_id_map
             )
             new_dataset_mapping = Mapping(

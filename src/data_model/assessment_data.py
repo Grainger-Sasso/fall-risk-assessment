@@ -8,3 +8,8 @@ class AssessmentData(ABC):
     @abstractmethod
     def get_data_id(self) -> Identifier:
         pass
+
+    @abstractmethod
+    def get_associated_data_id(self) -> Identifier:
+        pass
+

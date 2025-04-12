@@ -18,3 +18,6 @@ class UserData(AssessmentData):
 
     def get_data_id(self) -> Identifier:
         return self.user_identifier
+    
+    def get_associated_data_id(self) -> Identifier:
+        return None

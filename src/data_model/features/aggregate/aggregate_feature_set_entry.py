@@ -41,3 +41,6 @@ class AggregateFeatureSetEntry(AssessmentData):
 
     def get_data_id(self) -> Identifier:
         return self.metadata.aggregate_feature_identifier
+
+    def get_associated_data_id(self) -> Identifier:
+        return self.metadata.raw_feature_identifier

@@ -14,7 +14,7 @@ class Registry:
     ):
         self._registry: Dict[str, Path] = registry
         self._id_type: Type[Identifier] = id_type
-        # Path to subdir containing mapping
+        # Path to subdir containing registry
         self._path: Path = subdir_path
 
     @property
