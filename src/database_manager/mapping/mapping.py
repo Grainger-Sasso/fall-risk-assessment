@@ -58,6 +58,8 @@ class Mapping:
     def add_entry(self, source_id: Identifier, target_id: Identifier):
         self._validate_source_id_type(type(source_id))
         self._validate_target_id_type(type(target_id))
+        if source_id.value in self.map.keys():
+            raise ValueError(f"Entry already exists in registry for {source_id.value}")
         self.map[source_id.value] = target_id.value
 
     def update_entry(self, source_id: Identifier, target_id: Identifier):

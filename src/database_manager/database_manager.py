@@ -50,15 +50,22 @@ class DatabaseManager:
         self.output_dir_manager: OutputDirectoryManager = output_dir_manager
 
     ### I/O Methods ###
-    def import_data(self, identifier: Identifier) -> T:
-        data_type: Type[Identifier] = type(identifier)
+    def import_data(self, identifier_list: List[Identifier]) -> List[T]:
+        if len(set(type(identifier) for identifier in identifier_list)) != 1:
+            raise ValueError(
+                "All elements for import must share common data type (identifier type)"
+            )
+        data_type: Type[Identifier] = type(identifier_list[0])
         # Get corresponding registry and importer
         registry: Registry = self.registry_manager.get_provider(data_type)
         importer: Importer = self.import_manager.get_provider(data_type)
-        # Get path of data from registry using provided ID
-        path: Path = registry.get_path_from_id(identifier)
-        # Import data from path
-        return importer.import_data(path)
+        data: List[T] = []
+        for identifier in identifier_list:
+            # Get path of data from registry using provided ID
+            path: Path = registry.get_path_from_id(identifier)
+            # Import data from path
+            data.append(importer.import_data(path))
+        return data
 
     def export_data(self, assessment_data_list: List[AssessmentData]) -> None:
         if len(set(type(data.get_data_id()) for data in assessment_data_list)) != 1:

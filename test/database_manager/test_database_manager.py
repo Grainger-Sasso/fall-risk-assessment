@@ -178,7 +178,7 @@ class TestDatabaseManager(BaseTest):
         test_id = self.helper.create_test_identifier()
 
         # Get data using database manager
-        data = self.db_manager.import_data(test_id)
+        data = self.db_manager.import_data([test_id])
 
         # Verify correct path was retrieved from registry
         expected_path = self.registry.get_path_from_id(test_id)
@@ -187,21 +187,21 @@ class TestDatabaseManager(BaseTest):
         self.mock_importer.import_data.assert_called_once_with(expected_path)
 
         # Verify returned data matches mock importer output
-        self.assertEqual(data, "test_data")
+        self.assertEqual(data, ["test_data"])
 
     def test_import_data_invalid_id_type(self):
         # Test with invalid identifier type
         invalid_id = TestTargetIdentifier("invalid")
 
         with self.assertRaises(KeyError):
-            self.db_manager.import_data(invalid_id)
+            self.db_manager.import_data([invalid_id])
 
     def test_import_data_nonexistent_id(self):
         # Test with nonexistent identifier
         nonexistent_id = TestSourceIdentifier("nonexistent")
 
         with self.assertRaises(KeyError):
-            self.db_manager.import_data(nonexistent_id)
+            self.db_manager.import_data([nonexistent_id])
 
     def test_export_data(self):
         # Assert the registry/mapping manager entries are none

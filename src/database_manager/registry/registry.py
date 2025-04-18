@@ -50,6 +50,8 @@ class Registry:
 
     def add_entry(self, identifier: Identifier, path: Path):
         self._validate_id_type(type(identifier))
+        if identifier.value in self.registry.keys():
+            raise ValueError(f"Entry already exists in registry for {identifier.value}")
         self.registry[identifier.value] = path
 
     def update_entry(self, identifier: Identifier, path: Path):
