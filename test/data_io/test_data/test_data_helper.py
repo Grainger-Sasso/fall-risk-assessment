@@ -165,6 +165,7 @@ class TestConstants(Enum):
     FEATURE_IMU_DATA_ID = "test_feature_imu_data_id"
     FEATURE_USER_DATA_ID = "test_user_data_id"
     RAW_FEATURE_ID = "test_raw_feature_id"
+    RAW_FEATURE_ID_2 = "test_raw_feature_id_2"
     AGG_FEATURE_ID = "test_agg_feature_id"
     RAW_FEATURE_START_TIME = 0.0
     RAW_FEATURE_END_TIME = 10.0

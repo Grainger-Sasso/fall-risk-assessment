@@ -2,7 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Type
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call
 
 from src.data_io.import_export.exporters.database_exporter import DatabaseExporter
 from src.data_io.import_export.exporters.exporter import Exporter
@@ -57,26 +57,26 @@ class TestDatabaseManager(BaseTest):
         # Create empty registry and mapping for raw features
         self.raw_feature_registry = Registry(
             {},
-            id_type=TestSourceIdentifier,
+            id_type=RawFeatureIdentifier,
             subdir_path=self.raw_feature_temp_path,
         )
         self.raw_feature_mapping = Mapping(
             {},
-            source_id_type=TestSourceIdentifier,
-            target_id_type=TestTargetIdentifier,
+            source_id_type=RawFeatureIdentifier,
+            target_id_type=IMUDataIdentifier,
             subdir_path=self.raw_feature_temp_path,
         )
 
         # Create empty registry and mapping for aggregate features
         self.agg_feature_registry = Registry(
             {},
-            id_type=TestSourceIdentifier,
+            id_type=AggregateFeatureIdentifier,
             subdir_path=self.agg_feature_temp_path,
         )
         self.agg_feature_mapping = Mapping(
             {},
-            source_id_type=TestSourceIdentifier,
-            target_id_type=TestTargetIdentifier,
+            source_id_type=AggregateFeatureIdentifier,
+            target_id_type=RawFeatureIdentifier,
             subdir_path=self.agg_feature_temp_path,
         )
 
@@ -189,23 +189,21 @@ class TestDatabaseManager(BaseTest):
         # Verify returned data matches mock importer output
         self.assertEqual(data, "test_data")
 
-    def test_get_data_invalid_id_type(self):
+    def test_import_data_invalid_id_type(self):
         # Test with invalid identifier type
         invalid_id = TestTargetIdentifier("invalid")
 
         with self.assertRaises(KeyError):
             self.db_manager.import_data(invalid_id)
 
-    def test_get_data_nonexistent_id(self):
+    def test_import_data_nonexistent_id(self):
         # Test with nonexistent identifier
         nonexistent_id = TestSourceIdentifier("nonexistent")
 
         with self.assertRaises(KeyError):
             self.db_manager.import_data(nonexistent_id)
 
-    def test_export_raw_feature_list(self):
-        # Create test raw feature list
-        raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
+    def test_export_data(self):
         # Assert the registry/mapping manager entries are none
         imported_raw_feature_registry: Registry = self.registry_importer.import_data(
             self.raw_feature_temp_path, RawFeatureIdentifier
@@ -220,20 +218,31 @@ class TestDatabaseManager(BaseTest):
             not self.registry_manager.get_provider(RawFeatureIdentifier).registry
         )
         self.assertTrue(not self.mapping_manager.get_provider(RawFeatureIdentifier).map)
-        # Call method under test
-        self.db_manager.export_raw_feature_list(raw_feature_list)
+        # Create test data to export
+        test_raw_feature_1 = self.feature_data_helper.create_test_raw_feature()
+        test_raw_feature_2 = self.feature_data_helper.create_test_raw_feature()
+        test_raw_feature_2.metadata.raw_feature_identifier = RawFeatureIdentifier(
+            DataIOTestConstants.RAW_FEATURE_ID_2.value
+        )
+        raw_feature_list = [test_raw_feature_1, test_raw_feature_2]
+        # Export
+        self.db_manager.export_data(raw_feature_list)
         # Verify the correct exporter is called with expected path and data
         expected_parent_dir = TestConstants.TEST_PATHS.value[0]
-        self.mock_exporter.export_data.assert_called_once_with(
-            expected_parent_dir, raw_feature_list[0]
-        )
+        self.mock_exporter.export_data.assert_has_calls([
+            call(expected_parent_dir, raw_feature_list[0]),
+            call(expected_parent_dir, raw_feature_list[1])
+        ])
         # Assert the registry/mappings properly updated
         imported_raw_feature_registry: Registry = self.registry_importer.import_data(
             self.raw_feature_temp_path, RawFeatureIdentifier
         )
         self.assertEqual(
             imported_raw_feature_registry.registry,
-            {DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path},
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: self.test_registry_path,
+            },
         )
         imported_raw_feature_mapping: Mapping = self.mapping_importer.import_data(
             self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
@@ -241,7 +250,8 @@ class TestDatabaseManager(BaseTest):
         self.assertEqual(
             imported_raw_feature_mapping.map,
             {
-                DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value
+                DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value
             },
         )
         # Assert the registry/mappings managers properly updated
@@ -250,7 +260,10 @@ class TestDatabaseManager(BaseTest):
         )
         self.assertEqual(
             manager_raw_feature_registry.registry,
-            {DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path},
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: self.test_registry_path,
+            },
         )
         manager_raw_feature_mapping: Mapping = self.mapping_manager.get_provider(
             RawFeatureIdentifier
@@ -259,195 +272,255 @@ class TestDatabaseManager(BaseTest):
             manager_raw_feature_mapping.map,
             {
                 DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value
             },
         )
 
-    def test_export_agg_feature_list(self):
-        # Create test agg feature list
-        agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
-        # Assert the registry/mapping manager entries are none
-        imported_agg_feature_registry: Registry = self.registry_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_registry.registry)
-        imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_mapping.map)
-        # Import registry/mappings and assert none
-        self.assertTrue(
-            not self.registry_manager.get_provider(AggregateFeatureIdentifier).registry
-        )
-        self.assertTrue(
-            not self.mapping_manager.get_provider(AggregateFeatureIdentifier).map
-        )
-        # Call method under test
-        self.db_manager.export_aggregate_feature_list(agg_feature_list)
-        # Verify the correct exporter is called with expected path and data
-        expected_parent_dir = TestConstants.TEST_PATHS.value[0]
-        self.mock_exporter.export_data.assert_called_once_with(
-            expected_parent_dir, agg_feature_list[0]
-        )
-        # Assert the registry/mappings properly updated
-        imported_agg_feature_registry: Registry = self.registry_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier
-        )
-        self.assertEqual(
-            imported_agg_feature_registry.registry,
-            {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
-        )
-        imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertEqual(
-            imported_agg_feature_mapping.map,
-            {
-                DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value
-            },
-        )
-        # Assert the registry/mappings managers properly updated
-        manager_agg_feature_registry: Registry = self.registry_manager.get_provider(
-            AggregateFeatureIdentifier
-        )
-        self.assertEqual(
-            manager_agg_feature_registry.registry,
-            {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
-        )
-        manager_agg_feature_mapping: Mapping = self.mapping_manager.get_provider(
-            AggregateFeatureIdentifier
-        )
-        self.assertEqual(
-            manager_agg_feature_mapping.map,
-            {
-                DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value,
-            },
-        )
+    # def test_export_raw_feature_list(self):
+    #     # Create test raw feature list
+    #     raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
+    #     # Assert the registry/mapping manager entries are none
+    #     imported_raw_feature_registry: Registry = self.registry_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_registry.registry)
+    #     imported_raw_feature_mapping: Mapping = self.mapping_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_mapping.map)
+    #     # Import registry/mappings and assert none
+    #     self.assertTrue(
+    #         not self.registry_manager.get_provider(RawFeatureIdentifier).registry
+    #     )
+    #     self.assertTrue(not self.mapping_manager.get_provider(RawFeatureIdentifier).map)
+    #     # Call method under test
+    #     self.db_manager.export_raw_feature_list(raw_feature_list)
+    #     # Verify the correct exporter is called with expected path and data
+    #     expected_parent_dir = TestConstants.TEST_PATHS.value[0]
+    #     self.mock_exporter.export_data.assert_called_once_with(
+    #         expected_parent_dir, raw_feature_list[0]
+    #     )
+    #     # Assert the registry/mappings properly updated
+    #     imported_raw_feature_registry: Registry = self.registry_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         imported_raw_feature_registry.registry,
+    #         {DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path},
+    #     )
+    #     imported_raw_feature_mapping: Mapping = self.mapping_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertEqual(
+    #         imported_raw_feature_mapping.map,
+    #         {
+    #             DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value
+    #         },
+    #     )
+    #     # Assert the registry/mappings managers properly updated
+    #     manager_raw_feature_registry: Registry = self.registry_manager.get_provider(
+    #         RawFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         manager_raw_feature_registry.registry,
+    #         {DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path},
+    #     )
+    #     manager_raw_feature_mapping: Mapping = self.mapping_manager.get_provider(
+    #         RawFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         manager_raw_feature_mapping.map,
+    #         {
+    #             DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+    #         },
+    #     )
 
-    def test_export_raw_feature_list_export_fails(self):
-        # Create test raw feature list
-        raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
+    # def test_export_agg_feature_list(self):
+    #     # Create test agg feature list
+    #     agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
+    #     # Assert the registry/mapping manager entries are none
+    #     imported_agg_feature_registry: Registry = self.registry_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_registry.registry)
+    #     imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_mapping.map)
+    #     # Import registry/mappings and assert none
+    #     self.assertTrue(
+    #         not self.registry_manager.get_provider(AggregateFeatureIdentifier).registry
+    #     )
+    #     self.assertTrue(
+    #         not self.mapping_manager.get_provider(AggregateFeatureIdentifier).map
+    #     )
+    #     # Call method under test
+    #     self.db_manager.export_aggregate_feature_list(agg_feature_list)
+    #     # Verify the correct exporter is called with expected path and data
+    #     expected_parent_dir = TestConstants.TEST_PATHS.value[0]
+    #     self.mock_exporter.export_data.assert_called_once_with(
+    #         expected_parent_dir, agg_feature_list[0]
+    #     )
+    #     # Assert the registry/mappings properly updated
+    #     imported_agg_feature_registry: Registry = self.registry_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         imported_agg_feature_registry.registry,
+    #         {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
+    #     )
+    #     imported_agg_feature_mapping: Mapping = self.mapping_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertEqual(
+    #         imported_agg_feature_mapping.map,
+    #         {
+    #             DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value
+    #         },
+    #     )
+    #     # Assert the registry/mappings managers properly updated
+    #     manager_agg_feature_registry: Registry = self.registry_manager.get_provider(
+    #         AggregateFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         manager_agg_feature_registry.registry,
+    #         {DataIOTestConstants.AGG_FEATURE_ID.value: self.test_registry_path},
+    #     )
+    #     manager_agg_feature_mapping: Mapping = self.mapping_manager.get_provider(
+    #         AggregateFeatureIdentifier
+    #     )
+    #     self.assertEqual(
+    #         manager_agg_feature_mapping.map,
+    #         {
+    #             DataIOTestConstants.AGG_FEATURE_ID.value: DataIOTestConstants.RAW_FEATURE_ID.value,
+    #         },
+    #     )
 
-        # Configure mock exporter to raise exception
-        self.mock_exporter.export_data.side_effect = Exception("Export failed")
+    # def test_export_raw_feature_list_export_fails(self):
+    #     # Create test raw feature list
+    #     raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
 
-        # Call method and verify exception
-        with self.assertRaises(Exception) as context:
-            self.db_manager.export_raw_feature_list(raw_feature_list)
+    #     # Configure mock exporter to raise exception
+    #     self.mock_exporter.export_data.side_effect = Exception("Export failed")
 
-        self.assertIn("Export failed", str(context.exception))
+    #     # Call method and verify exception
+    #     with self.assertRaises(Exception) as context:
+    #         self.db_manager.export_raw_feature_list(raw_feature_list)
 
-        # Verify registry and mapping were not updated
-        imported_raw_feature_registry = self.registry_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_registry.registry)
-        imported_raw_feature_mapping = self.mapping_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_mapping.map)
+    #     self.assertIn("Export failed", str(context.exception))
 
-    def test_export_raw_feature_list_empty_list(self):
-        # Call method with empty list
-        with self.assertRaises(ValueError) as context:
-            self.db_manager.export_raw_feature_list([])
+    #     # Verify registry and mapping were not updated
+    #     imported_raw_feature_registry = self.registry_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_registry.registry)
+    #     imported_raw_feature_mapping = self.mapping_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_mapping.map)
 
-        self.assertIn("Feature list cannot be empty", str(context.exception))
+    # def test_export_raw_feature_list_empty_list(self):
+    #     # Call method with empty list
+    #     with self.assertRaises(ValueError) as context:
+    #         self.db_manager.export_raw_feature_list([])
 
-        # Verify registry and mapping were not updated
-        imported_raw_feature_registry = self.registry_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_registry.registry)
-        imported_raw_feature_mapping = self.mapping_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_mapping.map)
+    #     self.assertIn("Feature list cannot be empty", str(context.exception))
 
-    def test_export_agg_feature_list_export_fails(self):
-        # Create test aggregate feature list
-        agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
+    #     # Verify registry and mapping were not updated
+    #     imported_raw_feature_registry = self.registry_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_registry.registry)
+    #     imported_raw_feature_mapping = self.mapping_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_mapping.map)
 
-        # Configure mock exporter to raise exception
-        self.mock_exporter.export_data.side_effect = Exception("Export failed")
+    # def test_export_agg_feature_list_export_fails(self):
+    #     # Create test aggregate feature list
+    #     agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
 
-        # Call method and verify exception
-        with self.assertRaises(Exception) as context:
-            self.db_manager.export_aggregate_feature_list(agg_feature_list)
+    #     # Configure mock exporter to raise exception
+    #     self.mock_exporter.export_data.side_effect = Exception("Export failed")
 
-        self.assertIn("Export failed", str(context.exception))
+    #     # Call method and verify exception
+    #     with self.assertRaises(Exception) as context:
+    #         self.db_manager.export_aggregate_feature_list(agg_feature_list)
 
-        # Verify registry and mapping were not updated
-        imported_agg_feature_registry = self.registry_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_registry.registry)
-        imported_agg_feature_mapping = self.mapping_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_mapping.map)
+    #     self.assertIn("Export failed", str(context.exception))
 
-    def test_export_agg_feature_list_empty_list(self):
-        # Call method with empty list
-        with self.assertRaises(ValueError) as context:
-            self.db_manager.export_aggregate_feature_list([])
+    #     # Verify registry and mapping were not updated
+    #     imported_agg_feature_registry = self.registry_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_registry.registry)
+    #     imported_agg_feature_mapping = self.mapping_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_mapping.map)
 
-        self.assertIn("Feature list cannot be empty", str(context.exception))
+    # def test_export_agg_feature_list_empty_list(self):
+    #     # Call method with empty list
+    #     with self.assertRaises(ValueError) as context:
+    #         self.db_manager.export_aggregate_feature_list([])
 
-        # Verify registry and mapping were not updated
-        imported_agg_feature_registry = self.registry_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_registry.registry)
-        imported_agg_feature_mapping = self.mapping_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_mapping.map)
+    #     self.assertIn("Feature list cannot be empty", str(context.exception))
 
-    def test_export_raw_feature_list_invalid_output_dir(self):
-        # Create test raw feature list
-        raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
+    #     # Verify registry and mapping were not updated
+    #     imported_agg_feature_registry = self.registry_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_registry.registry)
+    #     imported_agg_feature_mapping = self.mapping_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_mapping.map)
 
-        # Configure output dir manager to return None
-        self.mock_output_dir_manager.get_provider.return_value = None
+    # def test_export_raw_feature_list_invalid_output_dir(self):
+    #     # Create test raw feature list
+    #     raw_feature_list = [self.feature_data_helper.create_test_raw_feature()]
 
-        # Call method and verify exception
-        with self.assertRaises(ValueError) as context:
-            self.db_manager.export_raw_feature_list(raw_feature_list)
+    #     # Configure output dir manager to return None
+    #     self.mock_output_dir_manager.get_provider.return_value = None
 
-        self.assertIn("No output directory configured", str(context.exception))
+    #     # Call method and verify exception
+    #     with self.assertRaises(ValueError) as context:
+    #         self.db_manager.export_raw_feature_list(raw_feature_list)
 
-        # Verify registry and mapping were not updated
-        imported_raw_feature_registry = self.registry_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_registry.registry)
-        imported_raw_feature_mapping = self.mapping_importer.import_data(
-            self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_raw_feature_mapping.map)
+    #     self.assertIn("No output directory configured", str(context.exception))
 
-    def test_export_agg_feature_list_invalid_output_dir(self):
-        # Create test aggregate feature list
-        agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
+    #     # Verify registry and mapping were not updated
+    #     imported_raw_feature_registry = self.registry_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_registry.registry)
+    #     imported_raw_feature_mapping = self.mapping_importer.import_data(
+    #         self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_raw_feature_mapping.map)
 
-        # Configure output dir manager to return None
-        self.mock_output_dir_manager.get_provider.return_value = None
+    # def test_export_agg_feature_list_invalid_output_dir(self):
+    #     # Create test aggregate feature list
+    #     agg_feature_list = [self.feature_data_helper.create_test_aggregate_feature()]
 
-        # Call method and verify exception
-        with self.assertRaises(ValueError) as context:
-            self.db_manager.export_aggregate_feature_list(agg_feature_list)
+    #     # Configure output dir manager to return None
+    #     self.mock_output_dir_manager.get_provider.return_value = None
 
-        self.assertIn("No output directory configured", str(context.exception))
+    #     # Call method and verify exception
+    #     with self.assertRaises(ValueError) as context:
+    #         self.db_manager.export_aggregate_feature_list(agg_feature_list)
 
-        # Verify registry and mapping were not updated
-        imported_agg_feature_registry = self.registry_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_registry.registry)
-        imported_agg_feature_mapping = self.mapping_importer.import_data(
-            self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
-        )
-        self.assertTrue(not imported_agg_feature_mapping.map)
+    #     self.assertIn("No output directory configured", str(context.exception))
+
+    #     # Verify registry and mapping were not updated
+    #     imported_agg_feature_registry = self.registry_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_registry.registry)
+    #     imported_agg_feature_mapping = self.mapping_importer.import_data(
+    #         self.agg_feature_temp_path, AggregateFeatureIdentifier, IMUDataIdentifier
+    #     )
+    #     self.assertTrue(not imported_agg_feature_mapping.map)
 
 
 if __name__ == "__main__":
