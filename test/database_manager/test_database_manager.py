@@ -181,7 +181,7 @@ class TestDatabaseManager(BaseTest):
         data = self.db_manager.import_data(test_id)
 
         # Verify correct path was retrieved from registry
-        expected_path = self.registry.get_path(test_id)
+        expected_path = self.registry.get_path_from_id(test_id)
 
         # Verify importer was called with correct path
         self.mock_importer.import_data.assert_called_once_with(expected_path)

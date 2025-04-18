@@ -56,21 +56,39 @@ class DatabaseManager:
         registry: Registry = self.registry_manager.get_provider(data_type)
         importer: Importer = self.import_manager.get_provider(data_type)
         # Get path of data from registry using provided ID
-        path: Path = registry.get_path(identifier)
+        path: Path = registry.get_path_from_id(identifier)
         # Import data from path
         return importer.import_data(path)
 
-    def export_data(self, assessment_data: List[AssessmentData]):
-        # Reference data_type from type(assessment_data)
+    def export_data(self, assessment_data_list: List[AssessmentData]) -> None:
+        if len(set(type(data.get_data_id()) for data in assessment_data_list)) != 1:
+            raise ValueError(
+                "All elements for export must share common data type (source identifier type)"
+            )
+        # Reference data_type from type(assessment_data.get_data_id())
+        source_data_type = type(assessment_data_list[0].get_data_id())
         # Get exporter, output dir, registry, mapping (from type of assessment_data)
+        output_dir: Path = self.output_dir_manager.get_provider(source_data_type)
+        exporter: Exporter = self.export_manager.get_provider(source_data_type)
+        registry: Registry = self.registry_manager.get_provider(source_data_type)
+        mapping: Mapping = self.mapping_manager.get_provider(source_data_type)
         # For every item in assessment data
-        # Export data with exporter by passing output dir and data object
-        # Call update registry method on registry
-        # Call update mapping on mapping
-        # After all items exported ->
+        for asessment_data in assessment_data_list:
+            source_data_id: Identifier = asessment_data.get_data_id()
+            target_data_id: Identifier = asessment_data.get_associated_data_id()
+            # Export data with exporter by passing output dir and data object
+            output_path: Path = exporter.export_data(output_dir, asessment_data)
+            # Call update registry method on registry
+            registry.add_entry(source_data_id, output_path)
+            # Call update mapping on mapping
+            if target_data_id:
+                mapping.add_entry(source_data_id, target_data_id)
         # Export updated registry
+        registry_exporter: RegistryExporter = RegistryExporter()
+        registry_exporter.export_data(registry.path, registry)
         # Export updated mapping
-        pass
+        mapping_exporter: MappingExporter = MappingExporter()
+        mapping_exporter.export_data(mapping.path, mapping)
 
     def export_raw_feature_list(self, raw_feature_list: List[RawFeatureSetEntry]):
         if not raw_feature_list:
@@ -100,6 +118,13 @@ class DatabaseManager:
             # Update raw feature registry
             raw_feature_registry: Registry = self.registry_manager.get_provider(
                 data_type
+            )
+            registry_exporter: RegistryExporter = RegistryExporter()
+            self._update_registry(
+                registry_exporter,
+                raw_feature_registry,
+                feature_id_to_output_path_map,
+                data_type,
             )
 
             # Update Raw feature -> IMU Data mapping

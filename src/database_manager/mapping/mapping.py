@@ -50,7 +50,34 @@ class Mapping:
     def path(self) -> Path:
         return self._path
 
-    def get_target_id(self, source_id: Identifier) -> Identifier:
-        if source_id.value not in self.map.keys():
-            raise KeyError(f"Unable to resolve target ID of source ID: {source_id}")
+    def get_target_id_from_source_id(self, source_id: Identifier) -> Identifier:
+        self._validate_source_id_type(type(source_id))
+        self._validate_id_in_map(source_id)
         return self.target_id_type(self.map[source_id.value])
+
+    def add_entry(self, source_id: Identifier, target_id: Identifier):
+        self._validate_source_id_type(type(source_id))
+        self._validate_target_id_type(type(target_id))
+        self.map[source_id.value] = target_id.value
+
+    def update_entry(self, source_id: Identifier, target_id: Identifier):
+        self._validate_source_id_type(type(source_id))
+        self._validate_id_in_map(source_id)
+        self._validate_target_id_type(type(target_id))
+        self.map[source_id.value] = target_id.value
+
+    def _validate_source_id_type(self, source_id_type: Type[Identifier]):
+        if source_id_type != self._source_id_type:
+            raise ValueError(
+                f"Invalid source identifier type: expected type - {self._source_id_type}, recieved type - {source_id_type}"
+            )
+
+    def _validate_target_id_type(self, target_id_type: Type[Identifier]):
+        if target_id_type != self._target_id_type:
+            raise ValueError(
+                f"Invalid target identifier type: expected type - {self._target_id_type}, recieved type - {target_id_type}"
+            )
+
+    def _validate_id_in_map(self, identifier: Identifier):
+        if identifier.value not in self.map.keys():
+            raise KeyError(f"Unable to resolve path from ID: {identifier}")

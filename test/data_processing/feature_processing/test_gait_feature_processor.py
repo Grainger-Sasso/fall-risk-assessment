@@ -77,9 +77,7 @@ class TestGaitFeatureProcessor(unittest.TestCase):
 
         # Mock methods and attributes if needed
         self.mock_user_data.user_identifier = UserIdentifier("mock_user_id")
-        self.mock_imu_data.get_imu_data_id.return_value = IMUDataIdentifier(
-            "mock_imu_data_id"
-        )
+        # self.mock_imu_data.meta = IMUDataIdentifier("mock_imu_data_id")
 
         # Initialize the processor
         self.processor = GaitFeatureProcessor()
@@ -107,7 +105,7 @@ class TestGaitFeatureProcessor(unittest.TestCase):
         self.assertEqual(len(raw_feature_set_entry.raw_epoch_features), 6)
         self.assertEqual(
             raw_feature_set_entry.metadata.imu_data_identifier,
-            self.mock_imu_data.get_imu_data_id(),
+            self.mock_imu_data.get_data_id(),
         )
         self.assertEqual(
             raw_feature_set_entry.metadata.user_identifier,
@@ -119,7 +117,7 @@ class TestGaitFeatureProcessor(unittest.TestCase):
         self.assertEqual(len(agg_feature_set_entry.aggregate_features), 46)
         self.assertEqual(
             raw_feature_set_entry.metadata.imu_data_identifier,
-            self.mock_imu_data.get_imu_data_id(),
+            self.mock_imu_data.get_data_id(),
         )
         self.assertEqual(
             raw_feature_set_entry.metadata.user_identifier,
@@ -135,12 +133,20 @@ class TestGaitFeatureProcessor(unittest.TestCase):
         raw_feature_set_entry.metadata.raw_feature_identifier = RawFeatureIdentifier(
             self.raw_feature_ID_value
         )
+        raw_feature_set_entry.metadata.imu_data_identifier = IMUDataIdentifier(
+            "mock_imu_data_id"
+        )
+        raw_feature_set_entry.metadata.user_identifier = UserIdentifier("mock_user_id")
         agg_feature_set_entry.metadata.raw_feature_identifier = RawFeatureIdentifier(
             self.raw_feature_ID_value
         )
         agg_feature_set_entry.metadata.aggregate_feature_identifier = (
             AggregateFeatureIdentifier(self.agg_feature_ID_value)
         )
+        agg_feature_set_entry.metadata.imu_data_identifier = IMUDataIdentifier(
+            "mock_imu_data_id"
+        )
+        agg_feature_set_entry.metadata.user_identifier = UserIdentifier("mock_user_id")
 
         # Export the raw features
         raw_output_subdir_path: Path = self.raw_feature_exporter.export_data(
@@ -188,35 +194,39 @@ class TestGaitFeatureProcessor(unittest.TestCase):
         self.assertTrue(agg_expected_file.is_file(), "Output is not a file")
 
         # Import raw and agg features
-        raw_feature_set_entry = self.raw_feature_importer.import_data(raw_expected_subdir)
-        agg_feature_set_entry = self.agg_feature_importer.import_data(agg_expected_subdir)
+        raw_feature_set_entry_import = self.raw_feature_importer.import_data(
+            raw_expected_subdir
+        )
+        agg_feature_set_entry_import = self.agg_feature_importer.import_data(
+            agg_expected_subdir
+        )
 
         # Assertions to verify the results
-        self.assertIsInstance(raw_feature_set_entry, RawFeatureSetEntry)
-        self.assertIsInstance(agg_feature_set_entry, AggregateFeatureSetEntry)
+        self.assertIsInstance(raw_feature_set_entry_import, RawFeatureSetEntry)
+        self.assertIsInstance(agg_feature_set_entry_import, AggregateFeatureSetEntry)
         # Assert raw feature types aggregated correctly
-        self.assertEqual(len(raw_feature_set_entry.raw_epoch_features), 6)
+        self.assertEqual(len(raw_feature_set_entry_import.raw_epoch_features), 6)
         self.assertEqual(
-            raw_feature_set_entry.metadata.imu_data_identifier,
-            self.mock_imu_data.get_imu_data_id(),
+            raw_feature_set_entry_import.metadata.imu_data_identifier,
+            IMUDataIdentifier("mock_imu_data_id"),
         )
         self.assertEqual(
-            raw_feature_set_entry.metadata.user_identifier,
-            self.mock_user_data.user_identifier,
+            raw_feature_set_entry_import.metadata.user_identifier,
+            UserIdentifier("mock_user_id"),
         )
-        for raw_epoch_feature in raw_feature_set_entry.raw_epoch_features:
+        for raw_epoch_feature in raw_feature_set_entry_import.raw_epoch_features:
             self.assertEqual(len(raw_epoch_feature.raw_features), 46)
         # Assert agg feature types computed and aggregated correctly
-        self.assertEqual(len(agg_feature_set_entry.aggregate_features), 46)
+        self.assertEqual(len(agg_feature_set_entry_import.aggregate_features), 46)
         self.assertEqual(
-            raw_feature_set_entry.metadata.imu_data_identifier,
-            self.mock_imu_data.get_imu_data_id(),
+            raw_feature_set_entry_import.metadata.imu_data_identifier,
+            IMUDataIdentifier("mock_imu_data_id"),
         )
         self.assertEqual(
-            raw_feature_set_entry.metadata.user_identifier,
-            self.mock_user_data.user_identifier,
+            raw_feature_set_entry_import.metadata.user_identifier,
+            UserIdentifier("mock_user_id"),
         )
-        for agg_feature in agg_feature_set_entry.aggregate_features:
+        for agg_feature in agg_feature_set_entry_import.aggregate_features:
             self.assertEqual(len(agg_feature.descriptive_statistics), 9)
 
 
