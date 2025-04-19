@@ -275,6 +275,74 @@ class TestDatabaseManager(BaseTest):
                 DataIOTestConstants.RAW_FEATURE_ID_2.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value
             },
         )
+        # Test exporting additional list
+        test_raw_feature_3 = self.feature_data_helper.create_test_raw_feature()
+        test_raw_feature_4 = self.feature_data_helper.create_test_raw_feature()
+        test_raw_feature_3.metadata.raw_feature_identifier = RawFeatureIdentifier(
+            DataIOTestConstants.RAW_FEATURE_ID_3.value
+        )
+        test_raw_feature_4.metadata.raw_feature_identifier = RawFeatureIdentifier(
+            DataIOTestConstants.RAW_FEATURE_ID_4.value
+        )
+        raw_feature_list_2 = [test_raw_feature_3, test_raw_feature_4]
+        self.db_manager.export_data(raw_feature_list_2)
+        # Verify the correct exporter is called with expected path and data
+        expected_parent_dir = TestConstants.TEST_PATHS.value[0]
+        self.mock_exporter.export_data.assert_has_calls([
+            call(expected_parent_dir, raw_feature_list_2[0]),
+            call(expected_parent_dir, raw_feature_list_2[1])
+        ])
+        # Assert the registry/mappings properly updated
+        imported_raw_feature_registry: Registry = self.registry_importer.import_data(
+            self.raw_feature_temp_path, RawFeatureIdentifier
+        )
+        self.assertEqual(
+            imported_raw_feature_registry.registry,
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_3.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_4.value: self.test_registry_path,
+            },
+        )
+        imported_raw_feature_mapping: Mapping = self.mapping_importer.import_data(
+            self.raw_feature_temp_path, RawFeatureIdentifier, IMUDataIdentifier
+        )
+        self.assertEqual(
+            imported_raw_feature_mapping.map,
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_3.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_4.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+            },
+        )
+        # Assert the registry/mappings managers properly updated
+        manager_raw_feature_registry: Registry = self.registry_manager.get_provider(
+            RawFeatureIdentifier
+        )
+        self.assertEqual(
+            manager_raw_feature_registry.registry,
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_3.value: self.test_registry_path,
+                DataIOTestConstants.RAW_FEATURE_ID_4.value: self.test_registry_path,
+            },
+        )
+        manager_raw_feature_mapping: Mapping = self.mapping_manager.get_provider(
+            RawFeatureIdentifier
+        )
+        self.assertEqual(
+            manager_raw_feature_mapping.map,
+            {
+                DataIOTestConstants.RAW_FEATURE_ID.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_2.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_3.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+                DataIOTestConstants.RAW_FEATURE_ID_4.value: DataIOTestConstants.FEATURE_IMU_DATA_ID.value,
+            },
+        )
+
 
     # def test_export_raw_feature_list(self):
     #     # Create test raw feature list
