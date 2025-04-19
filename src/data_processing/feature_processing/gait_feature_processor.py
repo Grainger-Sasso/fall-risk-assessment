@@ -18,6 +18,7 @@ from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
+from src.data_processing.feature_extraction.gait_feature_extractor import GaitResults
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
@@ -135,7 +136,7 @@ class GaitFeatureProcessor:
         ]
 
     def process_features(
-        self, gait_res: Dict[str, Any], imu_data: IMUData, user_data: UserData
+        self, gait_res: GaitResults, imu_data: IMUData, user_data: UserData
     ) -> Tuple[RawFeatureSetEntry, AggregateFeatureSetEntry]:
         multiday_features: List[Dict[RawFeatureType, float]] = (
             self._aggregate_multiday_features(gait_res)
@@ -212,7 +213,7 @@ class GaitFeatureProcessor:
         )
 
     def _aggregate_multiday_features(
-        self, gait_res: Dict[str, Any]
+        self, gait_res: GaitResults
     ) -> List[Dict[RawFeatureType, float]]:
         """Aggregates multiday, event-level features into collection of bout-level features
 
@@ -228,7 +229,7 @@ class GaitFeatureProcessor:
         day_start_ix = 0
         day_n = 1
         # Reference bout numbers and days from resutls
-        day_n_list = gait_res[RawFeatureType.DAY_N.value]
+        day_n_list = gait_res.data[RawFeatureType.DAY_N.value]
         # Traverse days
         while day_start_ix < len(day_n_list):
             day_end_ix = day_start_ix
@@ -237,7 +238,7 @@ class GaitFeatureProcessor:
                 day_end_ix += 1
             # Aggregate bouts, add to result
             bout_features = self._aggregate_single_day_features(
-                gait_res, day_start_ix, day_end_ix
+                gait_res.data, day_start_ix, day_end_ix
             )
             multiday_features.extend(bout_features)
             # Increment day_n and day_start_ix

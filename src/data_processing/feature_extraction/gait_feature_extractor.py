@@ -6,18 +6,18 @@ import skdh
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_model.data.user.user_data import UserData
-from src.data_processing.feature_processing.gait_feature_processor import (
-    GaitFeatureProcessor,
-)
 from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
     SensorCoordinateSystem,
 )
+
+class GaitResults:
+    def __init__(self, results: Dict[str, Any]):
+        self.data: Dict[str, Any] = results
 
 
 class GaitFeatureExtractor:
     def __init__(self):
         self.pipeline: skdh.Pipeline = self._build_pipeline()
-        self.feature_processor = GaitFeatureProcessor()
         self.gait_res_key = "GaitLumbar"
 
     def extract_gait_features(self, imu_data: IMUData, user_data: UserData) -> Dict[str, Any]:
@@ -32,7 +32,7 @@ class GaitFeatureExtractor:
             )
         )
         height = user_data.clinical_demographic_data.height.value
-        return self.pipeline.run(time=time, accel=accel, height=height)[self.gait_res_key]
+        return GaitResults(self.pipeline.run(time=time, accel=accel, height=height)[self.gait_res_key])
 
     def _build_pipeline(self) -> skdh.Pipeline:
         """Builds pipeline to extract gait features"""

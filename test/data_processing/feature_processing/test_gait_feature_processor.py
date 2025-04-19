@@ -39,6 +39,7 @@ from src.identifiers.feature.aggregate_feature_identifier import (
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
+from src.data_processing.feature_extraction.gait_feature_extractor import GaitResults
 
 
 def convert_none_to_nan_and_timestamp(data: Any) -> Any:
@@ -67,7 +68,7 @@ class TestGaitFeatureProcessor(unittest.TestCase):
             self.test_features = json.load(f)
 
         # Convert None to np.nan and "IC Time" to pandas Timestamp
-        self.test_features = convert_none_to_nan_and_timestamp(self.test_features)
+        self.test_features = GaitResults(convert_none_to_nan_and_timestamp(self.test_features))
         self.raw_feature_ID_value = "raw_test_id_value"
         self.agg_feature_ID_value = "agg_test_id_value"
 
