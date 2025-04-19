@@ -22,23 +22,19 @@ from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
 from src.data_types.feature.raw_feature_type import RawFeatureType
-from src.identifiers.feature.aggregate_feature_identifier import (
-    AggregateFeatureIdentifier,
+from src.id_generator.feature.aggregate_feature_identifier_generator import (
+    AggregateFeatureIdentifierGenerator,
+)
+from src.id_generator.feature.raw_feature_identifier_generator import (
+    RawFeatureIdentifierGenerator,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 
 
-class FeatureIDGenerator:
-    def generate_raw_feature_id(self):
-        return RawFeatureIdentifier("1234")
-
-    def generate_agg_feature_id(self):
-        return AggregateFeatureIdentifier("5678")
-
-
 class GaitFeatureProcessor:
     def __init__(self):
-        self.feature_id_generator = FeatureIDGenerator()
+        self.raw_feat_id_gen = RawFeatureIdentifierGenerator()
+        self.agg_feat_id_gen = AggregateFeatureIdentifierGenerator()
         self.event_gait_features: List[RawFeatureType] = [
             RawFeatureType.STRIDE_TIME,
             RawFeatureType.STRIDE_TIME_ASYMMETRY,
@@ -181,7 +177,7 @@ class GaitFeatureProcessor:
             )
         # Build raw feature metadata
         metadata = RawFeatureSetEntryMetadata(
-            raw_feature_identifier=self.feature_id_generator.generate_raw_feature_id(),
+            raw_feature_identifier=self.raw_feat_id_gen.generate_identifier(),
             user_identifier=user_data.user_identifier,
             imu_data_identifier=imu_data.get_data_id(),
             start_time=epoch_features[0].epoch_start_time,
@@ -206,7 +202,7 @@ class GaitFeatureProcessor:
             agg_feature_list.append((AggregateFeature(stat_list, feature_type)))
         # Build agg feature metadata
         metadata = AggregateFeatureSetEntryMetadata(
-            aggregate_feature_identifier=self.feature_id_generator.generate_agg_feature_id(),
+            aggregate_feature_identifier=self.agg_feat_id_gen.generate_identifier(),
             raw_feature_identifier=raw_feature_id,
             user_identifier=user_data.user_identifier,
             imu_data_identifier=imu_data.get_data_id(),
