@@ -42,6 +42,7 @@ class Registry:
     @property
     def path(self) -> Path:
         return self._path
+        
 
     def get_path_from_id(self, identifier: Identifier) -> Path:
         self._validate_id_type(type(identifier))

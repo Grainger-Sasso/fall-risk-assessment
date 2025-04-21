@@ -104,13 +104,22 @@ def main():
     pipeline = FeatureExtractionPipeline(
         registry_paths, mapping_paths, output_dir_paths
     )
-    pipeline.run(
-        Path(
-            "/Users/graingersasso/Desktop/fafra_testing/feature_extraction/input/dataset"
-        ),
-        "test_feature_ex_dataset",
-    )
-    
+    # pipeline.run(
+    #     Path(
+    #         "/Users/graingersasso/Desktop/fafra_testing/feature_extraction/input/dataset"
+    #     ),
+    #     "test_feature_ex_dataset",
+    # )
+    raw_feature_registry: Registry = pipeline.db_manager.registry_manager.get_provider(RawFeatureIdentifier)
+    agg_featagg_feat_idure_registry: Registry = pipeline.db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
+    for identifier, path in raw_feature_registry.registry.items():
+        raw_feat_id = RawFeatureIdentifier(identifier)
+        raw_feature = pipeline.db_manager.import_data([raw_feat_id])[0]
+    for identifier, path in agg_feature_registry.registry.items():
+        agg_feat_id = AggregateFeatureIdentifier(identifier)
+        agg_feature = pipeline.db_manager.import_data([agg_feat_id])[0]
+        pass
+
 
 
 if __name__ == "__main__":
