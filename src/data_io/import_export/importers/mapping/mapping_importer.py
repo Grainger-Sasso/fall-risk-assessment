@@ -13,7 +13,7 @@ from src.identifiers.identifier import Identifier
 class MappingFileNames(Enum):
     """Enumeration of mapping file names."""
 
-    MAPPING = "MAPPING"
+    MAPPING = "mapping"
 
 
 class MappingImporter(Importer[Mapping]):

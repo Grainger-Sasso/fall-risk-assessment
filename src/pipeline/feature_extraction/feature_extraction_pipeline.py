@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Dict, Tuple, Type
 
-from data_model.dataset.dataset import Dataset
 from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
     IMUDataFileExporter,
 )
@@ -35,6 +34,7 @@ from src.data_io.import_export.importers.registry.registry_importer import (
 )
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.user.user_data import UserData
+from src.data_model.dataset.dataset import Dataset
 from src.data_processing.feature_extraction.gait_feature_extractor import (
     GaitFeatureExtractor,
     GaitResults,
@@ -92,8 +92,8 @@ class FeatureExtractionPipeline:
         for entry in dataset.entries:
             imu_data_id: IMUDataIdentifier = entry.imu_data_id
             user_data_id: UserIdentifier = entry.user_data_id
-            imu_data: IMUData = self.db_manager.import_data([imu_data_id])
-            user_data: UserData = self.db_manager.import_data([user_data_id])
+            imu_data: IMUData = self.db_manager.import_data([imu_data_id])[0]
+            user_data: UserData = self.db_manager.import_data([user_data_id])[0]
             gait_res: GaitResults = self.gait_feature_extractor.extract_gait_features(
                 imu_data, user_data
             )
@@ -125,18 +125,18 @@ class FeatureExtractionPipeline:
         output_dir_manager = OutputDirectoryManager(self.output_dir_paths)
         # Setup import manager
         importers: Dict[Type[Identifier], Importer] = {
-            IMUDataIdentifier: IMUDataImporter,
-            UserIdentifier: UserDataImporter,
-            RawFeatureIdentifier: RawFeatureImporter,
-            AggregateFeatureIdentifier: AggregateFeatureImporter,
-            InstrumentSpecificationIdentifier: InstrumentSpecificationImporter,
+            IMUDataIdentifier: IMUDataImporter(),
+            UserIdentifier: UserDataImporter(),
+            RawFeatureIdentifier: RawFeatureImporter(),
+            AggregateFeatureIdentifier: AggregateFeatureImporter(),
+            InstrumentSpecificationIdentifier: InstrumentSpecificationImporter(),
         }
         import_manager = ImportManager(importers)
         # Setup export manager
         exporters: Dict[Type[Identifier], Importer] = {
-            IMUDataIdentifier: IMUDataFileExporter,
-            RawFeatureIdentifier: RawFeatureFileExporter,
-            AggregateFeatureIdentifier: AggregateFeatureFileExporter,
+            IMUDataIdentifier: IMUDataFileExporter(),
+            RawFeatureIdentifier: RawFeatureFileExporter(),
+            AggregateFeatureIdentifier: AggregateFeatureFileExporter(),
         }
         export_manager = ExportManager(exporters)
         # Setup database manager

@@ -15,7 +15,7 @@ from src.identifiers.identifier import Identifier
 class RegistryFileNames(Enum):
     """Enumeration of registry file names."""
 
-    REGISTRY = "REGISTRY"
+    REGISTRY = "registry"
 
 
 class RegistryImporter(Importer[Registry]):
