@@ -183,6 +183,7 @@ class TestConstants(Enum):
     USER_WEIGHT = 70.0  # kg
     USER_HEIGHT = 1.75  # m
     CLINICAL_ID = "test_clinical_ID"
+    USER_FALLER_STATUS = "faller"
 
     ############### Dataset ###############
     DATASET_NAME = "test_dataset"
@@ -849,6 +850,9 @@ class UserDataHelper:
                 ClinicalDemographicDataFields.IDENTIFIER.value: {
                     ClinicalDemographicDataFields.VALUE.value: TestConstants.CLINICAL_ID.value
                 },
+                ClinicalDemographicDataFields.FALLER_STATUS.value: {
+                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_FALLER_STATUS.value
+                }
             }
         )
 

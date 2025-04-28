@@ -4,6 +4,7 @@ from src.data_io.builders.model_builders.data.user.user_data_builder import (
 from src.data_model.data.user.clinical.clinical_assessment import ClinicalAssessment
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     ClinicalDemographicData,
+    FallerStatus,
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
@@ -42,6 +43,10 @@ class TestUserDataBuilder(BaseTest):
         self.assertIsInstance(demo_data.clinical_identifier, ClinicalIdentifier)
         self.assertEqual(
             demo_data.clinical_identifier.value, TestConstants.CLINICAL_ID.value
+        )
+        self.assertIsInstance(demo_data.faller_status, FallerStatus)
+        self.assertEqual(
+            demo_data.faller_status.value, TestConstants.USER_FALLER_STATUS.value
         )
 
         # Test clinical assessment

@@ -8,6 +8,7 @@ from src.data_io.import_export.importers.data.user.user_data_importer import (
 )
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     ClinicalDemographicData,
+    FallerStatus
 )
 from src.data_model.data.user.user_data import UserData
 from src.identifiers.user.clinical_identifier import ClinicalIdentifier
@@ -74,6 +75,10 @@ class TestUserDataImporter(BaseTest):
         self.assertEqual(
             result.clinical_demographic_data.clinical_identifier.value,
             TestConstants.CLINICAL_ID.value,
+        )
+        self.assertIsInstance(result.clinical_demographic_data.faller_status, FallerStatus)
+        self.assertEqual(
+            result.clinical_demographic_data.faller_status.value, TestConstants.USER_FALLER_STATUS.value
         )
 
     def test_missing_file(self):

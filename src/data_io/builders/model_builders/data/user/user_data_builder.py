@@ -7,6 +7,7 @@ from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
 from src.data_model.data.user.clinical.clinical_assessment import ClinicalAssessment
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     ClinicalDemographicData,
+    FallerStatus,
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
@@ -73,6 +74,11 @@ class UserDataBuilder(ModelBuilder):
                 ClinicalDemographicDataFields.VALUE.value
             ]
         )
+        faller_status: FallerStatus = FallerStatus(
+            clinical_demo_file.data[ClinicalDemographicDataFields.FALLER_STATUS.value][
+                ClinicalDemographicDataFields.VALUE.value
+            ]
+        )
         return ClinicalDemographicData(
-            name, age, sex, weight, height, clinical_identifier
+            name, age, sex, weight, height, clinical_identifier, faller_status
         )
