@@ -111,7 +111,7 @@ def main():
     #     "test_feature_ex_dataset",
     # )
     raw_feature_registry: Registry = pipeline.db_manager.registry_manager.get_provider(RawFeatureIdentifier)
-    agg_featagg_feat_idure_registry: Registry = pipeline.db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
+    agg_feature_registry: Registry = pipeline.db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
     for identifier, path in raw_feature_registry.registry.items():
         raw_feat_id = RawFeatureIdentifier(identifier)
         raw_feature = pipeline.db_manager.import_data([raw_feat_id])[0]
