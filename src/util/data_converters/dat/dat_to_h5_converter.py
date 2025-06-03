@@ -3,14 +3,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import pandas as pd
 import wfdb
 
 from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
     IMUDataFileBuilder,
 )
 from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
+from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
+from src.data_io.read_write.readers.csv.csv_file_reader import CSVFileReader
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
@@ -51,6 +54,7 @@ class DATToHDF5Converter:
         self.model_builder = IMUDataBuilder()
         self.file_writer = HDF5FileWriter()
         self.file_reader = HDF5FileReader()
+        self.csv_file_reader = CSVFileReader()
 
     def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
         """Read data from a .dat file.
@@ -79,6 +83,43 @@ class DATToHDF5Converter:
         except Exception as e:
             print(f"Error reading .dat file: {str(e)}")
             return None
+
+    def read_clinical_demo_file(self, path: Path) -> CSVFile:
+        return self.csv_file_reader.read(path)
+
+    def read_xlsx_to_dict(self, file_path: Path) -> Dict[str, List[Any]]:
+        """Read an XLSX file into a dictionary mapping column headers to arrays of values.
+
+        Args:
+            file_path (Path): Path to the XLSX file
+
+        Returns:
+            Dict[str, List[Any]]: Dictionary where keys are column headers and values are lists of data
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist
+            ValueError: If the file is not an XLSX file
+        """
+        if not file_path.exists():
+            raise FileNotFoundError(f"The file at {file_path} does not exist.")
+
+        if file_path.suffix.lower() != ".xlsx":
+            raise ValueError(f"Expected an XLSX file, but got {file_path.suffix}")
+
+        try:
+            # Read the Excel file
+            df = pd.read_excel(file_path)
+
+            # Convert DataFrame to dictionary of lists
+            data_dict = {column: df[column].tolist() for column in df.columns}
+
+            return data_dict
+        except Exception as e:
+            print(f"Error reading XLSX file: {str(e)}")
+            return {}
+
+    def build_user_data(self, data: CSVFile):
+        pass
 
     def read_dat_record_wfdb(self, path: Path) -> Dict[Any, Any]:
         """Reads and parses data records for LTMM dataset
@@ -115,6 +156,7 @@ class DATToHDF5Converter:
         data[IMUDataFields.TIME] = time_axis
         return data
 
+
     def convert_to_imu_data(self, data, user_id: str) -> IMUData:
         epoch_imu_data_list: List[EpochIMUData] = self._build_epoch_data(data)
         imu_data_id: IMUDataIdentifier = self.imu_id_gen.generate_identifier()
@@ -138,6 +180,10 @@ class DATToHDF5Converter:
         group: HDF5Group = self.file_builder.build(data)
         self.file_writer.write(output_path, group)
         return
+
+    def test_read_converted_file(self, path: Path):
+        h5_file: HDF5Group = self.file_reader.read(path)
+        return self.model_builder.build(h5_file)
 
     def _build_epoch_data(self, data) -> List[EpochIMUData]:
         sensor_data = self._build_sensor_data(data)
@@ -171,7 +217,9 @@ class DATToHDF5Converter:
             unit="g",
         )
         time = data[IMUDataFields.TIME]
-        idle_mask = np.array([0 for _ in range(len(data[AnatomicalCoordinateSystem.ANTEROPOSTERIOR]))])
+        idle_mask = np.array(
+            [0 for _ in range(len(data[AnatomicalCoordinateSystem.ANTEROPOSTERIOR]))]
+        )
         return SensorData(
             data=[x_axis, y_axis, z_axis],
             time=time,
@@ -179,23 +227,27 @@ class DATToHDF5Converter:
             metadata=sensor_metadata,
         )
 
-    def test_read_converted_file(self, path: Path):
-        h5_file: HDF5Group = self.file_reader.read(path)
-        return self.model_builder.build(h5_file)
-
 
 def main():
-    path = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/CO001"
-    )
-    output_path = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm_h5/test.h5"
+    # ### Converts single LTMM data file to H5 file and writes to specified path
+    # path = Path(
+    #     "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/CO001"
+    # )
+    # output_path = Path(
+    #     "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm_h5/test.h5"
+    # )
+    # converter = DATToHDF5Converter()
+    # data = converter.read_dat_record_wfdb(path)
+    # imu_data = converter.convert_to_imu_data(data, "dummy_user_id")
+    # converter.export_imu_data_to_h5(imu_data, output_path)
+    # converted_imu_data = converter.test_read_converted_file(output_path)
+
+    demo_data_path = Path(
+        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/ClinicalDemogData_COFL.xlsx"
     )
     converter = DATToHDF5Converter()
-    data = converter.read_dat_record_wfdb(path)
-    imu_data = converter.convert_to_imu_data(data, "dummy_user_id")
-    converter.export_imu_data_to_h5(imu_data, output_path)
-    converted_imu_data = converter.test_read_converted_file(output_path)
+    demo_data = converter.read_xlsx_to_dict(demo_data_path)
+    print("f")
 
 
 if __name__ == "__main__":
