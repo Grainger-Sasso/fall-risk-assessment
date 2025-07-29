@@ -1,3 +1,4 @@
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -22,6 +23,12 @@ from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
+from src.data_model.data.user.clinical.clinical_demographic_data import (
+    ClinicalDemographicData,
+    FallerStatus,
+    Sex,
+)
+from src.data_model.data.user.user_data import UserData
 from src.data_types.instrument.sensor_type import SensorType
 from src.id_generator.imu.imu_data_identifier_generator import (
     IMUDataIdentifierGenerator,
@@ -30,6 +37,7 @@ from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import (
     InstrumentIdentifier,
 )
+from src.identifiers.user.clinical_identifier import ClinicalIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.anatomical.anatomical_axis import (
     AnatomicalAxis,
@@ -118,7 +126,43 @@ class DATToHDF5Converter:
             print(f"Error reading XLSX file: {str(e)}")
             return {}
 
-    def build_user_data(self, data: CSVFile):
+    def build_user_data(self, demo_data_path: Path, male_status_1: bool, output_path: Path):
+        demo_data = self.read_xlsx_to_dict(demo_data_path)
+
+        # For each entry in the data, create
+        ix = 0
+        num_entries = len(demo_data["Participant ID"])
+        while ix < num_entries:
+            p_id = demo_data["Participant ID"][ix].replace("-", "")
+            age = demo_data["Age"][ix]
+            sex = demo_data["Sex"][ix]
+            faller = demo_data["Faller Status"][ix]
+            if male_status_1:
+                if sex == 1:
+                    sex = Sex.MALE
+                else:
+                    sex = Sex.FEMALE
+            else:
+                if sex == 1:
+                    sex = Sex.FEMALE
+                else:
+                    sex = Sex.MALE
+            if faller:
+                faller = FallerStatus.FALLER
+            else:
+                faller = FallerStatus.NON_FALLER
+            clin_id = ClinicalIdentifier(p_id)
+            clin_demo_data = ClinicalDemographicData(
+                "", age, sex, 0.0, 0.0, clin_id, faller
+            )
+            user_id = UserIdentifier(p_id)
+            user_data = UserData(user_id, clin_demo_data)
+            ix += 1
+        # Needs to generate a directory with
+        output_subdir_path = os.path.join(output_path, p_id)
+        os.makedirs(output_subdir_path, exist_ok=True)
+
+        # Needs to populate directory with User data JSON and clinical demo data JSON files
         pass
 
     def read_dat_record_wfdb(self, path: Path) -> Dict[Any, Any]:
@@ -155,7 +199,6 @@ class DATToHDF5Converter:
         )
         data[IMUDataFields.TIME] = time_axis
         return data
-
 
     def convert_to_imu_data(self, data, user_id: str) -> IMUData:
         epoch_imu_data_list: List[EpochIMUData] = self._build_epoch_data(data)
@@ -242,8 +285,11 @@ def main():
     # converter.export_imu_data_to_h5(imu_data, output_path)
     # converted_imu_data = converter.test_read_converted_file(output_path)
 
+    # demo_data_path = Path(
+    #     "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/ClinicalDemogData_COFL.xlsx"
+    # )
     demo_data_path = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/ClinicalDemogData_COFL.xlsx"
+        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/non_faller_demo_data_0male.xlsx"
     )
     converter = DATToHDF5Converter()
     demo_data = converter.read_xlsx_to_dict(demo_data_path)
