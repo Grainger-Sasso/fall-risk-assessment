@@ -14,9 +14,14 @@ from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDat
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
+from src.data_io.model_fields.data.user.clinical_demographic_data_fields import (
+    ClinicalDemographicDataFields,
+)
+from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
 from src.data_io.read_write.readers.csv.csv_file_reader import CSVFileReader
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
+from src.data_io.read_write.writers.json.json_dict_file_writer import JSONDictFileWriter
 from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
@@ -63,6 +68,7 @@ class DATToHDF5Converter:
         self.file_writer = HDF5FileWriter()
         self.file_reader = HDF5FileReader()
         self.csv_file_reader = CSVFileReader()
+        self.json_dict_writer = JSONDictFileWriter()
 
     def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
         """Read data from a .dat file.
@@ -126,7 +132,9 @@ class DATToHDF5Converter:
             print(f"Error reading XLSX file: {str(e)}")
             return {}
 
-    def build_user_data(self, demo_data_path: Path, male_status_1: bool, output_path: Path):
+    def build_user_data(
+        self, demo_data_path: Path, male_status_1: bool, output_path: Path
+    ):
         demo_data = self.read_xlsx_to_dict(demo_data_path)
 
         # For each entry in the data, create
@@ -151,19 +159,52 @@ class DATToHDF5Converter:
                 faller = FallerStatus.FALLER
             else:
                 faller = FallerStatus.NON_FALLER
-            clin_id = ClinicalIdentifier(p_id)
-            clin_demo_data = ClinicalDemographicData(
-                "", age, sex, 0.0, 0.0, clin_id, faller
-            )
-            user_id = UserIdentifier(p_id)
-            user_data = UserData(user_id, clin_demo_data)
+            # Build user json file
+            user_data_json_dict = {UserDataFields.USER_DATA_IDENTIFIER.value: p_id}
+            # Build clin demo data json file
+            clin_data_json_dict = {
+                ClinicalDemographicDataFields.NAME.value: "",
+                ClinicalDemographicDataFields.AGE.value: age,
+                ClinicalDemographicDataFields.SEX.value: sex.value,
+                ClinicalDemographicDataFields.WEIGHT.value: 0.0,
+                ClinicalDemographicDataFields.HEIGHT.value: 0.0,
+                ClinicalDemographicDataFields.IDENTIFIER.value: p_id,
+                ClinicalDemographicDataFields.FALLER_STATUS.value: faller.value,
+            }
+            # Gen directory for user data output
+            output_subdir_path = os.path.join(output_path, p_id)
+            #
+            os.makedirs(output_subdir_path, exist_ok=True)
+            self.json_dict_writer.write(output_subdir_path, user_data_json_dict)
+            self.json_dict_writer.write(output_subdir_path, clin_data_json_dict)
             ix += 1
-        # Needs to generate a directory with
-        output_subdir_path = os.path.join(output_path, p_id)
-        os.makedirs(output_subdir_path, exist_ok=True)
 
         # Needs to populate directory with User data JSON and clinical demo data JSON files
         pass
+
+    def build_user_data_object(
+        male_status_1: bool, faller: int, age: float, p_id: str, sex: float
+    ):
+        if male_status_1:
+            if sex == 1:
+                sex = Sex.MALE
+            else:
+                sex = Sex.FEMALE
+        else:
+            if sex == 1:
+                sex = Sex.FEMALE
+            else:
+                sex = Sex.MALE
+        if faller:
+            faller = FallerStatus.FALLER
+        else:
+            faller = FallerStatus.NON_FALLER
+        clin_id = ClinicalIdentifier(p_id)
+        clin_demo_data = ClinicalDemographicData(
+            "", age, sex, 0.0, 0.0, clin_id, faller
+        )
+        user_id = UserIdentifier(p_id)
+        return UserData(user_id, clin_demo_data)
 
     def read_dat_record_wfdb(self, path: Path) -> Dict[Any, Any]:
         """Reads and parses data records for LTMM dataset
