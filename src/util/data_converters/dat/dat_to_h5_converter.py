@@ -13,6 +13,10 @@ from src.data_io.builders.file_builders.data.imu.imu_data_file_builder import (
 from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
+from src.data_io.formats.json.json_dict_file import JSONDictFile
+from src.data_io.import_export.importers.data.user.user_data_importer import (
+    UserDataFileNames,
+)
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
 from src.data_io.model_fields.data.user.clinical_demographic_data_fields import (
     ClinicalDemographicDataFields,
@@ -70,37 +74,7 @@ class DATToHDF5Converter:
         self.csv_file_reader = CSVFileReader()
         self.json_dict_writer = JSONDictFileWriter()
 
-    def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
-        """Read data from a .dat file.
-
-        Args:
-            input_file_path (Path): Path to the .dat file to read.
-
-        Returns:
-            Optional[np.ndarray]: Array containing the data from the .dat file, or None if file cannot be read.
-
-        Raises:
-            FileNotFoundError: If the specified file does not exist.
-            ValueError: If the file is not a .dat file.
-        """
-        if not input_file_path.exists():
-            raise FileNotFoundError(f"The file at {input_file_path} does not exist.")
-
-        if input_file_path.suffix.lower() != ".dat":
-            raise ValueError(f"Expected a .dat file, but got {input_file_path.suffix}")
-
-        try:
-            # Read the binary data from the .dat file
-            with open(input_file_path, "rb") as file:
-                data = np.fromfile(file, dtype=np.float32)  # Assuming float32 data type
-            return data
-        except Exception as e:
-            print(f"Error reading .dat file: {str(e)}")
-            return None
-
-    def read_clinical_demo_file(self, path: Path) -> CSVFile:
-        return self.csv_file_reader.read(path)
-
+    ### Demo data conversion
     def read_xlsx_to_dict(self, file_path: Path) -> Dict[str, List[Any]]:
         """Read an XLSX file into a dictionary mapping column headers to arrays of values.
 
@@ -132,9 +106,7 @@ class DATToHDF5Converter:
             print(f"Error reading XLSX file: {str(e)}")
             return {}
 
-    def build_user_data(
-        self, demo_data_path: Path, male_status_1: bool, output_path: Path
-    ):
+    def build_user_data(self, demo_data_path: Path, output_path: Path):
         demo_data = self.read_xlsx_to_dict(demo_data_path)
 
         # For each entry in the data, create
@@ -143,44 +115,47 @@ class DATToHDF5Converter:
         while ix < num_entries:
             p_id = demo_data["Participant ID"][ix].replace("-", "")
             age = demo_data["Age"][ix]
-            sex = demo_data["Sex"][ix]
+            sex = demo_data["Sex (Male-0; Female-1)"][ix]
             faller = demo_data["Faller Status"][ix]
-            if male_status_1:
-                if sex == 1:
-                    sex = Sex.MALE
-                else:
-                    sex = Sex.FEMALE
+            if sex == 1:
+                sex = Sex.FEMALE
             else:
-                if sex == 1:
-                    sex = Sex.FEMALE
-                else:
-                    sex = Sex.MALE
+                sex = Sex.MALE
             if faller:
                 faller = FallerStatus.FALLER
             else:
                 faller = FallerStatus.NON_FALLER
             # Build user json file
-            user_data_json_dict = {UserDataFields.USER_DATA_IDENTIFIER.value: p_id}
+            user_data_json_dict = JSONDictFile(
+                {UserDataFields.USER_DATA_IDENTIFIER.value: p_id}
+            )
             # Build clin demo data json file
-            clin_data_json_dict = {
-                ClinicalDemographicDataFields.NAME.value: "",
-                ClinicalDemographicDataFields.AGE.value: age,
-                ClinicalDemographicDataFields.SEX.value: sex.value,
-                ClinicalDemographicDataFields.WEIGHT.value: 0.0,
-                ClinicalDemographicDataFields.HEIGHT.value: 0.0,
-                ClinicalDemographicDataFields.IDENTIFIER.value: p_id,
-                ClinicalDemographicDataFields.FALLER_STATUS.value: faller.value,
-            }
+            clin_data_json_dict = JSONDictFile(
+                {
+                    ClinicalDemographicDataFields.NAME.value: "",
+                    ClinicalDemographicDataFields.AGE.value: age,
+                    ClinicalDemographicDataFields.SEX.value: sex.value,
+                    ClinicalDemographicDataFields.WEIGHT.value: 0.0,
+                    ClinicalDemographicDataFields.HEIGHT.value: 0.0,
+                    ClinicalDemographicDataFields.IDENTIFIER.value: p_id,
+                    ClinicalDemographicDataFields.FALLER_STATUS.value: faller.value,
+                }
+            )
             # Gen directory for user data output
-            output_subdir_path = os.path.join(output_path, p_id)
+            output_subdir_path = os.path.join(output_path, "user_" + p_id)
             #
             os.makedirs(output_subdir_path, exist_ok=True)
-            self.json_dict_writer.write(output_subdir_path, user_data_json_dict)
-            self.json_dict_writer.write(output_subdir_path, clin_data_json_dict)
+            user_data_path = os.path.join(
+                output_subdir_path, UserDataFileNames.USER_DATA.value + ".json"
+            )
+            clin_data_path = os.path.join(
+                output_subdir_path,
+                UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value + ".json",
+            )
+            s1, e1 = self.json_dict_writer.write(user_data_path, user_data_json_dict)
+            s2, e2 = self.json_dict_writer.write(clin_data_path, clin_data_json_dict)
+            print(s1, e1)
             ix += 1
-
-        # Needs to populate directory with User data JSON and clinical demo data JSON files
-        pass
 
     def build_user_data_object(
         male_status_1: bool, faller: int, age: float, p_id: str, sex: float
@@ -205,6 +180,44 @@ class DATToHDF5Converter:
         )
         user_id = UserIdentifier(p_id)
         return UserData(user_id, clin_demo_data)
+
+    ### IMU Data conversion
+    def convert_dat_to_h5(dat_dir_path: Path, output_path: Path):
+        # Scrape the input directory for all .dat files
+        dat_file_paths = []
+        for file_path in dat_dir_path.rglob("*.dat"):
+            dat_file_paths.append(file_path)
+        print(dat_file_paths)
+
+        return dat_file_paths
+
+    def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
+        """Read data from a .dat file.
+
+        Args:
+            input_file_path (Path): Path to the .dat file to read.
+
+        Returns:
+            Optional[np.ndarray]: Array containing the data from the .dat file, or None if file cannot be read.
+
+        Raises:
+            FileNotFoundError: If the specified file does not exist.
+            ValueError: If the file is not a .dat file.
+        """
+        if not input_file_path.exists():
+            raise FileNotFoundError(f"The file at {input_file_path} does not exist.")
+
+        if input_file_path.suffix.lower() != ".dat":
+            raise ValueError(f"Expected a .dat file, but got {input_file_path.suffix}")
+
+        try:
+            # Read the binary data from the .dat file
+            with open(input_file_path, "rb") as file:
+                data = np.fromfile(file, dtype=np.float32)  # Assuming float32 data type
+            return data
+        except Exception as e:
+            print(f"Error reading .dat file: {str(e)}")
+            return None
 
     def read_dat_record_wfdb(self, path: Path) -> Dict[Any, Any]:
         """Reads and parses data records for LTMM dataset
@@ -322,18 +335,22 @@ def main():
     # )
     # converter = DATToHDF5Converter()
     # data = converter.read_dat_record_wfdb(path)
-    # imu_data = converter.convert_to_imu_data(data, "dummy_user_id")
+    # imu_data = converter.Sex (Male-0; Female-1)(data, "dummy_user_id")
     # converter.export_imu_data_to_h5(imu_data, output_path)
     # converted_imu_data = converter.test_read_converted_file(output_path)
 
+    # ### Converts CSV file with Demo data into JSON files in subdirs by ID
     # demo_data_path = Path(
     #     "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/ClinicalDemogData_COFL.xlsx"
     # )
     demo_data_path = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/non_faller_demo_data_0male.xlsx"
+        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/demo_data_essential.xlsx"
+    )
+    user_output_path = Path(
+        "/Users/graingersasso/Desktop/fafra_data/converted_data/ltmm/user_data"
     )
     converter = DATToHDF5Converter()
-    demo_data = converter.read_xlsx_to_dict(demo_data_path)
+    demo_data = converter.build_user_data(demo_data_path, user_output_path)
     print("f")
 
 
