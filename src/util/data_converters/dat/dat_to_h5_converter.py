@@ -14,6 +14,9 @@ from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDat
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.formats.json.json_dict_file import JSONDictFile
+from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
+    IMUDataFileExporter,
+)
 from src.data_io.import_export.importers.data.user.user_data_importer import (
     UserDataFileNames,
 )
@@ -73,6 +76,80 @@ class DATToHDF5Converter:
         self.file_reader = HDF5FileReader()
         self.csv_file_reader = CSVFileReader()
         self.json_dict_writer = JSONDictFileWriter()
+        self.imu_data_exporter = IMUDataFileExporter()
+        self.p_ids = [
+            "CO001",
+            "CO002",
+            "CO003",
+            "CO004",
+            "CO005",
+            "CO006",
+            "CO007",
+            "CO008",
+            "CO009",
+            "CO010",
+            "CO011",
+            "CO012",
+            "CO013",
+            "CO014",
+            "CO015",
+            "CO016",
+            "CO017",
+            "CO018",
+            "CO019",
+            "CO020",
+            "CO021",
+            "CO022",
+            "CO023",
+            "CO024",
+            "CO025",
+            "CO027",
+            "CO028",
+            "CO029",
+            "CO030",
+            "CO031",
+            "CO032",
+            "CO035",
+            "CO036",
+            "CO037",
+            "CO038",
+            "CO039",
+            "CO040",
+            "CO041",
+            "CO042",
+            "CO044",
+            "FL001",
+            "FL004",
+            "FL005",
+            "FL006",
+            "FL007",
+            "FL008",
+            "FL009",
+            "FL010",
+            "FL011",
+            "FL014",
+            "FL015",
+            "FL016",
+            "FL018",
+            "FL019",
+            "FL020",
+            "FL021",
+            "FL022",
+            "FL023",
+            "FL024",
+            "FL025",
+            "FL026",
+            "FL027",
+            "FL028",
+            "FL029",
+            "FL030",
+            "FL031",
+            "FL032",
+            "FL033",
+            "FL034",
+            "FL035",
+            "FL036",
+        ]
 
     ### Demo data conversion
     def read_xlsx_to_dict(self, file_path: Path) -> Dict[str, List[Any]]:
@@ -135,8 +212,8 @@ class DATToHDF5Converter:
                     ClinicalDemographicDataFields.NAME.value: "",
                     ClinicalDemographicDataFields.AGE.value: age,
                     ClinicalDemographicDataFields.SEX.value: sex.value,
-                    ClinicalDemographicDataFields.WEIGHT.value: 0.0,
-                    ClinicalDemographicDataFields.HEIGHT.value: 0.0,
+                    ClinicalDemographicDataFields.WEIGHT.value: 71.98,
+                    ClinicalDemographicDataFields.HEIGHT.value: 1.62,
                     ClinicalDemographicDataFields.IDENTIFIER.value: p_id,
                     ClinicalDemographicDataFields.FALLER_STATUS.value: faller.value,
                 }
@@ -182,52 +259,24 @@ class DATToHDF5Converter:
         return UserData(user_id, clin_demo_data)
 
     ### IMU Data conversion
-    def convert_all_dat_to_h5(
-        self, dat_dir_path: Path, demo_data_path: Path, output_path: Path
-    ):
+    def convert_all_dat_to_h5(self, dat_dir_path: Path, output_path: Path):
         # Scrape the input directory for all .dat files
         dat_file_paths = []
         for file_path in dat_dir_path.rglob("*.dat"):
             dat_file_paths.append(file_path)
-        file_stems = [p.stem for p in dat_file_paths]
-
-        demo_data = self.read_xlsx_to_dict(demo_data_path)
-        ix = 0
-        p_ids = []
-        num_entries = len(demo_data["Participant ID"])
-        while ix < num_entries:
-            p_ids.append(demo_data["Participant ID"][ix].replace("-", ""))
-            ix += 1
-
-        # Get all IDs that are found in imu data files and demo data
-        # Show which IDs have IMU data but no demo
-        # Show which IDs have demo data but no IMU data
-
-        # Find file stems that appear in p_ids (have both IMU and demo data)
-        file_stems_in_p_ids = [stem for stem in file_stems if stem in p_ids]
-
-        # Find file stems that don't appear in p_ids (have IMU data but no demo)
-        file_stems_not_in_p_ids = [stem for stem in file_stems if stem not in p_ids]
-
-        # Find p_ids that don't appear in file_stems (have demo data but no IMU)
-        p_ids_not_in_file_stems = [p_id for p_id in p_ids if p_id not in file_stems]
-
-        print(
-            "File stems that appear in p_ids (have both IMU and demo data):",
-            file_stems_in_p_ids,
-        )
-        print(
-            "File stems that don't appear in p_ids (have IMU data but no demo):",
-            file_stems_not_in_p_ids,
-        )
-        print(
-            "P_ids that don't appear in file_stems (have demo data but no IMU):",
-            p_ids_not_in_file_stems,
-        )
-
-
-
-        return dat_file_paths
+        # file_stems = [p.stem for p in dat_file_paths]
+        p_id_to_imu_id_map = {}
+        for p_id in self.p_ids:
+            # NOTE THE FILE PATH NEEDS TO BE PROVIDED AS DIRECTORY + P_ID (lib assumes .dat and .hea file format)
+            file_path = Path(os.path.join(dat_dir_path, p_id))
+            data = self.read_dat_record_wfdb(file_path)
+            print(f"Read in file: {p_id}")
+            imu_data: IMUData = self.convert_to_imu_data(data, p_id)
+            p_id_to_imu_id_map[p_id] = imu_data.metadata.imu_data_identifier
+            print(f"Converted file: {p_id}")
+            self.imu_data_exporter.export_data(output_path, imu_data)
+            print(f"Exported file: {p_id}")
+        return p_id_to_imu_id_map
 
     def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
         """Read data from a .dat file.
@@ -373,7 +422,7 @@ def main():
     # )
     # converter = DATToHDF5Converter()
     # data = converter.read_dat_record_wfdb(path)
-    # imu_data = converter.Sex (Male-0; Female-1)(data, "dummy_user_id")
+    # imu_data = converter.convert_to_imu_data(data, "dummy_user_id")
     # converter.export_imu_data_to_h5(imu_data, output_path)
     # converted_imu_data = converter.test_read_converted_file(output_path)
 
@@ -389,85 +438,14 @@ def main():
 
     ### Converts IMU to h5
     converter = DATToHDF5Converter()
-    demo_data_path = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/demo_data_essential.xlsx"
-    )
     imu_data_dir = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0"
+        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/missing_fallers"
     )
-
-    p_ids = [
-        "CO002",
-        "CO003",
-        "CO004",
-        "CO005",
-        "CO006",
-        "CO007",
-        "CO008",
-        "CO009",
-        "CO010",
-        "CO011",
-        "CO012",
-        "CO013",
-        "CO014",
-        "CO015",
-        "CO016",
-        "CO017",
-        "CO018",
-        "CO019",
-        "CO020",
-        "CO021",
-        "CO022",
-        "CO023",
-        "CO024",
-        "CO025",
-        "CO027",
-        "CO028",
-        "CO029",
-        "CO030",
-        "CO031",
-        "CO032",
-        "CO035",
-        "CO036",
-        "CO037",
-        "CO038",
-        "CO039",
-        "CO040",
-        "CO041",
-        "CO042",
-        "CO044",
-        "FL001",
-        "FL004",
-        "FL005",
-        "FL006",
-        "FL007",
-        "FL008",
-        "FL009",
-        "FL010",
-        "FL011",
-        "FL014",
-        "FL016",
-        "FL018",
-        "FL019",
-        "FL020",
-        "FL021",
-        "FL022",
-        "FL023",
-        "FL024",
-        "FL025",
-        "FL026",
-        "FL027",
-        "FL028",
-        "FL029",
-        "FL030",
-        "FL031",
-        "FL032",
-        "FL033",
-        "FL034",
-        "FL035",
-        "FL036",
-    ]
-    converter.convert_all_dat_to_h5(imu_data_dir, demo_data_path, Path(""))
+    p_id_to_imu_id_map = converter.convert_all_dat_to_h5(
+        imu_data_dir,
+        Path("/Users/graingersasso/Desktop/fafra_data/converted_data/ltmm/imu_data"),
+    )
+    print(p_id_to_imu_id_map)
     print("f")
 
 
