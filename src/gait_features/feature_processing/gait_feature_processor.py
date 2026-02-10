@@ -18,7 +18,7 @@ from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
-from src.data_processing.feature_extraction.gait_feature_extractor import GaitResults
+from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )

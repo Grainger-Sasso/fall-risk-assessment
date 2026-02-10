@@ -30,7 +30,7 @@ from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
 )
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
-from src.data_processing.feature_processing.gait_feature_processor import (
+from src.gait_features.feature_processing.gait_feature_processor import (
     GaitFeatureProcessor,
 )
 from src.identifiers.feature.aggregate_feature_identifier import (
@@ -39,7 +39,7 @@ from src.identifiers.feature.aggregate_feature_identifier import (
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
-from src.data_processing.feature_extraction.gait_feature_extractor import GaitResults
+from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
 
 
 def convert_none_to_nan_and_timestamp(data: Any) -> Any:

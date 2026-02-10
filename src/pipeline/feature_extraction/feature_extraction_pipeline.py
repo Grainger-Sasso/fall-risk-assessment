@@ -35,11 +35,11 @@ from src.data_io.import_export.importers.registry.registry_importer import (
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.user.user_data import UserData
 from src.data_model.dataset.dataset import Dataset
-from src.data_processing.feature_extraction.gait_feature_extractor import (
+from src.gait_features.feature_extraction.gait_feature_extractor import (
     GaitFeatureExtractor,
     GaitResults,
 )
-from src.data_processing.feature_processing.gait_feature_processor import (
+from src.gait_features.feature_processing.gait_feature_processor import (
     GaitFeatureProcessor,
 )
 from src.database_manager.data_access.export_manager import ExportManager
