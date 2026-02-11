@@ -23,11 +23,11 @@ from src.data_types.descriptive_statistics.descriptive_statistic_type import (
 )
 from src.data_types.feature.raw_feature_type import RawFeatureType
 from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
-from src.id_generator.identifier_generator import IdentifierGenerator
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
+from src.identifiers.identifier_generator import IdentifierGenerator
 
 
 class GaitFeatureProcessor:
