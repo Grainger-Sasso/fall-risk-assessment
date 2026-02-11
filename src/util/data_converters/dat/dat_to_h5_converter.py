@@ -42,9 +42,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
 )
 from src.data_model.data.user.user_data import UserData
 from src.data_types.instrument.sensor_type import SensorType
-from src.id_generator.imu.imu_data_identifier_generator import (
-    IMUDataIdentifierGenerator,
-)
+from src.id_generator.identifier_generator import IdentifierGenerator
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import (
     InstrumentIdentifier,
@@ -69,7 +67,7 @@ class DATToHDF5Converter:
     """Converter for DAT files to HDF5 format."""
 
     def __init__(self):
-        self.imu_id_gen = IMUDataIdentifierGenerator()
+        self.imu_id_gen = IdentifierGenerator("imu", IMUDataIdentifier)
         self.file_builder = IMUDataFileBuilder()
         self.model_builder = IMUDataBuilder()
         self.file_writer = HDF5FileWriter()

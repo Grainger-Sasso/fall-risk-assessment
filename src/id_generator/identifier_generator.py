@@ -1,18 +1,21 @@
 import uuid
-from abc import ABC
+from typing import Generic, Type, TypeVar
 
 from src.identifiers.identifier import Identifier
 
+T = TypeVar("T", bound=Identifier)
 
-class IdentifierGenerator(ABC):
-    def __init__(self, prefix: str, id_type: Identifier):
+
+class IdentifierGenerator(Generic[T]):
+    """
+    Generic identifier generator that creates unique identifiers
+    of a given Identifier subtype with a specified prefix.
+    """
+
+    def __init__(self, prefix: str, id_class: Type[T]):
         self.prefix: str = prefix
-        self.id_type: Identifier = id_type
+        self.id_class: Type[T] = id_class
 
-    def generate_identifier(self) -> Identifier:
-        uuid = self._generate_uuid()
-        id_value = self.prefix + "_" + uuid
-        return Identifier(id_value)
-
-    def _generate_uuid(self) -> str:
-        return uuid.uuid4()
+    def generate_identifier(self) -> T:
+        id_value = f"{self.prefix}_{uuid.uuid4()}"
+        return self.id_class(id_value)

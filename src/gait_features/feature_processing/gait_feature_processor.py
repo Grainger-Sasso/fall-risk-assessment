@@ -18,24 +18,22 @@ from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
-from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
 from src.data_types.feature.raw_feature_type import RawFeatureType
-from src.id_generator.feature.aggregate_feature_identifier_generator import (
-    AggregateFeatureIdentifierGenerator,
-)
-from src.id_generator.feature.raw_feature_identifier_generator import (
-    RawFeatureIdentifierGenerator,
+from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
+from src.id_generator.identifier_generator import IdentifierGenerator
+from src.identifiers.feature.aggregate_feature_identifier import (
+    AggregateFeatureIdentifier,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 
 
 class GaitFeatureProcessor:
     def __init__(self):
-        self.raw_feat_id_gen = RawFeatureIdentifierGenerator()
-        self.agg_feat_id_gen = AggregateFeatureIdentifierGenerator()
+        self.raw_feat_id_gen = IdentifierGenerator("raw", RawFeatureIdentifier)
+        self.agg_feat_id_gen = IdentifierGenerator("agg", AggregateFeatureIdentifier)
         self.event_gait_features: List[RawFeatureType] = [
             RawFeatureType.STRIDE_TIME,
             RawFeatureType.STRIDE_TIME_ASYMMETRY,
