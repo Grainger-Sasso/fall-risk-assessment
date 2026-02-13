@@ -42,7 +42,7 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
 )
 from src.data_model.data.user.user_data import UserData
 from src.data_types.instrument.sensor_type import SensorType
-from src.identifiers.identifier_generator import IdentifierGenerator
+from src.identifiers.identifier import IdentifierGenerator
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import (
     InstrumentIdentifier,

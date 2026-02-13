@@ -27,7 +27,7 @@ from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
-from src.identifiers.identifier_generator import IdentifierGenerator
+from src.identifiers.identifier import IdentifierGenerator
 
 
 class GaitFeatureProcessor:
