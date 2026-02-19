@@ -462,7 +462,7 @@ def main():
         "/Users/graingersasso/Desktop/fafra_testing/test_data/upstate_data/FaFRA_CS_013/Activity Data/MOS2E20210841 (2024-12-19).gt3x"
     )
     output_file_path = Path(
-        "/Users/graingersasso/Desktop/fafra_testing/test_data/fafra_data/dummy_test_data/test_cs_013_imu_data.h5"
+        "/Users/graingersasso/Desktop/fafra/fafra_data/test_data/fafra_data/dummy_test_data/test_cs_013_imu_data.h5"
     )
 
     gt3x_converter = GT3XToH5Converter()
