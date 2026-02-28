@@ -264,17 +264,19 @@ class DATToHDF5Converter:
             dat_file_paths.append(file_path)
         # file_stems = [p.stem for p in dat_file_paths]
         p_id_to_imu_id_map = {}
+        imu_id_to_path_map = {}
         for p_id in self.p_ids:
             # NOTE THE FILE PATH NEEDS TO BE PROVIDED AS DIRECTORY + P_ID (lib assumes .dat and .hea file format)
             file_path = Path(os.path.join(dat_dir_path, p_id))
             data = self.read_dat_record_wfdb(file_path)
             print(f"Read in file: {p_id}")
             imu_data: IMUData = self.convert_to_imu_data(data, p_id)
-            p_id_to_imu_id_map[p_id] = imu_data.metadata.imu_data_identifier
+            p_id_to_imu_id_map[p_id] = imu_data.metadata.imu_data_identifier.value
             print(f"Converted file: {p_id}")
-            self.imu_data_exporter.export_data(output_path, imu_data)
+            exported_path = self.imu_data_exporter.export_data(output_path, imu_data)
+            imu_id_to_path_map[imu_data.metadata.imu_data_identifier.value] = str(exported_path)
             print(f"Exported file: {p_id}")
-        return p_id_to_imu_id_map
+        return p_id_to_imu_id_map, imu_id_to_path_map
 
     def read_dat_file(self, input_file_path: Path) -> Optional[np.ndarray]:
         """Read data from a .dat file.
@@ -437,13 +439,14 @@ def main():
     ### Converts IMU to h5
     converter = DATToHDF5Converter()
     imu_data_dir = Path(
-        "/Users/graingersasso/Desktop/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0/missing_fallers"
+        "/Users/graingersasso/Desktop/fafra/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0"
     )
-    p_id_to_imu_id_map = converter.convert_all_dat_to_h5(
+    p_id_to_imu_id_map, imu_id_to_path_map = converter.convert_all_dat_to_h5(
         imu_data_dir,
-        Path("/Users/graingersasso/Desktop/fafra_data/converted_data/ltmm/imu_data"),
+        Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/imu_data"),
     )
     print(p_id_to_imu_id_map)
+    print(imu_id_to_path_map)
     print("f")
 
 
