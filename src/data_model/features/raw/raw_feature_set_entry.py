@@ -27,6 +27,6 @@ class RawFeatureSetEntry(AssessmentData):
 
     def get_data_id(self) -> Identifier:
         return self.metadata.raw_feature_identifier
-    
+
     def get_associated_data_id(self) -> Identifier:
         return self.metadata.imu_data_identifier

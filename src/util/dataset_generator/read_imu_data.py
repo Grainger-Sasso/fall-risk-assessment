@@ -26,22 +26,24 @@ from src.data_io.import_export.importers.data.imu.imu_data_importer import (
     IMUDataFileNames,
     IMUDataImporter,
 )
+from src.data_model.data.imu.epoch_imu_data import EpochIMUData
+from src.data_model.data.imu.imu_data import IMUData
+from src.database_manager.mapping.mapping import Mapping
+from src.database_manager.registry.registry import Registry
+from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.user.user_identifier import UserIdentifier
 from src.util.mechanics.coordinates.system.sensor.sensor_coordinate_system import (
     SensorCoordinateSystem,
 )
-from src.database_manager.mapping.mapping import Mapping
-from src.database_manager.registry.registry import Registry
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
-from src.data_model.data.imu.imu_data import IMUData
-from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
-from src.identifiers.user.user_identifier import UserIdentifier
 
 IMU_DATA_FILENAME = IMUDataFileNames.IMU_DATA.value
 IMU_DATA_SUFFIX = ".h5"
 IMU_DATA_FILE = IMU_DATA_FILENAME + IMU_DATA_SUFFIX
 
 # Hard-coded paths - edit these to change inputs/outputs
-PARENT_DIR = Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/imu_data")
+PARENT_DIR = Path(
+    "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/imu_data"
+)
 REGISTRIES_OUTPUT = Path(
     "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/registries"
 )
@@ -91,17 +93,19 @@ def read_imu_data_from_parent(
 
     for subdir in sorted(subdirs_with_imu):
         imu_data: IMUData = importer.import_data(subdir)
-        epoch_data:EpochIMUData = imu_data.data[0]
+        epoch_data: EpochIMUData = imu_data.data[0]
         imu_id = imu_data.get_data_id()
         user_id = imu_data.get_associated_data_id()
         print(f"Fetched file for IMU data: {imu_id.value}")
 
         user_to_imu_map[user_id.value] = imu_id.value
         imu_id_to_path_registry[imu_id.value] = subdir.resolve()
-        imu_id_to_data_value_map[imu_id.value] = epoch_data.data[0].get_data_by_sensor_axis(sensor_axis=SensorCoordinateSystem.X).data[0]
+        imu_id_to_data_value_map[imu_id.value] = (
+            epoch_data.data[0]
+            .get_data_by_sensor_axis(sensor_axis=SensorCoordinateSystem.X)
+            .data[0]
+        )
 
-    
-    
     # Build Registry (IMU data ID -> directory path)
     registry = Registry(
         registry=imu_id_to_path_registry,

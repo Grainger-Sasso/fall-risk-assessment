@@ -41,6 +41,6 @@ class IMUSpecifications(AssessmentData):
 
     def get_data_id(self) -> Identifier:
         return self.specification_id
-    
+
     def get_associated_data_id(self) -> Identifier:
         return None

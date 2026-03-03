@@ -61,10 +61,15 @@ class DatabaseManager:
         importer: Importer = self.import_manager.get_provider(data_type)
         data: List[T] = []
         for identifier in identifier_list:
-            # Get path of data from registry using provided ID
-            path: Path = registry.get_path_from_id(identifier)
-            # Import data from path
-            data.append(importer.import_data(path))
+            try:
+                # Get path of data from registry using provided ID
+                path: Path = registry.get_path_from_id(identifier)
+                # Import data from path
+                data.append(importer.import_data(path))
+            except Exception:
+                raise ImportError(
+                    f"Unable to import data for identifier: {str(identifier)}"
+                )
         return data
 
     def export_data(self, assessment_data_list: List[AssessmentData]) -> None:
@@ -96,6 +101,7 @@ class DatabaseManager:
         # Export updated mapping
         mapping_exporter: MappingExporter = MappingExporter()
         mapping_exporter.export_data(mapping.path, mapping)
+
     ###
 
     # def update_data(self, id: Identifier, data: Any):
