@@ -2,6 +2,7 @@ from pathlib import Path
 
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.raw.raw_feature import RawFeature
+from src.database_generator.database_generator import DatabaseGenerator
 from src.database_manager.registry.registry import Registry
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
@@ -48,9 +49,11 @@ def main():
             "/Users/graingersasso/Desktop/fafra/fafra_testing/feature_extraction/output/agg_features"
         ),
     }
-    pipeline = FeatureExtractionPipeline(
+    db_generator = DatabaseGenerator()
+    db_manager = db_generator.generate_database(
         registry_paths, mapping_paths, output_dir_paths
     )
+    pipeline = FeatureExtractionPipeline(db_manager)
     # pipeline.run(
     #     Path(
     #         "/Users/graingersasso/Desktop/fafra_testing/feature_extraction/input/dataset"

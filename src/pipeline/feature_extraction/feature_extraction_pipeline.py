@@ -68,27 +68,13 @@ class FeatureExtractionPipeline:
 
     def __init__(
         self,
-        registry_paths: Dict[Type[Identifier], Path],
-        mapping_paths: Dict[Tuple[Type[Identifier]], Path],
-        output_dir_paths: Dict[Type[Identifier], Path],
+        db_manager: DatabaseManager
     ):
-        # Assumes registry paths are to subdirectories containing existing registry files
-        self.registry_paths: Dict[Type[Identifier], Path] = registry_paths
-        # Assumes keys are (source ID type, target ID type); assumes mapping paths are to subdirectories containing existing mapping files
-        self.mapping_paths: Dict[Type[Identifier], Path] = mapping_paths
-        # Assumes output dir paths are to parent directories for data output
-        self.output_dir_paths: Dict[Type[Identifier], Path] = output_dir_paths
-        self.registry_importer = RegistryImporter()
-        self.mapping_importer = MappingImporter()
-        self.db_manager: DatabaseManager = self._setup_db_manager()
+        self.db_manager: DatabaseManager = db_manager
         self.gait_feature_extractor = GaitFeatureExtractor()
         self.gait_feature_processor = GaitFeatureProcessor()
 
-    def run(self, dataset_parent_dir: Path, dataset_name: str):
-        dataset_importer = DatasetImporter()
-        dataset: Dataset = dataset_importer.import_data(
-            dataset_parent_dir, dataset_name
-        )
+    def run(self, dataset: Dataset):
         for entry in dataset.entries:
             imu_data_id: IMUDataIdentifier = entry.imu_data_id
             user_data_id: UserIdentifier = entry.user_data_id
@@ -102,48 +88,3 @@ class FeatureExtractionPipeline:
             )
             self.db_manager.export_data([raw_features])
             self.db_manager.export_data([agg_features])
-
-    def _setup_db_manager(self) -> DatabaseManager:
-        # Setup registry manager
-        registries: Dict[Type[Identifier], Registry] = {}
-        for id_type, registry_path in self.registry_paths.items():
-            registries[id_type] = self.registry_importer.import_data(
-                registry_path, id_type
-            )
-        registry_manager = RegistryManager(registries)
-        # Setup mapping manager
-        mappings: Dict[Type[Identifier], Mapping] = {}
-        for (
-            source_id_type,
-            target_id_type,
-        ), mapping_path in self.mapping_paths.items():
-            mappings[source_id_type] = self.mapping_importer.import_data(
-                mapping_path, source_id_type, target_id_type
-            )
-        mapping_manager = MappingManager(mappings)
-        # Setup output dir manager
-        output_dir_manager = OutputDirectoryManager(self.output_dir_paths)
-        # Setup import manager
-        importers: Dict[Type[Identifier], Importer] = {
-            IMUDataIdentifier: IMUDataImporter(),
-            UserIdentifier: UserDataImporter(),
-            RawFeatureIdentifier: RawFeatureImporter(),
-            AggregateFeatureIdentifier: AggregateFeatureImporter(),
-            InstrumentSpecificationIdentifier: InstrumentSpecificationImporter(),
-        }
-        import_manager = ImportManager(importers)
-        # Setup export manager
-        exporters: Dict[Type[Identifier], Importer] = {
-            IMUDataIdentifier: IMUDataFileExporter(),
-            RawFeatureIdentifier: RawFeatureFileExporter(),
-            AggregateFeatureIdentifier: AggregateFeatureFileExporter(),
-        }
-        export_manager = ExportManager(exporters)
-        # Setup database manager
-        return DatabaseManager(
-            registry_manager,
-            mapping_manager,
-            import_manager,
-            export_manager,
-            output_dir_manager,
-        )
