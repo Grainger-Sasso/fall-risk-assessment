@@ -1,3 +1,4 @@
+import csv
 import os
 import tempfile
 from pathlib import Path
@@ -46,14 +47,28 @@ class TestDatabaseManager(BaseTest):
         self.helper = DatabaseManagerTestHelper()
         self.feature_data_helper = FeatureDataHelper()
 
+        # Create directory at /test/path/1 with dummy file
+        # self.test_path = Path("/test/path/1")
+        # self.test_path.mkdir(parents=True, exist_ok=True)
+        # self.dummy_file = self.test_path / "dummy.txt"
+        # self.dummy_file.touch()
+
         self.registry = self.helper.create_test_registry()
+        self.mapping = self.helper.create_test_mapping()
 
         # Create temp directories for test
+        self.registry_temp_dir = tempfile.mkdtemp()
+        self.mapping_temp_dir = tempfile.mkdtemp()
         self.raw_feature_temp_dir = tempfile.mkdtemp()
         self.agg_feature_temp_dir = tempfile.mkdtemp()
+        self.registry_temp_path = Path(self.registry_temp_dir)
+        self.mapping_temp_path = Path(self.mapping_temp_dir)
         self.raw_feature_temp_path = Path(self.raw_feature_temp_dir)
         self.agg_feature_temp_path = Path(self.agg_feature_temp_dir)
 
+        self.registry._path = self.registry_temp_path
+        self.mapping._path = self.mapping_temp_path
+    
         # Create empty registry and mapping for raw features
         self.raw_feature_registry = Registry(
             {},
@@ -80,26 +95,18 @@ class TestDatabaseManager(BaseTest):
             subdir_path=self.agg_feature_temp_path,
         )
 
-        # Create registry and mapping managers
-        self.registry_manager = RegistryManager(
-            {
-                TestSourceIdentifier: self.registry,
-                RawFeatureIdentifier: self.raw_feature_registry,
-                AggregateFeatureIdentifier: self.agg_feature_registry,
-            }
-        )
-        self.mapping = self.helper.create_test_mapping()
-        self.mapping_manager = MappingManager(
-            {
-                TestSourceIdentifier: self.mapping,
-                RawFeatureIdentifier: self.raw_feature_mapping,
-                AggregateFeatureIdentifier: self.agg_feature_mapping,
-            }
-        )
 
         # Export registry and mapping to temp directories
         self.registry_exporter = RegistryExporter()
         self.mapping_exporter = MappingExporter()
+
+        # Export generic source data files
+        self.registry_exporter.export_data(
+            self.registry.path, self.registry
+        )
+        self.mapping_exporter.export_data(
+            self.mapping.path, self.mapping
+        )
 
         # Export raw feature files
         self.registry_exporter.export_data(
@@ -115,6 +122,25 @@ class TestDatabaseManager(BaseTest):
         )
         self.mapping_exporter.export_data(
             self.agg_feature_temp_path, self.agg_feature_mapping
+        )
+
+        for k, v in self.registry.registry.items():
+            self.registry.registry[k] = self.registry_temp_path
+
+        # Create registry and mapping managers
+        self.registry_manager = RegistryManager(
+            {
+                TestSourceIdentifier: self.registry,
+                RawFeatureIdentifier: self.raw_feature_registry,
+                AggregateFeatureIdentifier: self.agg_feature_registry,
+            }
+        )
+        self.mapping_manager = MappingManager(
+            {
+                TestSourceIdentifier: self.mapping,
+                RawFeatureIdentifier: self.raw_feature_mapping,
+                AggregateFeatureIdentifier: self.agg_feature_mapping,
+            }
         )
 
         # Create mock importer
@@ -155,7 +181,33 @@ class TestDatabaseManager(BaseTest):
         self.mapping_importer = MappingImporter()
 
     def tearDown(self):
-        # Clean up raw feature test directory
+        # Clean up /test/path/1 and dummy file
+        if hasattr(self, "test_path") and self.test_path.exists():
+            if self.dummy_file.exists():
+                self.dummy_file.unlink()
+            try:
+                self.test_path.rmdir()
+            except OSError:
+                pass
+
+        # Clean up registry and mapping test paths
+        if self.registry_temp_path.exists():
+            for root, dirs, files in os.walk(self.registry_temp_path, topdown=False):
+                for name in files:
+                    (Path(root) / name).unlink()
+                for name in dirs:
+                    (Path(root) / name).rmdir()
+            self.registry_temp_path.rmdir()
+
+        if self.mapping_temp_path.exists():
+            for root, dirs, files in os.walk(self.mapping_temp_path, topdown=False):
+                for name in files:
+                    (Path(root) / name).unlink()
+                for name in dirs:
+                    (Path(root) / name).rmdir()
+            self.mapping_temp_path.rmdir()
+        
+        # Clean up raw feamapping_temp_pathture test directory
         if self.raw_feature_temp_path.exists():
             for root, dirs, files in os.walk(self.raw_feature_temp_path, topdown=False):
                 for name in files:
@@ -200,7 +252,7 @@ class TestDatabaseManager(BaseTest):
         # Test with nonexistent identifier
         nonexistent_id = TestSourceIdentifier("nonexistent")
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(ImportError):
             self.db_manager.import_data([nonexistent_id])
 
     def test_export_data(self):

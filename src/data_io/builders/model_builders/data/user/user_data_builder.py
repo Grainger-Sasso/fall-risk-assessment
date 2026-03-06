@@ -44,41 +44,66 @@ class UserDataBuilder(ModelBuilder):
         return UserData(
             user_identifier, clinical_demo_data, [clinical_fall_risk_assessment]
         )
-
+    
     def __build_clinical_demographic_data(
         self, clinical_demo_file: JSONDictFile
     ) -> ClinicalDemographicData:
-        name: str = clinical_demo_file.data[ClinicalDemographicDataFields.NAME.value][
-            ClinicalDemographicDataFields.VALUE.value
-        ]
-        age: float = clinical_demo_file.data[ClinicalDemographicDataFields.AGE.value][
-            ClinicalDemographicDataFields.VALUE.value
-        ]
+        name: str = clinical_demo_file.data[ClinicalDemographicDataFields.NAME.value]
+        age: float = clinical_demo_file.data[ClinicalDemographicDataFields.AGE.value]
         sex: Sex = Sex(
-            clinical_demo_file.data[ClinicalDemographicDataFields.SEX.value][
-                ClinicalDemographicDataFields.VALUE.value
-            ].lower()
+            clinical_demo_file.data[ClinicalDemographicDataFields.SEX.value].lower()
         )
         weight: Kilogram = Kilogram(
-            clinical_demo_file.data[ClinicalDemographicDataFields.WEIGHT.value][
-                ClinicalDemographicDataFields.VALUE.value
-            ]
+            clinical_demo_file.data[ClinicalDemographicDataFields.WEIGHT.value]
         )
         height: Meter = Meter(
-            clinical_demo_file.data[ClinicalDemographicDataFields.HEIGHT.value][
-                ClinicalDemographicDataFields.VALUE.value
-            ]
+            clinical_demo_file.data[ClinicalDemographicDataFields.HEIGHT.value]
         )
         clinical_identifier: ClinicalIdentifier = ClinicalIdentifier(
-            clinical_demo_file.data[ClinicalDemographicDataFields.IDENTIFIER.value][
-                ClinicalDemographicDataFields.VALUE.value
-            ]
+            clinical_demo_file.data[ClinicalDemographicDataFields.IDENTIFIER.value]
         )
         faller_status: FallerStatus = FallerStatus(
-            clinical_demo_file.data[ClinicalDemographicDataFields.FALLER_STATUS.value][
-                ClinicalDemographicDataFields.VALUE.value
-            ]
+            clinical_demo_file.data[ClinicalDemographicDataFields.FALLER_STATUS.value]
         )
         return ClinicalDemographicData(
             name, age, sex, weight, height, clinical_identifier, faller_status
         )
+
+    # TODO: Rework how clinical demo files are structured
+    # def __build_clinical_demographic_data(
+    #     self, clinical_demo_file: JSONDictFile
+    # ) -> ClinicalDemographicData:
+    #     name: str = clinical_demo_file.data[ClinicalDemographicDataFields.NAME.value][
+    #         ClinicalDemographicDataFields.VALUE.value
+    #     ]
+    #     age: float = clinical_demo_file.data[ClinicalDemographicDataFields.AGE.value][
+    #         ClinicalDemographicDataFields.VALUE.value
+    #     ]
+    #     sex: Sex = Sex(
+    #         clinical_demo_file.data[ClinicalDemographicDataFields.SEX.value][
+    #             ClinicalDemographicDataFields.VALUE.value
+    #         ].lower()
+    #     )
+    #     weight: Kilogram = Kilogram(
+    #         clinical_demo_file.data[ClinicalDemographicDataFields.WEIGHT.value][
+    #             ClinicalDemographicDataFields.VALUE.value
+    #         ]
+    #     )
+    #     height: Meter = Meter(
+    #         clinical_demo_file.data[ClinicalDemographicDataFields.HEIGHT.value][
+    #             ClinicalDemographicDataFields.VALUE.value
+    #         ]
+    #     )
+    #     clinical_identifier: ClinicalIdentifier = ClinicalIdentifier(
+    #         clinical_demo_file.data[ClinicalDemographicDataFields.IDENTIFIER.value][
+    #             ClinicalDemographicDataFields.VALUE.value
+    #         ]
+    #     )
+    #     faller_status: FallerStatus = FallerStatus(
+    #         clinical_demo_file.data[ClinicalDemographicDataFields.FALLER_STATUS.value][
+    #             ClinicalDemographicDataFields.VALUE.value
+    #         ]
+    #     )
+    #     return ClinicalDemographicData(
+    #         name, age, sex, weight, height, clinical_identifier, faller_status
+    #     )

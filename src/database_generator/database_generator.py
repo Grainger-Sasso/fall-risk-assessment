@@ -115,7 +115,7 @@ class DatabaseGenerator:
         # Setup database manager
         return db_manager
 
-    def _validate_database(db_manager: DatabaseManager):
+    def _validate_database(self, db_manager: DatabaseManager):
         # For every IMU data file present in the imu data registry
         imu_data_registry: Registry = db_manager.registry_manager.get_provider(
             IMUDataIdentifier
@@ -132,15 +132,16 @@ class DatabaseGenerator:
                 imu_to_user_map.get_target_id_from_source_id(IMUDataIdentifier(imu_id))
             )
             try:
-                imu_data: IMUData = db_manager.import_data([IMUDataIdentifier(imu_id)])
+                imu_data: IMUData = db_manager.import_data([IMUDataIdentifier(imu_id)])[0]
                 imu_id_from_data: Identifier = imu_data.get_data_id()
                 user_id: Identifier = imu_data.get_associated_data_id()
+                print(f'Validating data for user: {user_id.value}')
                 # Read in  imu data and check ID for imu and user
                 if imu_id != imu_id_from_data.value:
                     raise ValueError(
                         f"IMU data ID in registry -{imu_id.value}- does not match ID in file -{imu_id_from_data.value}-"
                     )
-                if user_id.value not in user_data_registry.keys():
+                if user_id.value not in user_data_registry.registry.keys():
                     raise ValueError(
                         f"For IMU ID -{imu_id.value}-: User ID in not present in user data registry -{user_id.value}-"
                     )
@@ -149,7 +150,7 @@ class DatabaseGenerator:
                         f"For IMU ID -{imu_id.value}-: User ID in mapping -{user_id_from_mapping.value}- does not match ID in file -{user_id.value}-"
                     )
                 # Read in the user data found from IMU data and check ID
-                user_data: UserData = db_manager.import_data([user_id])
+                user_data: UserData = db_manager.import_data([user_id])[0]
                 user_id_from_data: Identifier = user_data.get_data_id()
                 if user_id_from_data.value != user_id.value:
                     raise ValueError(

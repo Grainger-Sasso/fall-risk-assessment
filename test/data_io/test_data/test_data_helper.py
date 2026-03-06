@@ -832,29 +832,41 @@ class UserDataHelper:
         """Create test clinical demographic JSON file."""
         return JSONDictFile(
             {
-                ClinicalDemographicDataFields.NAME.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_NAME.value
-                },
-                ClinicalDemographicDataFields.AGE.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_AGE.value
-                },
-                ClinicalDemographicDataFields.SEX.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_SEX.value
-                },
-                ClinicalDemographicDataFields.WEIGHT.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_WEIGHT.value
-                },
-                ClinicalDemographicDataFields.HEIGHT.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_HEIGHT.value
-                },
-                ClinicalDemographicDataFields.IDENTIFIER.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.CLINICAL_ID.value
-                },
-                ClinicalDemographicDataFields.FALLER_STATUS.value: {
-                    ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_FALLER_STATUS.value
-                }
+                ClinicalDemographicDataFields.NAME.value: TestConstants.USER_NAME.value,
+                ClinicalDemographicDataFields.AGE.value: TestConstants.USER_AGE.value,
+                ClinicalDemographicDataFields.SEX.value: TestConstants.USER_SEX.value,
+                ClinicalDemographicDataFields.WEIGHT.value: TestConstants.USER_WEIGHT.value,
+                ClinicalDemographicDataFields.HEIGHT.value: TestConstants.USER_HEIGHT.value,
+                ClinicalDemographicDataFields.IDENTIFIER.value: TestConstants.CLINICAL_ID.value,
+                ClinicalDemographicDataFields.FALLER_STATUS.value: TestConstants.USER_FALLER_STATUS.value,
             }
         )
+        # TODO: Rework how clinical demo files are structured
+        # return JSONDictFile(
+        #     {
+        #         ClinicalDemographicDataFields.NAME.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_NAME.value
+        #         },
+        #         ClinicalDemographicDataFields.AGE.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_AGE.value
+        #         },
+        #         ClinicalDemographicDataFields.SEX.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_SEX.value
+        #         },
+        #         ClinicalDemographicDataFields.WEIGHT.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_WEIGHT.value
+        #         },
+        #         ClinicalDemographicDataFields.HEIGHT.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_HEIGHT.value
+        #         },
+        #         ClinicalDemographicDataFields.IDENTIFIER.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.CLINICAL_ID.value
+        #         },
+        #         ClinicalDemographicDataFields.FALLER_STATUS.value: {
+        #             ClinicalDemographicDataFields.VALUE.value: TestConstants.USER_FALLER_STATUS.value
+        #         }
+        #     }
+        # )
 
     def __build_clinical_demographic_data(self) -> ClinicalDemographicData:
         return ClinicalDemographicData(
