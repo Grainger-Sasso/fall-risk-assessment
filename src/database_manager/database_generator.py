@@ -38,6 +38,7 @@ from src.database_manager.data_access.mapping_manager import MappingManager
 from src.database_manager.data_access.output_directory_manager import (
     OutputDirectoryManager,
 )
+from src.database_manager.database_validator import DatabaseValidator
 from src.database_manager.data_access.registry_manager import RegistryManager
 from src.database_manager.database_manager import DatabaseManager
 from src.database_manager.mapping.mapping import Mapping
@@ -58,7 +59,7 @@ class DatabaseGenerator:
     def __init__(
         self,
     ) -> None:
-        pass
+        self.validator = DatabaseValidator()
 
     def generate_database(
         self,
@@ -111,52 +112,10 @@ class DatabaseGenerator:
             output_dir_manager,
         )
         if validate:
-            self._validate_database(db_manager)
+            self.validator.validate_imu_data()
+            self.validator.validate_raw_features()
+            self.validator.validate_aggregate_features()
         # Setup database manager
         return db_manager
 
-    def _validate_database(self, db_manager: DatabaseManager):
-        # For every IMU data file present in the imu data registry
-        imu_data_registry: Registry = db_manager.registry_manager.get_provider(
-            IMUDataIdentifier
-        )
-        user_data_registry: Registry = db_manager.registry_manager.get_provider(
-            UserIdentifier
-        )
-        imu_to_user_map: Mapping = db_manager.mapping_manager.get_provider(
-            IMUDataIdentifier
-        )
-        for imu_id in imu_data_registry.registry.keys():
-            imu_id: str
-            user_id_from_mapping: Identifier = (
-                imu_to_user_map.get_target_id_from_source_id(IMUDataIdentifier(imu_id))
-            )
-            try:
-                imu_data: IMUData = db_manager.import_data([IMUDataIdentifier(imu_id)])[0]
-                imu_id_from_data: Identifier = imu_data.get_data_id()
-                user_id: Identifier = imu_data.get_associated_data_id()
-                print(f'Validating data for user: {user_id.value}')
-                # Read in  imu data and check ID for imu and user
-                if imu_id != imu_id_from_data.value:
-                    raise ValueError(
-                        f"IMU data ID in registry -{imu_id.value}- does not match ID in file -{imu_id_from_data.value}-"
-                    )
-                if user_id.value not in user_data_registry.registry.keys():
-                    raise ValueError(
-                        f"For IMU ID -{imu_id.value}-: User ID in not present in user data registry -{user_id.value}-"
-                    )
-                if user_id.value != user_id_from_mapping.value:
-                    raise ValueError(
-                        f"For IMU ID -{imu_id.value}-: User ID in mapping -{user_id_from_mapping.value}- does not match ID in file -{user_id.value}-"
-                    )
-                # Read in the user data found from IMU data and check ID
-                user_data: UserData = db_manager.import_data([user_id])[0]
-                user_id_from_data: Identifier = user_data.get_data_id()
-                if user_id_from_data.value != user_id.value:
-                    raise ValueError(
-                        f"User data identifier from imu data -{user_id.value}- does not match ID in file -{user_id_from_data.value}-"
-                    )
-            # Read in the user data present there
-            except Exception as e:
-                raise Exception(e)
-        return True
+    

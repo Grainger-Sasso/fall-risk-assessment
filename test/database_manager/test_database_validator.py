@@ -1,21 +1,18 @@
 from pathlib import Path
+import unittest
 
-from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
-from src.data_model.features.raw.raw_feature import RawFeature
 from src.database_manager.database_generator import DatabaseGenerator
-from src.database_manager.registry.registry import Registry
+from src.database_manager.database_validator import DatabaseValidator
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
-from src.pipeline.feature_extraction.feature_extraction_pipeline import (
-    FeatureExtractionPipeline,
-)
 
 
-def main():
+def get_database_manager():
+    """Construct the same database_manager as in test_feature_extraction_pipeline.py."""
     registry_paths = {
         IMUDataIdentifier: Path(
             "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/registries/imu_data"
@@ -49,38 +46,29 @@ def main():
             "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/agg_feat"
         ),
     }
-    dataset_path = Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/dataset")
-    dataset_name = "ltmm_2026_02_21"
     db_generator = DatabaseGenerator()
-    db_manager = db_generator.generate_database(
+    return db_generator.generate_database(
         registry_paths, mapping_paths, output_dir_paths, validate=False
     )
-    pipeline = FeatureExtractionPipeline(db_manager)
-    pipeline.run(dataset_path, dataset_name)
-    print(f'Finished pipeline run for {dataset_name}')
 
-    # pipeline.run(
-    #     Path(
-    #         "/Users/graingersasso/Desktop/fafra_testing/feature_extraction/input/dataset"
-    #     ),
-    #     "test_feature_ex_dataset",
-    # )
-    # raw_feature_registry: Registry = pipeline.db_manager.registry_manager.get_provider(
-    #     RawFeatureIdentifier
-    # )
-    # agg_feature_registry: Registry = pipeline.db_manager.registry_manager.get_provider(
-    #     AggregateFeatureIdentifier
-    # )
-    # for identifier, path in raw_feature_registry.registry.items():
-    #     raw_feat_id = RawFeatureIdentifier(identifier)
-    #     raw_feature: RawFeature = pipeline.db_manager.import_data([raw_feat_id])[0]
-    # for identifier, path in agg_feature_registry.registry.items():
-    #     agg_feat_id = AggregateFeatureIdentifier(identifier)
-    #     agg_feature: AggregateFeature = pipeline.db_manager.import_data([agg_feat_id])[
-    #         0
-    #     ]
-    #     pass
+
+class TestDatabaseValidator(unittest.TestCase):
+    def setUp(self):
+        self.db_manager = get_database_manager()
+        self.validator = DatabaseValidator()
+
+    def test_validate_imu_data(self):
+        result = self.validator.validate_imu_data(self.db_manager)
+        self.assertTrue(result)
+
+    def test_validate_raw_features(self):
+        result = self.validator.validate_raw_features(self.db_manager)
+        self.assertTrue(result)
+
+    def test_validate_aggregate_features(self):
+        result = self.validator.validate_aggregate_features(self.db_manager)
+        self.assertTrue(result)
 
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
