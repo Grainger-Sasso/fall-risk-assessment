@@ -15,7 +15,7 @@ from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_meta
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
@@ -160,7 +160,7 @@ class GaitFeatureProcessor:
         user_data: UserData,
     ) -> RawFeatureSetEntry:
         # Build list of epoch features
-        epoch_features: List[RawEpochFeatures] = []
+        epoch_features: List[RawEpochFeature] = []
         for features in multiday_features:
             raw_features: List[RawFeature] = []
             for raw_feature_type in self.raw_feature_types:
@@ -168,7 +168,7 @@ class GaitFeatureProcessor:
                     RawFeature(raw_feature_type, features[raw_feature_type])
                 )
             epoch_features.append(
-                RawEpochFeatures(
+                RawEpochFeature(
                     raw_features,
                     features[RawFeatureType.BOUT_START_TIMESTAMP],
                     features[RawFeatureType.BOUT_END_TIMESTAMP],

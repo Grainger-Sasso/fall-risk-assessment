@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from src.data_types.feature.raw_feature_type import RawFeatureType
 from src.data_model.features.raw.raw_feature import RawFeature
+from src.data_types.feature.raw_feature_type import RawFeatureType
 
 
 @dataclass
-class RawEpochFeatures:
+class RawEpochFeature:
     """
     Represents all raw unique features for given epoch
     """

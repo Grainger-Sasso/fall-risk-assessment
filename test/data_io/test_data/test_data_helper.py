@@ -55,7 +55,7 @@ from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_meta
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_model.instrument_specifications.imu_specifications import (
@@ -726,14 +726,14 @@ class FeatureDataHelper:
             metadata=self.__build_raw_metadata(),
         )
 
-    def __build_raw_epoch_feature_list(self) -> List[RawEpochFeatures]:
+    def __build_raw_epoch_feature_list(self) -> List[RawEpochFeature]:
         return [
-            RawEpochFeatures(
+            RawEpochFeature(
                 raw_features=self.__build_raw_feature_list(),
                 epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value,
                 epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value,
             ),
-            RawEpochFeatures(
+            RawEpochFeature(
                 raw_features=self.__build_raw_feature_list(),
                 epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value + 0.1,
                 epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value + 0.1,

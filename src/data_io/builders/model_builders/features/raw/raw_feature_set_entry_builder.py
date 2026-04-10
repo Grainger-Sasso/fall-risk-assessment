@@ -8,7 +8,7 @@ from src.data_io.model_fields.features.raw.raw_feature_fields import RawFeatureF
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_types.feature.raw_feature_type import RawFeatureType
@@ -63,7 +63,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
             self.__build_raw_feature_set_entry_metadata(input_file_attributes)
         )
         # Build raw epoch feature list
-        raw_epoch_feature_list: List[RawEpochFeatures] = (
+        raw_epoch_feature_list: List[RawEpochFeature] = (
             self.__build_raw_epoch_feature_list(
                 input_file, raw_feature_set_entry_metadata.epoch_length
             )
@@ -74,7 +74,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
 
     def __build_raw_epoch_feature_list(
         self, input_file: HDF5Group, epoch_len: float
-    ) -> List[RawEpochFeatures]:
+    ) -> List[RawEpochFeature]:
         """Build list of raw epoch features from HDF5 group.
 
         Args:
@@ -127,7 +127,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
                 "Number of features does not match number of feature names"
             )
 
-        raw_epoch_feature_list: List[RawEpochFeatures] = []
+        raw_epoch_feature_list: List[RawEpochFeature] = []
         for row_index in range(len(epoch_starts)):
             raw_epoch_feature_list.append(
                 self.__build_raw_epoch_features(
@@ -147,7 +147,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         row_index: int,
         epoch_start: float,
         epoch_end: float,
-    ) -> RawEpochFeatures:
+    ) -> RawEpochFeature:
         """Build raw epoch features from feature data.
 
         Args:
@@ -183,7 +183,7 @@ class RawFeatureSetEntryBuilder(ModelBuilder):
         if not raw_feature_list:
             raise ValueError("No features constructed for epoch")
 
-        return RawEpochFeatures(raw_feature_list, epoch_start, epoch_end)
+        return RawEpochFeature(raw_feature_list, epoch_start, epoch_end)
 
     def __build_raw_feature_set_entry_metadata(
         self, input_file_attributes: Dict[str, Any]

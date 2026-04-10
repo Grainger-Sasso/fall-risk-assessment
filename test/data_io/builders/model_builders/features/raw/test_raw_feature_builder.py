@@ -7,7 +7,7 @@ from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_types.feature.raw_feature_type import RawFeatureType
@@ -65,14 +65,14 @@ class TestRawFeatureBuilder(BaseTest):
         )
 
         for epoch_ix, epoch_feature in enumerate(epoch_feature_list):
-            self.assertIsInstance(epoch_feature, RawEpochFeatures)
+            self.assertIsInstance(epoch_feature, RawEpochFeature)
             self.assertEqual(
                 epoch_feature.epoch_start_time,
                 TestConstants.EPOCH_START_TIMES.value[epoch_ix],
             )
             self.assertEqual(
                 epoch_feature.epoch_end_time,
-                TestConstants.EPOCH_END_TIMES.value[epoch_ix]
+                TestConstants.EPOCH_END_TIMES.value[epoch_ix],
             )
             self.assertIsInstance(epoch_feature.raw_features, list)
             self.assertEqual(
@@ -87,7 +87,10 @@ class TestRawFeatureBuilder(BaseTest):
                     TestConstants.RAW_FEATURE_NAMES.value[feat_ix],
                 )
                 self.assertIsInstance(raw_feature.value, float)
-                self.assertEqual(raw_feature.value, TestConstants.FEATURE_DATA.value[epoch_ix][feat_ix])
+                self.assertEqual(
+                    raw_feature.value,
+                    TestConstants.FEATURE_DATA.value[epoch_ix][feat_ix],
+                )
 
     def test_build_empty_data(self):
         with self.assertRaises(ValueError):

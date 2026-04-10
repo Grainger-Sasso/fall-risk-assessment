@@ -26,7 +26,7 @@ from src.data_io.model_fields.features.raw.raw_feature_fields import (
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import (
     RawFeatureSetEntry,
@@ -131,7 +131,7 @@ class TestRawFeatureFileExporter(BaseTest):
         self.assertEqual(len(epoch_feature_list), 2)
 
         feature_0 = epoch_feature_list[0]
-        self.assertIsInstance(feature_0, RawEpochFeatures)
+        self.assertIsInstance(feature_0, RawEpochFeature)
         self.assertEqual(
             feature_0.epoch_start_time,
             TestConstants.RAW_FEATURE_START_TIME.value,
@@ -169,7 +169,7 @@ class TestRawFeatureFileExporter(BaseTest):
         )
 
         feature_1 = epoch_feature_list[1]
-        self.assertIsInstance(feature_1, RawEpochFeatures)
+        self.assertIsInstance(feature_1, RawEpochFeature)
         self.assertEqual(
             feature_1.epoch_start_time,
             TestConstants.RAW_FEATURE_START_TIME.value + 0.1,

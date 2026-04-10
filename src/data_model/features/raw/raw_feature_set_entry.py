@@ -5,7 +5,7 @@ from src.data_model.assessment_data import AssessmentData
 from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
     RawFeatureSetEntryMetadata,
 )
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeatures
+from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.identifiers.identifier import Identifier
 
 
@@ -15,7 +15,7 @@ class RawFeatureSetEntry(AssessmentData):
     Represents raw features across all epochs
     """
 
-    raw_epoch_features: List[RawEpochFeatures]
+    raw_epoch_features: List[RawEpochFeature]
     metadata: RawFeatureSetEntryMetadata
 
     @property
