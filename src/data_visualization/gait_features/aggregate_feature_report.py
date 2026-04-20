@@ -20,6 +20,7 @@ Usage:
 """
 
 import argparse
+import csv
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -146,6 +147,79 @@ def _add_date_to_output_path(output_path: Path) -> Path:
     return output_path.parent / f"{output_path.stem}_{date_str}{output_path.suffix}"
 
 
+def _compute_auc_roc_from_groups(
+    faller_values: List[float],
+    non_faller_values: List[float],
+) -> Optional[float]:
+    """
+    Compute AUC-ROC for a single feature from two score groups.
+
+    Uses the probabilistic interpretation:
+        AUC = P(score_faller > score_non_faller) + 0.5 * P(tie)
+    """
+    if not faller_values or not non_faller_values:
+        return None
+
+    faller = np.asarray(faller_values, dtype=float)
+    non_faller = np.asarray(non_faller_values, dtype=float)
+    total_pairs = float(faller.size * non_faller.size)
+    if total_pairs == 0:
+        return None
+
+    wins = 0.0
+    ties = 0.0
+    for score in faller:
+        wins += float(np.sum(score > non_faller))
+        ties += float(np.sum(score == non_faller))
+
+    return (wins + 0.5 * ties) / total_pairs
+
+
+def _format_auc(auc: Optional[float]) -> str:
+    """Format AUC value for display."""
+    if auc is None:
+        return "AUC=N/A"
+    return f"AUC={auc:.3f}"
+
+
+def _build_auc_summary_rows(
+    by_class: Dict[
+        Tuple[RawFeatureType, DescriptiveStatisticType],
+        Dict[FallerStatus, List[float]],
+    ],
+) -> List[Dict[str, str]]:
+    """Create row records for per-feature AUC summary export."""
+    rows: List[Dict[str, str]] = []
+    keys = sorted(by_class.keys(), key=lambda k: (k[0].value, k[1].value))
+
+    for key in keys:
+        feature_type, stat_type = key
+        faller_vals = by_class[key][FallerStatus.FALLER]
+        non_faller_vals = by_class[key][FallerStatus.NON_FALLER]
+        auc = _compute_auc_roc_from_groups(faller_vals, non_faller_vals)
+        rows.append(
+            {
+                "feature_type": feature_type.value,
+                "stat_type": stat_type.value,
+                "n_faller": str(len(faller_vals)),
+                "n_non_faller": str(len(non_faller_vals)),
+                "auc_roc": "" if auc is None else f"{auc:.6f}",
+            }
+        )
+    return rows
+
+
+def _write_auc_summary_csv(rows: List[Dict[str, str]], output_path: Path) -> None:
+    """Write per-feature AUC summary rows to CSV."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["feature_type", "stat_type", "n_faller", "n_non_faller", "auc_roc"]
+    with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"Saved AUC summary to {output_path}")
+
+
 def _create_overall_violin_plots(
     overall: Dict[Tuple[RawFeatureType, DescriptiveStatisticType], List[float]],
     pdf: PdfPages,
@@ -244,9 +318,15 @@ def _create_class_separated_violin_plots(
             feature_type, stat_type = key
             faller_vals = by_class[key][FallerStatus.FALLER]
             non_faller_vals = by_class[key][FallerStatus.NON_FALLER]
+            auc = _compute_auc_roc_from_groups(faller_vals, non_faller_vals)
 
-            data = [faller_vals, non_faller_vals]
-            data = [d for d in data if d]
+            class_data = [
+                ("Faller", faller_vals, "#e74c3c"),
+                ("Non-faller", non_faller_vals, "#3498db"),
+            ]
+            class_data = [entry for entry in class_data if entry[1]]
+
+            data = [values for _, values, _ in class_data]
             if not data:
                 ax.text(0.5, 0.5, "No data", ha="center", va="center")
                 ax.set_xlim(0, 1)
@@ -260,19 +340,19 @@ def _create_class_separated_violin_plots(
                     showmedians=True,
                     widths=0.7,
                 )
-                colors = ["#e74c3c", "#3498db"]
                 for i, pc in enumerate(parts["bodies"]):
-                    pc.set_facecolor(colors[i % 2])
+                    pc.set_facecolor(class_data[i][2])
                     pc.set_alpha(0.8)
                 ax.set_xticks(positions)
                 ax.set_xticklabels(
-                    ["Faller", "Non-faller"][: len(data)],
+                    [label for label, _, _ in class_data],
                     fontsize=9,
                 )
                 ax.set_ylabel("Value")
                 ax.set_title(
                     f"{feature_type.value} ({stat_type.value})\n"
-                    f"n_faller={len(faller_vals)}, n_non_faller={len(non_faller_vals)}"
+                    f"n_faller={len(faller_vals)}, n_non_faller={len(non_faller_vals)}, "
+                    f"{_format_auc(auc)}"
                 )
 
         for idx in range(len(page_keys), n_per_page):
@@ -291,6 +371,7 @@ def _create_class_separated_violin_plots(
 def generate_report(
     base_path: Path,
     output_path: Optional[Path] = None,
+    auc_output_path: Optional[Path] = None,
 ) -> None:
     """
     Generate the aggregate feature distribution report PDF.
@@ -298,6 +379,7 @@ def generate_report(
     Args:
         base_path: Base path to converted data (e.g. .../ltmm_2026_02_21).
         output_path: Where to save the PDF. Date is appended to filename.
+        auc_output_path: Where to save per-feature AUC summary CSV.
     """
     db_manager = _get_database_manager(base_path)
     overall, by_class = _load_aggregate_feature_data(db_manager)
@@ -310,6 +392,12 @@ def generate_report(
     with PdfPages(str(output_path)) as pdf:
         _create_overall_violin_plots(overall, pdf)
         _create_class_separated_violin_plots(by_class, pdf)
+
+    auc_rows = _build_auc_summary_rows(by_class)
+    if auc_output_path is None:
+        auc_output_path = base_path / "aggregate_feature_auc_summary.csv"
+    auc_output_path = _add_date_to_output_path(auc_output_path)
+    _write_auc_summary_csv(auc_rows, auc_output_path)
 
     print(f"Saved report to {output_path}")
 
@@ -330,9 +418,19 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Output PDF path (default: <base-path>/aggregate_feature_report_<date>.pdf)",
     )
+    parser.add_argument(
+        "--auc-output",
+        type=Path,
+        default=None,
+        help="AUC CSV path (default: <base-path>/aggregate_feature_auc_summary_<date>.csv)",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    generate_report(base_path=args.base_path, output_path=args.output)
+    generate_report(
+        base_path=args.base_path,
+        output_path=args.output,
+        auc_output_path=args.auc_output,
+    )
