@@ -19,6 +19,7 @@ class RawFeatureType(Enum):
     BOUT_DURATION = "Bout Duration"
     BOUT_STEPS = "Bout Steps"
     GAIT_CYCLES = "Gait Cycles"
+    # Initial contact time
     IC_TIME = "IC Time"
     # NOTE: THIS IS A DERIVATIVE OF THE IC TIME USING BOUT START AND END INDICES
     BOUT_START_TIMESTAMP = "Bout Start Timestamp"
@@ -82,7 +83,7 @@ class RawFeatureType(Enum):
     BOUT_STEP_REGULARITY_V = "bout:step regularity - V"
     BOUT_STRIDE_REGULARITY_V = "bout:stride regularity - V"
     BOUT_AUTOCOVARIANCE_SYMMETRY_V = "bout:autocovariance symmetry - V"
-    BOUT_REGULARITY_INDEX_V = "bout:regularity index - V"
+    BOUT_REGULAaRITY_INDEX_V = "bout:regularity index - V"
 
     @classmethod
     def get_value(cls, key: str) -> str:
