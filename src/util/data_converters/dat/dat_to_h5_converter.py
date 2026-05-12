@@ -148,6 +148,81 @@ class DATToHDF5Converter:
             "FL035",
             "FL036",
         ]
+        self.lab_walks_pids = [
+            "CO001",
+            "CO002",
+            "CO003",
+            "CO004",
+            "CO005",
+            "CO006",
+            "CO007",
+            "CO008",
+            "CO009",
+            "CO010",
+            "CO011",
+            "CO013",
+            "CO014",
+            "CO015",
+            "CO016",
+            "CO017",
+            "CO018",
+            "CO019",
+            "CO020",
+            "CO021",
+            "CO022",
+            "CO023",
+            "CO024",
+            "CO025",
+            "CO026",
+            "CO027",
+            "CO028",
+            "CO029",
+            "CO030",
+            "CO031",
+            "CO032",
+            "CO033",
+            "CO034",
+            "CO035",
+            "CO036",
+            "CO040",
+            "CO041",
+            "CO042",
+            "FL001",
+            "FL003",
+            "FL004",
+            "FL005",
+            "FL006",
+            "FL007",
+            "FL008",
+            "FL009",
+            "FL010",
+            "FL011",
+            "FL013",
+            "FL015",
+            "FL016",
+            "FL017",
+            "FL018",
+            "FL019",
+            "FL020",
+            "FL021",
+            "FL022",
+            "FL023",
+            "FL024",
+            "FL025",
+            "FL026",
+            "FL027",
+            "FL028",
+            "FL030",
+            "FL031",
+            "FL032",
+            "FL033",
+            "FL034",
+            "FL035",
+            "FL036",
+            "FL037",
+            "FL038",
+            "FL039",
+        ]
 
     ### Demo data conversion
     def read_xlsx_to_dict(self, file_path: Path) -> Dict[str, List[Any]]:
@@ -257,17 +332,16 @@ class DATToHDF5Converter:
         return UserData(user_id, clin_demo_data)
 
     ### IMU Data conversion
-    def convert_all_dat_to_h5(self, dat_dir_path: Path, output_path: Path):
-        # Scrape the input directory for all .dat files
-        dat_file_paths = []
-        for file_path in dat_dir_path.rglob("*.dat"):
-            dat_file_paths.append(file_path)
-        # file_stems = [p.stem for p in dat_file_paths]
+    def convert_all_dat_to_h5(
+        self, dat_dir_path: Path, output_path: Path, lab_walks: bool = False
+    ):
         p_id_to_imu_id_map = {}
         imu_id_to_path_map = {}
-        for p_id in self.p_ids:
+        p_ids = self.lab_walks_pids if lab_walks else self.p_ids
+        for p_id in p_ids:
             # NOTE THE FILE PATH NEEDS TO BE PROVIDED AS DIRECTORY + P_ID (lib assumes .dat and .hea file format)
-            file_path = Path(os.path.join(dat_dir_path, p_id))
+            suffix = p_id if not lab_walks else p_id.lower() + '_base'
+            file_path = Path(os.path.join(dat_dir_path, suffix))
             data = self.read_dat_record_wfdb(file_path)
             print(f"Read in file: {p_id}")
             imu_data: IMUData = self.convert_to_imu_data(data, p_id)
@@ -439,11 +513,12 @@ def main():
     ### Converts IMU to h5
     converter = DATToHDF5Converter()
     imu_data_dir = Path(
-        "/Users/graingersasso/Desktop/fafra/fafra_data/raw_data/ltmm/long-term-movement-monitoring-database-1.0.0"
+        "/Users/graingersasso/Desktop/fafra/fafra_data/raw_data/ltmm/LabWalks"
     )
     p_id_to_imu_id_map, imu_id_to_path_map = converter.convert_all_dat_to_h5(
         imu_data_dir,
-        Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/imu_data"),
+        Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_lab_walks_2026_05_09"),
+        True
     )
     print(p_id_to_imu_id_map)
     print(imu_id_to_path_map)
