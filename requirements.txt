@@ -1,0 +1,10 @@
+h5py
+lightgbm
+matplotlib
+numpy
+pandas
+pint
+pygt3x
+scikit-digital-health==0.17.9
+scikit-learn
+wfdb

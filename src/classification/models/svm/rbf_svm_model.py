@@ -16,6 +16,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
+from sklearn.svm import SVC
 
 from src.classification.feature_preprocessor.feature_preprocessor import PreparedDataset
 from src.classification.models.base_classifier_model import (
@@ -24,8 +25,8 @@ from src.classification.models.base_classifier_model import (
 )
 
 
-class LightGbmShallowModel(BaseClassifierModel):
-    """Shallow LightGBM classifier with repeated CV evaluation."""
+class RbfSvmModel(BaseClassifierModel):
+    """RBF-kernel SVM with repeated CV evaluation."""
 
     def __init__(self, random_state: int = 42, fast_mode: bool = False):
         self.random_state = random_state
@@ -34,7 +35,7 @@ class LightGbmShallowModel(BaseClassifierModel):
 
     @property
     def model_name(self) -> str:
-        return "lightgbm_shallow" 
+        return "svm_rbf"
 
     @staticmethod
     def _compute_fold_metrics(
@@ -76,53 +77,30 @@ class LightGbmShallowModel(BaseClassifierModel):
         return summary
 
     def _build_search(self) -> GridSearchCV:
-        try:
-            from lightgbm import LGBMClassifier
-        except Exception as exc:
-            raise ImportError(
-                "lightgbm is required for LightGbmShallowModel. "
-                "Install with `pip install lightgbm`."
-            ) from exc
-
         inner_cv_splits = 3 if self.fast_mode else 5
-        param_grid = (
-            {
-                "clf__n_estimators": [50, 100],
-                "clf__learning_rate": [0.05, 0.1],
-                "clf__max_depth": [2],
-                "clf__num_leaves": [7],
-                "clf__min_child_samples": [10],
-                "clf__reg_lambda": [0.0, 1.0],
-            }
-            if self.fast_mode
-            else {
-                "clf__n_estimators": [50, 100, 200],
-                "clf__learning_rate": [0.03, 0.05, 0.1],
-                "clf__max_depth": [2, 3],
-                "clf__num_leaves": [7, 15],
-                "clf__min_child_samples": [5, 10, 20],
-                "clf__reg_lambda": [0.0, 1.0, 5.0],
-            }
-        )
-
+        c_grid = [0.1, 1.0, 10.0] if self.fast_mode else [0.1, 1.0, 10.0, 100.0]
+        gamma_grid = ["scale", 0.1] if self.fast_mode else ["scale", 0.01, 0.1, 1.0]
         base_pipeline = Pipeline(
             steps=[
                 ("imputer", SimpleImputer(strategy="median")),
-                # Trees do not require scaling, but keep consistent input stage.
                 ("scaler", RobustScaler()),
                 (
                     "clf",
-                    LGBMClassifier(
-                        objective="binary",
+                    SVC(
+                        kernel="rbf",
+                        probability=True,
+                        class_weight="balanced",
                         random_state=self.random_state,
-                        n_jobs=-1,
                     ),
                 ),
             ]
         )
         return GridSearchCV(
             estimator=base_pipeline,
-            param_grid=param_grid,
+            param_grid={
+                "clf__C": c_grid,
+                "clf__gamma": gamma_grid,
+            },
             scoring="roc_auc",
             cv=StratifiedKFold(
                 n_splits=inner_cv_splits,
@@ -165,13 +143,12 @@ class LightGbmShallowModel(BaseClassifierModel):
         metrics["n_splits"] = float(n_splits)
         metrics["n_repeats"] = float(n_repeats)
 
-        # Summarize by most frequently selected params.
-        keys = best_params_history[0].keys() if best_params_history else []
-        params_summary: Dict[str, object] = {}
-        for key in keys:
-            values = [entry[key] for entry in best_params_history]
-            params_summary[f"{key}_mode"] = max(set(values), key=values.count)
-        self.final_best_params = params_summary
+        c_values = [params["clf__C"] for params in best_params_history]
+        gamma_values = [params["clf__gamma"] for params in best_params_history]
+        self.final_best_params = {
+            "clf__C_mode": max(set(c_values), key=c_values.count),
+            "clf__gamma_mode": max(set(gamma_values), key=gamma_values.count),
+        }
         return ModelEvaluationResult(
             model_name=self.model_name,
             metrics=metrics,
