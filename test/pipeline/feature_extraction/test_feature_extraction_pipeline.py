@@ -43,10 +43,10 @@ def main():
     }
     output_dir_paths = {
         RawFeatureIdentifier: Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/raw_feat"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/raw_feature"
         ),
         AggregateFeatureIdentifier: Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/agg_feat"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/agg_feature"
         ),
     }
     dataset_path = Path("/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_2026_02_21/dataset")

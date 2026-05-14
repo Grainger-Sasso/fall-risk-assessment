@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, Tuple, Type
+import os
 
 from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
     IMUDataFileExporter,
@@ -30,8 +31,6 @@ from src.data_io.import_export.importers.mapping.mapping_importer import Mapping
 from src.data_io.import_export.importers.registry.registry_importer import (
     RegistryImporter,
 )
-from src.data_model.data.imu.imu_data import IMUData
-from src.data_model.data.user.user_data import UserData
 from src.database_manager.data_access.export_manager import ExportManager
 from src.database_manager.data_access.import_manager import ImportManager
 from src.database_manager.data_access.mapping_manager import MappingManager
@@ -68,6 +67,11 @@ class DatabaseGenerator:
         output_dir_paths: Dict[Type[Identifier], Path],
         validate=True,
     ) -> DatabaseManager:
+        output_root = Path(
+            os.path.commonpath([str(path.resolve()) for path in output_dir_paths.values()])
+        )
+        (output_root / "raw_feature").mkdir(parents=True, exist_ok=True)
+        (output_root / "agg_feature").mkdir(parents=True, exist_ok=True)
 
         registry_importer = RegistryImporter()
         mapping_importer = MappingImporter()
