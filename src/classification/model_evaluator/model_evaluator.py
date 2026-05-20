@@ -77,8 +77,8 @@ def _get_database_manager(base_path: Path) -> DatabaseManager:
         / "agg_feat_to_raw_feat_mapping",
     }
     output_dir_paths = {
-        RawFeatureIdentifier: base_path / "raw_feat",
-        AggregateFeatureIdentifier: base_path / "agg_feat",
+        RawFeatureIdentifier: base_path / "raw_feature",
+        AggregateFeatureIdentifier: base_path / "agg_feature",
     }
     return DatabaseGenerator().generate_database(
         registry_paths, mapping_paths, output_dir_paths, validate=False

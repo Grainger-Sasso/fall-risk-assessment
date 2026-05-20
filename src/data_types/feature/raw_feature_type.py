@@ -83,7 +83,7 @@ class RawFeatureType(Enum):
     BOUT_STEP_REGULARITY_V = "bout:step regularity - V"
     BOUT_STRIDE_REGULARITY_V = "bout:stride regularity - V"
     BOUT_AUTOCOVARIANCE_SYMMETRY_V = "bout:autocovariance symmetry - V"
-    BOUT_REGULAaRITY_INDEX_V = "bout:regularity index - V"
+    BOUT_REGULARITY_INDEX_V = "bout:regularity index - V"
 
     @classmethod
     def get_value(cls, key: str) -> str:
