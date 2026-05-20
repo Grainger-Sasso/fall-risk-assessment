@@ -51,7 +51,7 @@ def main():
     db_manager = db_generator.generate_database(
         registry_paths, mapping_paths, output_dir_paths, validate=False
     )
-    pipeline = FeatureExtractionPipeline(db_manager)
+    pipeline = FeatureExtractionPipeline(db_manager,treadmill_profile=True)
     pipeline.run(dataset_path, dataset_name)
     print(f'Finished pipeline run for {dataset_name}')
 

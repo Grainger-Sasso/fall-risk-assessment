@@ -20,10 +20,13 @@ class FeatureExtractionPipeline:
 
     def __init__(
         self,
-        db_manager: DatabaseManager
+        db_manager: DatabaseManager,
+        treadmill_profile: bool = False,
     ):
         self.db_manager: DatabaseManager = db_manager
-        self.gait_feature_extractor = GaitFeatureExtractor()
+        self.gait_feature_extractor = GaitFeatureExtractor(
+            treadmill_profile=treadmill_profile
+        )
         self.gait_feature_processor = GaitFeatureProcessor()
         self.dataset_importer = DatasetImporter()
 
