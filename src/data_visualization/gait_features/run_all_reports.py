@@ -6,6 +6,7 @@ This orchestrator runs:
 2) aggregate_feature_report (+ AUC CSV)
 3) feature_correlation_heatmap (+ correlation-groups text)
 4) feature_histogram
+5) executive_summary_report (PDF)
 
 Usage:
     python -m src.data_visualization.gait_features.run_all_reports \
@@ -35,6 +36,9 @@ from src.data_visualization.gait_features.dataset_report import (
 )
 from src.data_visualization.gait_features.feature_correlation_heatmap import (
     generate_feature_correlation_heatmap,
+)
+from src.data_visualization.gait_features.executive_summary_report import (
+    generate_executive_summary,
 )
 from src.data_visualization.gait_features.feature_histogram import main as generate_histogram
 
@@ -137,6 +141,15 @@ def run_all_reports(
         output_path=histogram_path,
     )
 
+    print("Running executive summary report...")
+    executive_summary_path = results_dir / "gait_feature_executive_summary.pdf"
+    generate_executive_summary(
+        base_path=base_path,
+        auc_csv_path=_dated_output_path(auc_summary_path),
+        correlation_groups_path=_dated_output_path(correlation_groups_path),
+        output_path=executive_summary_path,
+    )
+
     print("\nAll reports complete. Generated artifacts:")
     for expected in [
         dataset_report_path,
@@ -145,6 +158,7 @@ def run_all_reports(
         correlation_heatmap_path,
         correlation_groups_path,
         histogram_path,
+        executive_summary_path,
     ]:
         print(f"- {_dated_output_path(expected)}")
 

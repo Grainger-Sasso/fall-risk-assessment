@@ -204,6 +204,9 @@ def _build_auc_summary_rows(
                 "n_faller": str(len(faller_vals)),
                 "n_non_faller": str(len(non_faller_vals)),
                 "auc_roc": "" if auc is None else f"{auc:.6f}",
+                "auc_deviation_from_0_5": (
+                    "" if auc is None else f"{abs(auc - 0.5):.6f}"
+                ),
             }
         )
     return rows
@@ -212,7 +215,14 @@ def _build_auc_summary_rows(
 def _write_auc_summary_csv(rows: List[Dict[str, str]], output_path: Path) -> None:
     """Write per-feature AUC summary rows to CSV."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["feature_type", "stat_type", "n_faller", "n_non_faller", "auc_roc"]
+    fieldnames = [
+        "feature_type",
+        "stat_type",
+        "n_faller",
+        "n_non_faller",
+        "auc_roc",
+        "auc_deviation_from_0_5",
+    ]
     with output_path.open("w", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
