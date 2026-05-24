@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
 
+import numpy as np
+
 from src.classification.feature_preprocessor.feature_preprocessor import PreparedDataset
 
 
@@ -25,5 +27,7 @@ class BaseClassifierModel(ABC):
         n_splits: int,
         n_repeats: int,
         random_state: int,
+        groups: Optional[np.ndarray] = None,
+        use_grouped_cv: bool = False,
     ) -> ModelEvaluationResult:
         """Run CV evaluation and return aggregated metrics."""

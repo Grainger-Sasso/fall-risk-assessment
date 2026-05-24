@@ -241,6 +241,16 @@ def _load_aggregate_feature_ids(path: Path) -> List[AggregateFeatureIdentifier]:
     return [AggregateFeatureIdentifier(str(value)) for value in values]
 
 
+def _load_all_aggregate_feature_ids(
+    db_manager: DatabaseManager,
+) -> List[AggregateFeatureIdentifier]:
+    agg_registry = db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
+    values = sorted(list(agg_registry.registry.keys()))
+    if not values:
+        raise ValueError("No aggregate feature IDs found in aggregate feature registry.")
+    return [AggregateFeatureIdentifier(str(value)) for value in values]
+
+
 def _default_results_output_path(output_dir: Path, fast_mode: bool) -> Path:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     mode_suffix = "fast" if fast_mode else "full"
@@ -256,18 +266,80 @@ def _resolve_cv_config(n_splits: int, n_repeats: int, fast_mode: bool) -> Dict[s
     }
 
 
-def run_model_evaluator(
+def _evaluate_models_with_mode(
+    models: List[BaseClassifierModel],
+    prepared_data: PreparedDataset,
+    n_splits: int,
+    n_repeats: int,
+    random_state: int,
+    use_grouped_cv: bool,
+) -> List[Dict[str, object]]:
+    groups = np.array(prepared_data.user_ids) if use_grouped_cv else None
+    mode_label = "grouped-by-participant" if use_grouped_cv else "standard"
+    model_results: List[Dict[str, object]] = []
+
+    for model_index, model in enumerate(models, start=1):
+        start_time = perf_counter()
+        print(
+            f"[{model_index}/{len(models)}] "
+            f"Running {model.model_name} ({mode_label})..."
+        )
+        try:
+            evaluation = model.evaluate(
+                prepared_data=prepared_data,
+                n_splits=n_splits,
+                n_repeats=n_repeats,
+                random_state=random_state,
+                groups=groups,
+                use_grouped_cv=use_grouped_cv,
+            )
+        except Exception:
+            elapsed_seconds = perf_counter() - start_time
+            print(
+                f"[{model_index}/{len(models)}] "
+                f"{model.model_name} failed after {elapsed_seconds:.2f}s ({mode_label})"
+            )
+            raise
+
+        elapsed_seconds = perf_counter() - start_time
+        print(
+            f"[{model_index}/{len(models)}] "
+            f"{model.model_name} completed in {elapsed_seconds:.2f}s ({mode_label})"
+        )
+        model_results.append(
+            {
+                "model_name": evaluation.model_name,
+                "metrics": evaluation.metrics,
+                "best_hyperparameters": evaluation.best_hyperparameters,
+            }
+        )
+    return model_results
+
+
+def  run_model_evaluator(
     base_path: Path,
-    feature_id_file: Path,
+    feature_id_file: Optional[Path] = None,
     results_output_dir: Optional[Path] = None,
     feature_config_json_path: Optional[Path] = None,
     n_splits: int = 5,
     n_repeats: int = 10,
     random_state: int = 42,
     fast_mode: bool = False,
+    run_dual_cv_in_full_mode: bool = True,
 ) -> Dict[str, object]:
     db_manager = _get_database_manager(base_path)
-    aggregate_feature_ids = _load_aggregate_feature_ids(feature_id_file)
+    if feature_id_file is None:
+        aggregate_feature_ids = _load_all_aggregate_feature_ids(db_manager)
+        print(
+            "No feature ID file provided; using all aggregate features from registry "
+            f"(n={len(aggregate_feature_ids)})."
+        )
+    else:
+        aggregate_feature_ids = _load_aggregate_feature_ids(feature_id_file)
+        print(
+            f"Loaded aggregate feature IDs from file '{feature_id_file}' "
+            f"(n={len(aggregate_feature_ids)})."
+        )
     selected_feature_pairs = (
         _load_feature_pair_config_json(feature_config_json_path)
         if feature_config_json_path
@@ -296,41 +368,46 @@ def run_model_evaluator(
         f"{'fast' if fast_mode else 'full'} "
         f"(n_splits={effective_cv['n_splits']}, n_repeats={effective_cv['n_repeats']})"
     )
-
-    model_results: List[Dict[str, object]] = []
     print("Preparing dataset...")
     prepared_data = evaluator._prepare_dataset()
     print(f"Prepared dataset with {len(prepared_data.labels)} samples.")
-    for model_index, model in enumerate(evaluator.models, start=1):
-        start_time = perf_counter()
-        print(
-            f"[{model_index}/{len(evaluator.models)}] "
-            f"Running {model.model_name}..."
+
+    evaluate_grouped_cv = (not fast_mode) and run_dual_cv_in_full_mode
+    if fast_mode and run_dual_cv_in_full_mode:
+        print("Fast mode enabled: grouped participant CV is disabled.")
+
+    standard_results = _evaluate_models_with_mode(
+        models=evaluator.models,
+        prepared_data=prepared_data,
+        n_splits=effective_cv["n_splits"],
+        n_repeats=effective_cv["n_repeats"],
+        random_state=random_state,
+        use_grouped_cv=False,
+    )
+    evaluation_runs: List[Dict[str, object]] = [
+        {
+            "cv_mode": "standard",
+            "grouped_by_participant": False,
+            "model_results": standard_results,
+            "model_ranking": evaluator._rank_models(standard_results),
+        }
+    ]
+
+    if evaluate_grouped_cv:
+        grouped_results = _evaluate_models_with_mode(
+            models=evaluator.models,
+            prepared_data=prepared_data,
+            n_splits=effective_cv["n_splits"],
+            n_repeats=effective_cv["n_repeats"],
+            random_state=random_state,
+            use_grouped_cv=True,
         )
-        try:
-            evaluation = model.evaluate(
-                prepared_data=prepared_data,
-                n_splits=effective_cv["n_splits"],
-                n_repeats=effective_cv["n_repeats"],
-                random_state=random_state,
-            )
-        except Exception:
-            elapsed_seconds = perf_counter() - start_time
-            print(
-                f"[{model_index}/{len(evaluator.models)}] "
-                f"{model.model_name} failed after {elapsed_seconds:.2f}s"
-            )
-            raise
-        elapsed_seconds = perf_counter() - start_time
-        print(
-            f"[{model_index}/{len(evaluator.models)}] "
-            f"{model.model_name} completed in {elapsed_seconds:.2f}s"
-        )
-        model_results.append(
+        evaluation_runs.append(
             {
-                "model_name": evaluation.model_name,
-                "metrics": evaluation.metrics,
-                "best_hyperparameters": evaluation.best_hyperparameters,
+                "cv_mode": "grouped_by_participant",
+                "grouped_by_participant": True,
+                "model_results": grouped_results,
+                "model_ranking": evaluator._rank_models(grouped_results),
             }
         )
 
@@ -348,17 +425,20 @@ def run_model_evaluator(
             "n_repeats_effective": effective_cv["n_repeats"],
             "random_state": random_state,
             "fast_mode": fast_mode,
+            "run_dual_cv_in_full_mode": run_dual_cv_in_full_mode,
+            "grouped_cv_executed": evaluate_grouped_cv,
         },
         "class_counts": class_counts,
         "feature_count": len(prepared_data.feature_names),
         "feature_definitions": _build_feature_definition_records(
             prepared_data.feature_names
         ),
-        "model_results": model_results,
-        "model_ranking": evaluator._rank_models(model_results),
+        "model_results": standard_results,
+        "model_ranking": evaluator._rank_models(standard_results),
+        "evaluation_runs": evaluation_runs,
     }
     report["base_path"] = str(base_path)
-    report["feature_id_file"] = str(feature_id_file)
+    report["feature_id_file"] = str(feature_id_file) if feature_id_file else None
     report["feature_config_json_path"] = (
         str(feature_config_json_path) if feature_config_json_path else None
     )
@@ -388,8 +468,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--feature-id-file",
         type=Path,
-        required=True,
-        help="Path to aggregate feature ID JSON (list or {'feature_ids': []})",
+        default=None,
+        help=(
+            "Optional path to aggregate feature ID JSON (list or {'feature_ids': []}). "
+            "If omitted, all aggregate features in the registry are used."
+        ),
     )
     parser.add_argument(
         "--results-output-dir",
@@ -433,6 +516,15 @@ def _parse_args() -> argparse.Namespace:
             "By default this is off and a full run is used."
         ),
     )
+    parser.add_argument(
+        "--disable-dual-cv-full-mode",
+        action="store_true",
+        help=(
+            "Disable the default full-mode behavior of running both "
+            "standard CV and grouped-by-participant CV. "
+            "Ignored in fast mode."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -447,4 +539,5 @@ if __name__ == "__main__":
         n_repeats=args.n_repeats,
         random_state=args.random_state,
         fast_mode=args.fast_mode,
+        run_dual_cv_in_full_mode=not args.disable_dual_cv_full_mode,
     )

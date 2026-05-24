@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 from sklearn.base import clone
@@ -13,7 +13,12 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold, StratifiedKFold
+from sklearn.model_selection import (
+    GridSearchCV,
+    RepeatedStratifiedKFold,
+    StratifiedGroupKFold,
+    StratifiedKFold,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 
@@ -139,18 +144,34 @@ class LightGbmShallowModel(BaseClassifierModel):
         n_splits: int,
         n_repeats: int,
         random_state: int,
+        groups: Optional[np.ndarray] = None,
+        use_grouped_cv: bool = False,
     ) -> ModelEvaluationResult:
         X = prepared_data.features
         y = prepared_data.labels
-        splitter = RepeatedStratifiedKFold(
-            n_splits=n_splits,
-            n_repeats=n_repeats,
-            random_state=random_state,
-        )
 
         fold_metrics: List[Dict[str, float]] = []
         best_params_history: List[Dict] = []
-        for train_index, test_index in splitter.split(X, y):
+        if use_grouped_cv:
+            if groups is None:
+                raise ValueError("Grouped CV requires `groups` input.")
+            split_iter = []
+            for repeat_index in range(n_repeats):
+                splitter = StratifiedGroupKFold(
+                    n_splits=n_splits,
+                    shuffle=True,
+                    random_state=random_state + repeat_index,
+                )
+                split_iter.extend(list(splitter.split(X, y, groups=groups)))
+        else:
+            splitter = RepeatedStratifiedKFold(
+                n_splits=n_splits,
+                n_repeats=n_repeats,
+                random_state=random_state,
+            )
+            split_iter = splitter.split(X, y)
+
+        for train_index, test_index in split_iter:
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
 
