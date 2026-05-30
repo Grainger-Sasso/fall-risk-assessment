@@ -5,7 +5,7 @@ from src.data_io.import_export.importers.registry.registry_importer import (
     RegistryFileNames,
     RegistryImporter,
 )
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import (
     RegistryHelper,

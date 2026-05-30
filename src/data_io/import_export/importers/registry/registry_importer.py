@@ -8,7 +8,7 @@ from src.data_io.builders.model_builders.registry.registry_builder import (
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.import_export.importers.importer import Importer
 from src.data_io.read_write.readers.csv.csv_file_reader import CSVFileReader
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 

@@ -4,7 +4,6 @@ from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.sensor_data import SensorData
@@ -79,8 +78,8 @@ class IMUDataFileBuilder(FileBuilder):
             raise ValueError("Incomplete sensor axis mapping")
 
     def build(self, data: IMUData) -> HDF5Group:
-        if not isinstance(data, IMUData) or len(data.data) != 1:
-            raise ValueError("File must contain single epoch")
+        if not isinstance(data, IMUData) or len(data.data) == 0:
+            raise ValueError("File must contain at least one sensor stream")
         return self.__build_imu_data_group(data)
 
     def __build_imu_data_group(self, data: IMUData) -> HDF5Group:
@@ -98,7 +97,7 @@ class IMUDataFileBuilder(FileBuilder):
         # Get data group name
         imu_data_group_name = IMUDataFields.IMU_DATA.value
         # Build sensor data group of imu data group
-        imu_data_group_items = self.__build_sensor_data_group(data.data[0])
+        imu_data_group_items = self.__build_sensor_data_group(data.data)
         # Build imu data metadata attributes
         imu_data_group_attributes = self.__build_imu_metadata_attributes(data.metadata)
         return HDF5Group(
@@ -107,13 +106,11 @@ class IMUDataFileBuilder(FileBuilder):
             attributes=imu_data_group_attributes,
         )
 
-    def __build_sensor_data_group(
-        self, epoch_imu_data: EpochIMUData
-    ) -> List[HDF5Group]:
+    def __build_sensor_data_group(self, sensor_data_list: List[SensorData]) -> List[HDF5Group]:
         """Build the sensor data group containing all sensor measurements.
 
         Args:
-            epoch_imu_data (EpochIMUData): The epoch data containing sensor measurements
+            sensor_data_list (List[SensorData]): sensor measurements
 
         Returns:
             HDF5Group: Group containing all sensor data subgroups
@@ -124,7 +121,7 @@ class IMUDataFileBuilder(FileBuilder):
         sensor_data_group_attributes = {}
 
         # For every sensor present in IMU data
-        for sensor_data in epoch_imu_data.data:
+        for sensor_data in sensor_data_list:
             # Build sensor subgroup and append to sensor data group items
             sensor_data_group_items.append(
                 self.__build_sensor_data_subgroup(sensor_data)

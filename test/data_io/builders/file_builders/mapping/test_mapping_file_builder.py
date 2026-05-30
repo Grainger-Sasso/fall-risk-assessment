@@ -5,7 +5,7 @@ from src.data_io.builders.file_builders.mapping.mapping_file_builder import (
 )
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
     DatabaseManagerTestHelper,

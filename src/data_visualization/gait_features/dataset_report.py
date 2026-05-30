@@ -25,14 +25,14 @@ from typing import Dict, Optional, Set, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     FallerStatus,
 )
-from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
+from data_types.feature.feature_type import FeatureType
 from src.database_manager.database_generator import DatabaseGenerator
 from src.database_manager.database_manager import DatabaseManager
-from src.data_types.feature.raw_feature_type import RawFeatureType
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
@@ -111,12 +111,19 @@ def _compute_class_representation(
             unknown += 1 if is_new_user else 0
             epochs_unknown += n_epochs
 
-    return fallers, non_fallers, unknown, epochs_fallers, epochs_non_fallers, epochs_unknown
+    return (
+        fallers,
+        non_fallers,
+        unknown,
+        epochs_fallers,
+        epochs_non_fallers,
+        epochs_unknown,
+    )
 
 
 def _compute_feature_missingness(
     db_manager: DatabaseManager,
-) -> Dict[RawFeatureType, float]:
+) -> Dict[FeatureType, float]:
     """
     Compute percentage of missing values per feature type across all epochs.
 
@@ -129,7 +136,7 @@ def _compute_feature_missingness(
     raw_registry = db_manager.registry_manager.get_provider(RawFeatureIdentifier)
 
     # First pass: collect all feature types and total epochs
-    all_feature_types: Set[RawFeatureType] = set()
+    all_feature_types: Set[FeatureType] = set()
     total_epochs = 0
     for raw_feature_id in raw_registry.registry.keys():
         raw_feature_set = db_manager.import_data(
@@ -141,7 +148,7 @@ def _compute_feature_missingness(
                 all_feature_types.add(raw_feature.feature_type)
 
     # Second pass: count missing (absent or NaN) per feature type
-    missing_by_type: Dict[RawFeatureType, int] = defaultdict(int)
+    missing_by_type: Dict[FeatureType, int] = defaultdict(int)
     for raw_feature_id in raw_registry.registry.keys():
         raw_feature_set = db_manager.import_data(
             [RawFeatureIdentifier(raw_feature_id)]
@@ -152,7 +159,7 @@ def _compute_feature_missingness(
                 if raw_feature is None or np.isnan(raw_feature.value):
                     missing_by_type[feat_type] += 1
 
-    pct_missing: Dict[RawFeatureType, float] = {}
+    pct_missing: Dict[FeatureType, float] = {}
     for feat_type in all_feature_types:
         missing = missing_by_type[feat_type]
         pct_missing[feat_type] = (
@@ -175,7 +182,7 @@ def _create_report_pdf(
     n_epochs_fallers: int,
     n_epochs_non_fallers: int,
     n_epochs_unknown: int,
-    pct_missing: Dict[RawFeatureType, float],
+    pct_missing: Dict[FeatureType, float],
     output_path: Path,
 ) -> None:
     """Create a PDF report with class representation and missingness bar plot."""
@@ -206,9 +213,7 @@ def _create_report_pdf(
 
     # Bar plot of missingness
     ax_bar = fig.add_axes([0.1, 0.08, 0.85, 0.48])
-    sorted_items = sorted(
-        pct_missing.items(), key=lambda x: x[1], reverse=True
-    )
+    sorted_items = sorted(pct_missing.items(), key=lambda x: x[1], reverse=True)
     feature_labels = [ft.value for ft, _ in sorted_items]
     pct_values = [pct for _, pct in sorted_items]
 

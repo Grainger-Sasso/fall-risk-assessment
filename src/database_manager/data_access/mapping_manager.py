@@ -1,46 +1,59 @@
-from typing import Dict, Type
+from typing import Optional
 
-from src.database_manager.data_access.data_access_manager import DataAccessManager
-from src.database_manager.mapping.mapping import Mapping
+from src.database_manager.metadata.metadata_repository import MetadataRepository
+from src.database_manager.metadata.type_registry import IdentifierTypeRegistry
 from src.identifiers.identifier import Identifier
 
 
-class MappingManager(DataAccessManager[Mapping]):
-    """Manages access to mappings"""
+class MappingManager:
+    """Mapping facade backed by SQLite relations table."""
 
-    def __init__(self, providers: Dict[Type[Identifier], Mapping]):
-        super().__init__(providers)
-        self.validate_mappings()
+    def __init__(self, metadata_repository: MetadataRepository):
+        self.repository = metadata_repository
 
-    def validate_mappings(self) -> None:
-        """Validates all mapping entries across all providers."""
-        for source_id_type, mapping in self.providers.items():
-            if source_id_type != mapping.source_id_type:
-                raise ValueError(
-                    f"Mapping provider key {source_id_type} does not match "
-                    f"mapping source_id_type {mapping.source_id_type}"
+    def add_relation(
+        self,
+        source_id: Identifier,
+        target_id: Identifier,
+        relation_type: Optional[str] = None,
+    ) -> None:
+        source_type = IdentifierTypeRegistry.get_type_name(type(source_id))
+        target_type = IdentifierTypeRegistry.get_type_name(type(target_id))
+        relation_name = relation_type or IdentifierTypeRegistry.infer_relation_type(
+            source_type, target_type
+        )
+        self.repository.add_relation(
+            source_type=source_type,
+            source_id=source_id.value,
+            target_type=target_type,
+            target_id=target_id.value,
+            relation_type=relation_name,
+        )
+
+    def get_targets(
+        self, source_id: Identifier, relation_type: Optional[str] = None
+    ) -> list[Identifier]:
+        source_type = IdentifierTypeRegistry.get_type_name(type(source_id))
+        targets = self.repository.get_targets(
+            source_type=source_type,
+            source_id=source_id.value,
+            relation_type=relation_type,
+        )
+        output = []
+        for target_type_name, target_id_value in targets:
+            try:
+                output.append(
+                    IdentifierTypeRegistry.build_identifier(target_type_name, target_id_value)
                 )
-            for source_id, target_id in mapping.map.items():
-                if source_id is None or (isinstance(source_id, str) and source_id.strip() == ""):
-                    raise ValueError(
-                        f"Mapping of type {source_id_type} contains null or empty source id"
-                    )
-                if target_id is None or (isinstance(target_id, str) and target_id.strip() == ""):
-                    raise ValueError(
-                        f"Mapping of type {source_id_type} contains null or empty target id "
-                        f"for source id '{source_id}'"
-                    )
-                try:
-                    mapping.source_id_type(source_id)
-                except ValueError as e:
-                    raise ValueError(
-                        f"Mapping of type {source_id_type} contains invalid source id "
-                        f"'{source_id}': {e}"
-                    ) from e
-                try:
-                    mapping.target_id_type(target_id)
-                except ValueError as e:
-                    raise ValueError(
-                        f"Mapping of type {source_id_type} contains invalid target id "
-                        f"'{target_id}' for source id '{source_id}': {e}"
-                    ) from e
+            except KeyError:
+                # Ignore unknown identifier types to keep index resilient to partial migrations.
+                continue
+        return output
+
+    def get_single_target(
+        self, source_id: Identifier, relation_type: Optional[str] = None
+    ) -> Optional[Identifier]:
+        targets = self.get_targets(source_id=source_id, relation_type=relation_type)
+        if not targets:
+            return None
+        return targets[0]

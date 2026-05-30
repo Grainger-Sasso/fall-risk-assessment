@@ -6,7 +6,7 @@ from src.data_io.import_export.importers.registry.registry_importer import (
     RegistryFileNames,
 )
 from src.data_io.read_write.writers.csv.csv_file_writer import CSVFileWriter
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 
 
 class RegistryExporter(DatabaseExporter[Registry]):

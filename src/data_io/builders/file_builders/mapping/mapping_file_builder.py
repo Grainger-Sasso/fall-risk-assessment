@@ -1,7 +1,7 @@
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 
 
 class MappingFileBuilder(FileBuilder):

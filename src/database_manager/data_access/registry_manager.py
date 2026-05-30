@@ -1,41 +1,29 @@
 from pathlib import Path
-from typing import Dict, Type
+from typing import Type
 
-from src.database_manager.data_access.data_access_manager import DataAccessManager
-from src.database_manager.registry.registry import Registry
+from src.database_manager.metadata.metadata_repository import MetadataRepository
+from src.database_manager.metadata.type_registry import IdentifierTypeRegistry
 from src.identifiers.identifier import Identifier
 
 
-class RegistryManager(DataAccessManager[Registry]):
-    """Manages access to registries"""
+class RegistryManager:
+    """Registry facade backed by SQLite records table."""
 
-    def __init__(self, providers: Dict[Type[Identifier], Registry]):
-        super().__init__(providers)
-        self.validate_registries()
+    def __init__(self, metadata_repository: MetadataRepository):
+        self.repository = metadata_repository
 
-    def validate_registries(self):
-        for reg_type, registry in self.providers.items():
-            for id, path in registry.registry.items():
-                id:str
-                path: Path
-                if id is None or id == '':
-                    raise ValueError(
-                        f"Registry of type {str(reg_type)} contains null or empty id"
-                    )
-                if not path.exists():
-                    raise ValueError(
-                        f"Registry of type {str(reg_type)} contains path for id - {id} - that do not exist: {path}"
-                    )
-                if not path.is_dir():
-                    raise ValueError(
-                        f"Registry of type {str(reg_type)} contains path for id - {id} - that is not a directory: {path}"
-                    )
-                try:
-                    if not any(p.is_file() for p in path.iterdir()):
-                        raise ValueError(
-                            f"Registry of type {str(reg_type)} contains empty directory for id - {id} - : {path}"
-                        )
-                except PermissionError:
-                    raise PermissionError(
-                        f"Registry of type {str(reg_type)} contains path for id - {id} - that is privileged: {path}"
-                    )
+    def get_path(self, identifier: Identifier) -> Path:
+        id_type = IdentifierTypeRegistry.get_type_name(type(identifier))
+        return self.repository.get_record_path(id_type, identifier.value)
+
+    def upsert_path(self, identifier: Identifier, path: Path) -> None:
+        id_type = IdentifierTypeRegistry.get_type_name(type(identifier))
+        self.repository.upsert_record(id_type, identifier.value, path)
+
+    def exists(self, identifier: Identifier) -> bool:
+        id_type = IdentifierTypeRegistry.get_type_name(type(identifier))
+        return self.repository.record_exists(id_type, identifier.value)
+
+    def list_ids(self, id_type: Type[Identifier]) -> list[Identifier]:
+        id_type_name = IdentifierTypeRegistry.get_type_name(id_type)
+        return [id_type(value) for value in self.repository.list_record_ids(id_type_name)]

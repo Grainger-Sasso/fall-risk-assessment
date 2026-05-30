@@ -9,7 +9,7 @@ from src.data_io.import_export.importers.registry.registry_importer import (
     RegistryFileNames,
     RegistryImporter,
 )
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
     DatabaseManagerTestHelper,
@@ -61,7 +61,7 @@ class TestRegistryExporter(BaseTest):
         self.assertTrue(expected_file.is_file(), "Output is not a file")
 
         # Import the exported data
-        result = self.importer.import_data(self.temp_path, type(TestSourceIdentifier))
+        result = self.importer.import_data(self.temp_path, TestSourceIdentifier)
 
         # Verify result matches test data
         self.assertEqual(len(result.registry), len(self.test_data.registry))
@@ -92,7 +92,7 @@ class TestRegistryExporter(BaseTest):
         self.assertFalse(copy_path.exists())
 
         # Import and verify the data matches the second export
-        result = self.importer.import_data(self.temp_path, type(TestSourceIdentifier))
+        result = self.importer.import_data(self.temp_path, TestSourceIdentifier)
         self.assertEqual(len(result.registry), 1)
         self.assertEqual(
             result.registry[TestConstants.TEST_SOURCE_IDS.value[1]],

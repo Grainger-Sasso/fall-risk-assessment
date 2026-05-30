@@ -24,23 +24,26 @@ from typing import Optional, Tuple
 from src.data_io.import_export.importers.features.raw.raw_feature_importer import (
     RawFeatureImporter,
 )
-from src.data_io.import_export.importers.registry.registry_importer import RegistryImporter
-from src.data_types.feature.raw_feature_type import RawFeatureType
-from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
-
+from src.data_io.import_export.importers.registry.registry_importer import (
+    RegistryImporter,
+)
+from data_types.feature.feature_type import FeatureType
 from src.data_visualization.gait_features.aggregate_feature_report import (
     generate_report as generate_aggregate_feature_report,
 )
 from src.data_visualization.gait_features.dataset_report import (
     generate_report as generate_dataset_report,
 )
-from src.data_visualization.gait_features.feature_correlation_heatmap import (
-    generate_feature_correlation_heatmap,
-)
 from src.data_visualization.gait_features.executive_summary_report import (
     generate_executive_summary,
 )
-from src.data_visualization.gait_features.feature_histogram import main as generate_histogram
+from src.data_visualization.gait_features.feature_correlation_heatmap import (
+    generate_feature_correlation_heatmap,
+)
+from src.data_visualization.gait_features.feature_histogram import (
+    main as generate_histogram,
+)
+from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 
 
 def _dated_output_path(output_path: Path) -> Path:
@@ -58,14 +61,20 @@ def _auto_select_histogram_target(base_path: Path) -> Tuple[str, str]:
     """
     raw_registry_path = base_path / "registries" / "raw_feature"
     registry_importer = RegistryImporter()
-    raw_registry = registry_importer.import_data(raw_registry_path, RawFeatureIdentifier)
+    raw_registry = registry_importer.import_data(
+        raw_registry_path, RawFeatureIdentifier
+    )
     raw_ids = sorted(raw_registry.registry.keys())
     if not raw_ids:
-        raise ValueError("Raw feature registry is empty; cannot auto-select histogram input.")
+        raise ValueError(
+            "Raw feature registry is empty; cannot auto-select histogram input."
+        )
 
     raw_feature_id = raw_ids[0]
     raw_importer = RawFeatureImporter()
-    raw_entry = raw_importer.import_data(raw_registry.get_path_from_id(RawFeatureIdentifier(raw_feature_id)))
+    raw_entry = raw_importer.import_data(
+        raw_registry.get_path_from_id(RawFeatureIdentifier(raw_feature_id))
+    )
 
     for epoch in raw_entry.raw_epoch_features:
         for raw_feature in epoch.raw_features:
@@ -77,7 +86,7 @@ def _auto_select_histogram_target(base_path: Path) -> Tuple[str, str]:
                     continue
 
     # Fallback to a stable feature enum if no non-NaN values are found.
-    return raw_feature_id, RawFeatureType.STRIDE_TIME.name
+    return raw_feature_id, FeatureType.STRIDE_TIME.name
 
 
 def run_all_reports(

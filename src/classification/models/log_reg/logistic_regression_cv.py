@@ -1,6 +1,6 @@
 import argparse
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -29,10 +29,12 @@ from src.classification.feature_preprocessor.feature_preprocessor import (
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
 from src.database_manager.database_generator import DatabaseGenerator
 from src.database_manager.database_manager import DatabaseManager
-from src.identifiers.feature.aggregate_feature_identifier import AggregateFeatureIdentifier
+from src.identifiers.feature.aggregate_feature_identifier import (
+    AggregateFeatureIdentifier,
+)
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
@@ -119,7 +121,9 @@ def verify_prepared_dataset_rows(
 
     sample_size = min(sample_count, n_rows)
     rng = np.random.default_rng(random_state)
-    sampled_indices = sorted(rng.choice(n_rows, size=sample_size, replace=False).tolist())
+    sampled_indices = sorted(
+        rng.choice(n_rows, size=sample_size, replace=False).tolist()
+    )
 
     mismatch_count = 0
     label_mismatch_count = 0
@@ -132,25 +136,29 @@ def verify_prepared_dataset_rows(
             [AggregateFeatureIdentifier(aggregate_feature_id)]
         )[0]
         user_data = db_manager.import_data([UserIdentifier(user_id)])[0]
-        expected_label_bool = user_data.clinical_demographic_data.faller_status.to_bool()
+        expected_label_bool = (
+            user_data.clinical_demographic_data.faller_status.to_bool()
+        )
         expected_label = (
             None if expected_label_bool is None else int(expected_label_bool)
         )
         observed_label = int(prepared_data.labels[row_index])
-        label_match = (
-            expected_label is not None and observed_label == expected_label
-        )
+        label_match = expected_label is not None and observed_label == expected_label
         if not label_match:
             label_mismatch_count += 1
 
         row_mismatches: List[Dict] = []
-        for feature_index, (raw_type, stat_type) in enumerate(prepared_data.feature_names):
+        for feature_index, (raw_type, stat_type) in enumerate(
+            prepared_data.feature_names
+        ):
             aggregate_feature = aggregate_entry.get_feature_from_type(raw_type)
             if aggregate_feature is None:
                 expected = np.nan
             else:
                 stat = aggregate_feature.get_statistic_from_type(stat_type)
-                expected = np.nan if stat is None or stat.value is None else float(stat.value)
+                expected = (
+                    np.nan if stat is None or stat.value is None else float(stat.value)
+                )
                 if not np.isnan(expected) and np.isnan(float(expected)):
                     expected = np.nan
 
@@ -233,7 +241,7 @@ class LogRegCVClassifier:
         self.feature_config_json_path: Optional[str] = feature_config_json_path
         self.feature_ids: List[AggregateFeatureIdentifier] = []
         self.selected_feature_pairs: Optional[
-            List[tuple[RawFeatureType, DescriptiveStatisticType]]
+            List[tuple[FeatureType, DescriptiveStatisticType]]
         ] = None
         self.prepared_data: Optional[PreparedDataset] = None
         self.final_model_pipeline: Optional[Pipeline] = None
@@ -264,7 +272,9 @@ class LogRegCVClassifier:
         self.is_trained = True
 
     @staticmethod
-    def _compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray) -> Dict[str, float]:
+    def _compute_metrics(
+        y_true: np.ndarray, y_pred: np.ndarray, y_proba: np.ndarray
+    ) -> Dict[str, float]:
         metrics: Dict[str, float] = {
             "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
         }
@@ -273,9 +283,7 @@ class LogRegCVClassifier:
         metrics["sensitivity"] = float(recall_score(y_true, y_pred, zero_division=0))
 
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-        metrics["specificity"] = (
-            float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
-        )
+        metrics["specificity"] = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0
         metrics["tn"] = float(tn)
         metrics["fp"] = float(fp)
         metrics["fn"] = float(fn)
@@ -291,14 +299,18 @@ class LogRegCVClassifier:
         return metrics
 
     @staticmethod
-    def _aggregate_fold_metrics(fold_metrics: List[Dict[str, float]]) -> Dict[str, float]:
+    def _aggregate_fold_metrics(
+        fold_metrics: List[Dict[str, float]],
+    ) -> Dict[str, float]:
         if not fold_metrics:
             raise ValueError("No fold metrics were produced.")
 
         metric_names = sorted(fold_metrics[0].keys())
         summary: Dict[str, float] = {"n_folds": float(len(fold_metrics))}
         for metric_name in metric_names:
-            values = np.array([metrics[metric_name] for metrics in fold_metrics], dtype=float)
+            values = np.array(
+                [metrics[metric_name] for metrics in fold_metrics], dtype=float
+            )
             summary[f"{metric_name}_mean"] = float(np.nanmean(values))
             summary[f"{metric_name}_std"] = (
                 float(np.nanstd(values, ddof=1)) if len(values) > 1 else 0.0
@@ -345,7 +357,9 @@ class LogRegCVClassifier:
     def get_best_hyperparameters(self) -> Dict[str, float]:
         if not self.is_trained or self.final_model_pipeline is None:
             raise RuntimeError("Model must be trained before reading hyperparameters.")
-        fitted_model: LogisticRegressionCV = self.final_model_pipeline.named_steps["clf"]
+        fitted_model: LogisticRegressionCV = self.final_model_pipeline.named_steps[
+            "clf"
+        ]
         best_c = float(np.ravel(fitted_model.C_)[0])
         best_l1_ratio = float(np.ravel(fitted_model.l1_ratio_)[0])
         return {"best_C": best_c, "best_l1_ratio": best_l1_ratio}
@@ -367,7 +381,9 @@ class LogRegCVClassifier:
 
         if not id_values:
             raise ValueError("No aggregate feature IDs found in feature ID file.")
-        self.feature_ids = [AggregateFeatureIdentifier(str(value)) for value in id_values]
+        self.feature_ids = [
+            AggregateFeatureIdentifier(str(value)) for value in id_values
+        ]
         if self.feature_config_json_path:
             self.selected_feature_pairs = _load_feature_pair_config_json(
                 Path(self.feature_config_json_path)
@@ -419,8 +435,8 @@ def generate_aggregate_feature_id_json(
     return output_path
 
 
-def _resolve_raw_feature_type(value: str) -> RawFeatureType:
-    for raw_type in RawFeatureType:
+def _resolve_raw_feature_type(value: str) -> FeatureType:
+    for raw_type in FeatureType:
         if raw_type.value == value:
             return raw_type
     raise ValueError(f"Unknown raw feature type value in config: {value}")
@@ -435,7 +451,7 @@ def _resolve_descriptive_stat_type(value: str) -> DescriptiveStatisticType:
 
 def _load_feature_pair_config_json(
     config_path: Path,
-) -> List[tuple[RawFeatureType, DescriptiveStatisticType]]:
+) -> List[tuple[FeatureType, DescriptiveStatisticType]]:
     """
     Load configured feature pairs from JSON:
     {
@@ -450,7 +466,7 @@ def _load_feature_pair_config_json(
     if not isinstance(feature_pairs_payload, list):
         raise ValueError("Feature config JSON must contain list field 'feature_pairs'.")
 
-    feature_pairs: List[tuple[RawFeatureType, DescriptiveStatisticType]] = []
+    feature_pairs: List[tuple[FeatureType, DescriptiveStatisticType]] = []
     for index, item in enumerate(feature_pairs_payload):
         if not isinstance(item, dict):
             raise ValueError(f"feature_pairs[{index}] must be an object.")
@@ -541,7 +557,9 @@ def run_logistic_regression_cv(
         mean_key = f"{metric_name}_mean"
         std_key = f"{metric_name}_std"
         if mean_key in metrics and std_key in metrics:
-            print(f"  {metric_name}: {metrics[mean_key]:.4f} +/- {metrics[std_key]:.4f}")
+            print(
+                f"  {metric_name}: {metrics[mean_key]:.4f} +/- {metrics[std_key]:.4f}"
+            )
     print(f"  n_folds: {int(metrics['n_folds'])}")
     print(f"  n_splits: {int(metrics['n_splits'])}")
     print(f"  n_repeats: {int(metrics['n_repeats'])}")

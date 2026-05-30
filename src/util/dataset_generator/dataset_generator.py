@@ -33,8 +33,8 @@ from src.data_io.import_export.importers.data.user.user_data_importer import (
 from src.data_io.model_fields.dataset.dataset_fields import DatasetFields
 from src.data_io.read_write.writers.csv.csv_file_writer import CSVFileWriter
 from src.data_model.data.imu.imu_data import IMUData
-from src.database_manager.mapping.mapping import Mapping
-from src.database_manager.registry.registry import Registry
+from src.data_model.mapping.mapping import Mapping
+from src.data_model.registry.registry import Registry
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )

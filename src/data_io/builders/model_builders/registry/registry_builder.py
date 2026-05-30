@@ -4,7 +4,7 @@ from typing import Dict, Type
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.model_fields.registry.registry_fields import RegistryFields
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 

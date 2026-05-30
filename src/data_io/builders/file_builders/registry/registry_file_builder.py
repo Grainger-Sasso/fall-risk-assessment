@@ -1,7 +1,7 @@
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.model_fields.registry.registry_fields import RegistryFields
-from src.database_manager.registry.registry import Registry
+from src.data_model.registry.registry import Registry
 
 
 class RegistryFileBuilder(FileBuilder):

@@ -6,7 +6,7 @@ from src.data_io.import_export.importers.mapping.mapping_importer import (
     MappingFileNames,
 )
 from src.data_io.read_write.writers.csv.csv_file_writer import CSVFileWriter
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 
 
 class MappingExporter(DatabaseExporter[Mapping]):

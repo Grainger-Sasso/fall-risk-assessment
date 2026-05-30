@@ -29,7 +29,6 @@ from src.data_io.read_write.readers.csv.csv_file_reader import CSVFileReader
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
 from src.data_io.read_write.writers.json.json_dict_file_writer import JSONDictFileWriter
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
@@ -416,7 +415,7 @@ class DATToHDF5Converter:
         return data
 
     def convert_to_imu_data(self, data, user_id: str) -> IMUData:
-        epoch_imu_data_list: List[EpochIMUData] = self._build_epoch_data(data)
+        sensor_data = self._build_sensor_data(data)
         imu_data_id: IMUDataIdentifier = self.imu_id_gen.generate_identifier()
         user_data_id: UserIdentifier = UserIdentifier(user_id)
         inst_id: InstrumentIdentifier = InstrumentIdentifier("placeholder", "001")
@@ -428,7 +427,7 @@ class DATToHDF5Converter:
         start_time = data[IMUDataFields.TIME][0]
         end_time = data[IMUDataFields.TIME][-1]
         return IMUData(
-            data=epoch_imu_data_list,
+            data=[sensor_data],
             metadata=metadata,
             start_time=start_time,
             end_time=end_time,
@@ -443,17 +442,7 @@ class DATToHDF5Converter:
         h5_file: HDF5Group = self.file_reader.read(path)
         return self.model_builder.build(h5_file)
 
-    def _build_epoch_data(self, data) -> List[EpochIMUData]:
-        sensor_data = self._build_sensor_data(data)
-        start_time = data[IMUDataFields.TIME][0]
-        end_time = data[IMUDataFields.TIME][-1]
-        return [
-            EpochIMUData(
-                data=[sensor_data], epoch_start_time=start_time, epoch_end_time=end_time
-            )
-        ]
-
-    def _build_sensor_data(self, data) -> List[SensorData]:
+    def _build_sensor_data(self, data) -> SensorData:
         x_axis = UniaxialSensorData(
             anatomical_axis=AnatomicalAxis(AnatomicalCoordinateSystem.VERTICAL),
             sensor_axis=SensorAxis(SensorCoordinateSystem.X),

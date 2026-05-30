@@ -15,7 +15,6 @@ from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDat
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
@@ -116,9 +115,6 @@ class GT3XToH5Converter:
         sensor_data: SensorData = self._build_sensor_data(gt3x_file)
         start_time = sensor_data.time[0]
         end_time = sensor_data.time[-1]
-        epoch_imu_data = EpochIMUData(
-            data=[sensor_data], epoch_start_time=start_time, epoch_end_time=end_time
-        )
         # Build metadata
         info = gt3x_file.info
         sensor_name = "actigraph_" + info.device_type
@@ -131,7 +127,7 @@ class GT3XToH5Converter:
             ),
         )
         imu_data = IMUData(
-            data=[epoch_imu_data],
+            data=[sensor_data],
             metadata=imu_metadata,
             start_time=start_time,
             end_time=end_time,

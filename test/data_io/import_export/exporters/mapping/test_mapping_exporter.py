@@ -7,7 +7,7 @@ from src.data_io.import_export.importers.mapping.mapping_importer import (
     MappingFileNames,
     MappingImporter,
 )
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 from test.base_test import BaseTest
 from test.database_manager.test_data.test_data_helper import (
     DatabaseManagerTestHelper,
@@ -61,7 +61,7 @@ class TestMappingExporter(BaseTest):
 
         # Import the exported data
         result = self.importer.import_data(
-            self.temp_path, type(TestSourceIdentifier), type(TestTargetIdentifier)
+            self.temp_path, TestSourceIdentifier, TestTargetIdentifier
         )
 
         # Verify result matches test data
@@ -94,7 +94,7 @@ class TestMappingExporter(BaseTest):
 
         # Import and verify the data matches the second export
         result = self.importer.import_data(
-            self.temp_path, type(TestSourceIdentifier), type(TestTargetIdentifier)
+            self.temp_path, TestSourceIdentifier, TestTargetIdentifier
         )
         self.assertEqual(len(result.map), 1)
         self.assertEqual(

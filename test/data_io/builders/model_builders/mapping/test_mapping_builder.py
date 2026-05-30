@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from src.data_io.builders.model_builders.mapping.mapping_builder import MappingBuilder
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import (
     MappingHelper,

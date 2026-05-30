@@ -5,7 +5,7 @@ from src.data_io.import_export.importers.mapping.mapping_importer import (
     MappingFileNames,
     MappingImporter,
 )
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 from test.base_test import BaseTest
 from test.data_io.test_data.test_data_helper import (
     MappingHelper,

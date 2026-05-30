@@ -1,9 +1,6 @@
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-
-from src.data_model.data.imu.imu_data import IMUData
-from src.data_model.data.user.user_data import UserData
 from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
@@ -18,10 +15,13 @@ from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import 
 from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
 from src.data_model.features.raw.raw_feature import RawFeature
 from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
+
+from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.user.user_data import UserData
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
 from src.gait_features.feature_extraction.gait_feature_extractor import GaitResults
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
@@ -34,114 +34,114 @@ class GaitFeatureProcessor:
     def __init__(self):
         self.raw_feat_id_gen = IdentifierGenerator("raw", RawFeatureIdentifier)
         self.agg_feat_id_gen = IdentifierGenerator("agg", AggregateFeatureIdentifier)
-        self.event_gait_features: List[RawFeatureType] = [
-            RawFeatureType.STRIDE_TIME,
-            RawFeatureType.STRIDE_TIME_ASYMMETRY,
-            RawFeatureType.STANCE_TIME,
-            RawFeatureType.STANCE_TIME_ASYMMETRY,
-            RawFeatureType.SWING_TIME,
-            RawFeatureType.SWING_TIME_ASYMMETRY,
-            RawFeatureType.STEP_TIME,
-            RawFeatureType.STEP_TIME_ASYMMETRY,
-            RawFeatureType.INITIAL_DOUBLE_SUPPORT,
-            RawFeatureType.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.TERMINAL_DOUBLE_SUPPORT,
-            RawFeatureType.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.DOUBLE_SUPPORT,
-            RawFeatureType.DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.SINGLE_SUPPORT,
-            RawFeatureType.SINGLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.M2_DELTA_H,
-            RawFeatureType.M2_DELTA_H_PRIME,
-            RawFeatureType.STEP_LENGTH,
-            RawFeatureType.STEP_LENGTH_ASYMMETRY,
-            RawFeatureType.STRIDE_LENGTH,
-            RawFeatureType.STRIDE_LENGTH_ASYMMETRY,
-            RawFeatureType.GAIT_SPEED,
-            RawFeatureType.GAIT_SPEED_ASYMMETRY,
-            RawFeatureType.CADENCE,
-            RawFeatureType.M1_DELTA_H,
-            RawFeatureType.STEP_LENGTH_M1,
-            RawFeatureType.STEP_LENGTH_M1_ASYMMETRY,
-            RawFeatureType.STRIDE_LENGTH_M1,
-            RawFeatureType.STRIDE_LENGTH_M1_ASYMMETRY,
-            RawFeatureType.GAIT_SPEED_M1,
-            RawFeatureType.GAIT_SPEED_M1_ASYMMETRY,
-            RawFeatureType.INTRA_STEP_COVARIANCE_V,
-            RawFeatureType.INTRA_STRIDE_COVARIANCE_V,
-            RawFeatureType.HARMONIC_RATIO_V,
-            RawFeatureType.STRIDE_SPARC,
+        self.event_gait_features: List[FeatureType] = [
+            FeatureType.STRIDE_TIME,
+            FeatureType.STRIDE_TIME_ASYMMETRY,
+            FeatureType.STANCE_TIME,
+            FeatureType.STANCE_TIME_ASYMMETRY,
+            FeatureType.SWING_TIME,
+            FeatureType.SWING_TIME_ASYMMETRY,
+            FeatureType.STEP_TIME,
+            FeatureType.STEP_TIME_ASYMMETRY,
+            FeatureType.INITIAL_DOUBLE_SUPPORT,
+            FeatureType.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.TERMINAL_DOUBLE_SUPPORT,
+            FeatureType.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.DOUBLE_SUPPORT,
+            FeatureType.DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.SINGLE_SUPPORT,
+            FeatureType.SINGLE_SUPPORT_ASYMMETRY,
+            FeatureType.M2_DELTA_H,
+            FeatureType.M2_DELTA_H_PRIME,
+            FeatureType.STEP_LENGTH,
+            FeatureType.STEP_LENGTH_ASYMMETRY,
+            FeatureType.STRIDE_LENGTH,
+            FeatureType.STRIDE_LENGTH_ASYMMETRY,
+            FeatureType.GAIT_SPEED,
+            FeatureType.GAIT_SPEED_ASYMMETRY,
+            FeatureType.CADENCE,
+            FeatureType.M1_DELTA_H,
+            FeatureType.STEP_LENGTH_M1,
+            FeatureType.STEP_LENGTH_M1_ASYMMETRY,
+            FeatureType.STRIDE_LENGTH_M1,
+            FeatureType.STRIDE_LENGTH_M1_ASYMMETRY,
+            FeatureType.GAIT_SPEED_M1,
+            FeatureType.GAIT_SPEED_M1_ASYMMETRY,
+            FeatureType.INTRA_STEP_COVARIANCE_V,
+            FeatureType.INTRA_STRIDE_COVARIANCE_V,
+            FeatureType.HARMONIC_RATIO_V,
+            FeatureType.STRIDE_SPARC,
         ]
-        self.bout_gait_features: List[RawFeatureType] = [
-            RawFeatureType.BOUT_DURATION,
-            RawFeatureType.BOUT_STEPS,
-            RawFeatureType.GAIT_CYCLES,
-            RawFeatureType.DEBUG_MEAN_STEP_FREQ,
-            RawFeatureType.BOUT_PHASE_COORDINATION_INDEX,
-            RawFeatureType.BOUT_GAIT_SYMMETRY_INDEX,
-            RawFeatureType.BOUT_STEP_REGULARITY_V,
-            RawFeatureType.BOUT_STRIDE_REGULARITY_V,
-            RawFeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
-            RawFeatureType.BOUT_REGULARITY_INDEX_V,
+        self.bout_gait_features: List[FeatureType] = [
+            FeatureType.BOUT_DURATION,
+            FeatureType.BOUT_STEPS,
+            FeatureType.GAIT_CYCLES,
+            FeatureType.DEBUG_MEAN_STEP_FREQ,
+            FeatureType.BOUT_PHASE_COORDINATION_INDEX,
+            FeatureType.BOUT_GAIT_SYMMETRY_INDEX,
+            FeatureType.BOUT_STEP_REGULARITY_V,
+            FeatureType.BOUT_STRIDE_REGULARITY_V,
+            FeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
+            FeatureType.BOUT_REGULARITY_INDEX_V,
         ]
-        self.raw_feature_types: List[RawFeatureType] = [
-            RawFeatureType.STRIDE_TIME,
-            RawFeatureType.STRIDE_TIME_ASYMMETRY,
-            RawFeatureType.STANCE_TIME,
-            RawFeatureType.STANCE_TIME_ASYMMETRY,
-            RawFeatureType.SWING_TIME,
-            RawFeatureType.SWING_TIME_ASYMMETRY,
-            RawFeatureType.STEP_TIME,
-            RawFeatureType.STEP_TIME_ASYMMETRY,
-            RawFeatureType.INITIAL_DOUBLE_SUPPORT,
-            RawFeatureType.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.TERMINAL_DOUBLE_SUPPORT,
-            RawFeatureType.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.DOUBLE_SUPPORT,
-            RawFeatureType.DOUBLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.SINGLE_SUPPORT,
-            RawFeatureType.SINGLE_SUPPORT_ASYMMETRY,
-            RawFeatureType.M2_DELTA_H,
-            RawFeatureType.M2_DELTA_H_PRIME,
-            RawFeatureType.STEP_LENGTH,
-            RawFeatureType.STEP_LENGTH_ASYMMETRY,
-            RawFeatureType.STRIDE_LENGTH,
-            RawFeatureType.STRIDE_LENGTH_ASYMMETRY,
-            RawFeatureType.GAIT_SPEED,
-            RawFeatureType.GAIT_SPEED_ASYMMETRY,
-            RawFeatureType.CADENCE,
-            RawFeatureType.M1_DELTA_H,
-            RawFeatureType.STEP_LENGTH_M1,
-            RawFeatureType.STEP_LENGTH_M1_ASYMMETRY,
-            RawFeatureType.STRIDE_LENGTH_M1,
-            RawFeatureType.STRIDE_LENGTH_M1_ASYMMETRY,
-            RawFeatureType.GAIT_SPEED_M1,
-            RawFeatureType.GAIT_SPEED_M1_ASYMMETRY,
-            RawFeatureType.INTRA_STEP_COVARIANCE_V,
-            RawFeatureType.INTRA_STRIDE_COVARIANCE_V,
-            RawFeatureType.HARMONIC_RATIO_V,
-            RawFeatureType.STRIDE_SPARC,
-            RawFeatureType.BOUT_DURATION,
-            RawFeatureType.BOUT_STEPS,
-            RawFeatureType.GAIT_CYCLES,
-            RawFeatureType.DEBUG_MEAN_STEP_FREQ,
-            RawFeatureType.BOUT_PHASE_COORDINATION_INDEX,
-            RawFeatureType.BOUT_GAIT_SYMMETRY_INDEX,
-            RawFeatureType.BOUT_STEP_REGULARITY_V,
-            RawFeatureType.BOUT_STRIDE_REGULARITY_V,
-            RawFeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
-            RawFeatureType.BOUT_REGULARITY_INDEX_V,
+        self.raw_feature_types: List[FeatureType] = [
+            FeatureType.STRIDE_TIME,
+            FeatureType.STRIDE_TIME_ASYMMETRY,
+            FeatureType.STANCE_TIME,
+            FeatureType.STANCE_TIME_ASYMMETRY,
+            FeatureType.SWING_TIME,
+            FeatureType.SWING_TIME_ASYMMETRY,
+            FeatureType.STEP_TIME,
+            FeatureType.STEP_TIME_ASYMMETRY,
+            FeatureType.INITIAL_DOUBLE_SUPPORT,
+            FeatureType.INITIAL_DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.TERMINAL_DOUBLE_SUPPORT,
+            FeatureType.TERMINAL_DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.DOUBLE_SUPPORT,
+            FeatureType.DOUBLE_SUPPORT_ASYMMETRY,
+            FeatureType.SINGLE_SUPPORT,
+            FeatureType.SINGLE_SUPPORT_ASYMMETRY,
+            FeatureType.M2_DELTA_H,
+            FeatureType.M2_DELTA_H_PRIME,
+            FeatureType.STEP_LENGTH,
+            FeatureType.STEP_LENGTH_ASYMMETRY,
+            FeatureType.STRIDE_LENGTH,
+            FeatureType.STRIDE_LENGTH_ASYMMETRY,
+            FeatureType.GAIT_SPEED,
+            FeatureType.GAIT_SPEED_ASYMMETRY,
+            FeatureType.CADENCE,
+            FeatureType.M1_DELTA_H,
+            FeatureType.STEP_LENGTH_M1,
+            FeatureType.STEP_LENGTH_M1_ASYMMETRY,
+            FeatureType.STRIDE_LENGTH_M1,
+            FeatureType.STRIDE_LENGTH_M1_ASYMMETRY,
+            FeatureType.GAIT_SPEED_M1,
+            FeatureType.GAIT_SPEED_M1_ASYMMETRY,
+            FeatureType.INTRA_STEP_COVARIANCE_V,
+            FeatureType.INTRA_STRIDE_COVARIANCE_V,
+            FeatureType.HARMONIC_RATIO_V,
+            FeatureType.STRIDE_SPARC,
+            FeatureType.BOUT_DURATION,
+            FeatureType.BOUT_STEPS,
+            FeatureType.GAIT_CYCLES,
+            FeatureType.DEBUG_MEAN_STEP_FREQ,
+            FeatureType.BOUT_PHASE_COORDINATION_INDEX,
+            FeatureType.BOUT_GAIT_SYMMETRY_INDEX,
+            FeatureType.BOUT_STEP_REGULARITY_V,
+            FeatureType.BOUT_STRIDE_REGULARITY_V,
+            FeatureType.BOUT_AUTOCOVARIANCE_SYMMETRY_V,
+            FeatureType.BOUT_REGULARITY_INDEX_V,
         ]
 
     def process_features(
         self, gait_res: GaitResults, imu_data: IMUData, user_data: UserData
     ) -> Tuple[RawFeatureSetEntry, AggregateFeatureSetEntry]:
-        multiday_features: List[Dict[RawFeatureType, float]] = (
+        multiday_features: List[Dict[FeatureType, float]] = (
             self._aggregate_multiday_features(gait_res)
         )
-        agg_feature_dict: Dict[
-            RawFeatureType, Dict[DescriptiveStatisticType, float]
-        ] = self._compute_aggregate_features(multiday_features)
+        agg_feature_dict: Dict[FeatureType, Dict[DescriptiveStatisticType, float]] = (
+            self._compute_aggregate_features(multiday_features)
+        )
         raw_feature_set_entry = self._convert_multiday_to_raw_features(
             multiday_features, imu_data, user_data
         )
@@ -155,7 +155,7 @@ class GaitFeatureProcessor:
 
     def _convert_multiday_to_raw_features(
         self,
-        multiday_features: List[Dict[RawFeatureType, float]],
+        multiday_features: List[Dict[FeatureType, float]],
         imu_data: IMUData,
         user_data: UserData,
     ) -> RawFeatureSetEntry:
@@ -170,8 +170,8 @@ class GaitFeatureProcessor:
             epoch_features.append(
                 RawEpochFeature(
                     raw_features,
-                    features[RawFeatureType.BOUT_START_TIMESTAMP],
-                    features[RawFeatureType.BOUT_END_TIMESTAMP],
+                    features[FeatureType.BOUT_START_TIMESTAMP],
+                    features[FeatureType.BOUT_END_TIMESTAMP],
                 )
             )
         # Build raw feature metadata
@@ -187,7 +187,7 @@ class GaitFeatureProcessor:
 
     def _convert_agg_features_to_data_model(
         self,
-        agg_feature_dict: Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]],
+        agg_feature_dict: Dict[FeatureType, Dict[DescriptiveStatisticType, float]],
         imu_data: IMUData,
         user_data: UserData,
         raw_feature_id: RawFeatureIdentifier,
@@ -212,7 +212,7 @@ class GaitFeatureProcessor:
 
     def _aggregate_multiday_features(
         self, gait_res: GaitResults
-    ) -> List[Dict[RawFeatureType, float]]:
+    ) -> List[Dict[FeatureType, float]]:
         """Aggregates multiday, event-level features into collection of bout-level features
 
         Args:
@@ -222,12 +222,12 @@ class GaitFeatureProcessor:
             List[Dict[GaitFeatureKeys, float]]: _description_
         """
         # Init results dictionary (dayN - boutN)
-        multiday_features: List[Dict[RawFeatureType, float]] = []
+        multiday_features: List[Dict[FeatureType, float]] = []
         # Initialize pointers for to traverse days and bouts
         day_start_ix = 0
         day_n = 1
         # Reference bout numbers and days from resutls
-        day_n_list = gait_res.data[RawFeatureType.DAY_N.value]
+        day_n_list = gait_res.data[FeatureType.DAY_N.value]
         # Traverse days
         while day_start_ix < len(day_n_list):
             day_end_ix = day_start_ix
@@ -247,9 +247,9 @@ class GaitFeatureProcessor:
 
     def _aggregate_single_day_features(
         self, gait_res, day_start_ix: int, day_end_ix: int
-    ) -> List[Dict[RawFeatureType, np.float64]]:
+    ) -> List[Dict[FeatureType, np.float64]]:
         single_day_features = []
-        bout_n_list = gait_res[RawFeatureType.BOUT_N.value]
+        bout_n_list = gait_res[FeatureType.BOUT_N.value]
         bout_start_ix = day_start_ix
         bout_n = 1
         while bout_start_ix < len(bout_n_list) and bout_start_ix < day_end_ix:
@@ -267,11 +267,11 @@ class GaitFeatureProcessor:
                 bout_features[bout_metric] = np.float64(
                     gait_res[bout_metric.value][bout_start_ix]
                 )
-            bout_features[RawFeatureType.BOUT_START_TIMESTAMP] = gait_res[
-                RawFeatureType.IC_TIME.value
+            bout_features[FeatureType.BOUT_START_TIMESTAMP] = gait_res[
+                FeatureType.IC_TIME.value
             ][bout_start_ix - 1].timestamp()
-            bout_features[RawFeatureType.BOUT_END_TIMESTAMP] = gait_res[
-                RawFeatureType.IC_TIME.value
+            bout_features[FeatureType.BOUT_END_TIMESTAMP] = gait_res[
+                FeatureType.IC_TIME.value
             ][bout_end_ix - 1].timestamp()
             single_day_features.append(bout_features)
             bout_n += 1
@@ -280,11 +280,11 @@ class GaitFeatureProcessor:
 
     def _compute_aggregate_features(
         self,
-        multiday_features: List[Dict[RawFeatureType, float]],
-    ) -> Dict[RawFeatureType, Dict[DescriptiveStatisticType, float]]:
-        aggregate_features: Dict[
-            RawFeatureType, Dict[DescriptiveStatisticType, float]
-        ] = {}
+        multiday_features: List[Dict[FeatureType, float]],
+    ) -> Dict[FeatureType, Dict[DescriptiveStatisticType, float]]:
+        aggregate_features: Dict[FeatureType, Dict[DescriptiveStatisticType, float]] = (
+            {}
+        )
         for raw_feature_type in self.raw_feature_types:
             feature_values = np.array(
                 [features[raw_feature_type] for features in multiday_features]

@@ -13,7 +13,6 @@ from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
 from src.data_io.read_write.readers.hdf5.hdf5_file_reader import HDF5FileReader
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
 from src.data_types.instrument.sensor_type import SensorType
@@ -209,17 +208,8 @@ class TestHDF5FileIO(BaseTest):
         self.assertEqual(result_2.start_time, TestConstants.TIME_DATA.value[0])
         self.assertEqual(result_2.end_time, TestConstants.TIME_DATA.value[-1])
 
-        # Test epoch data
-        self.assertEqual(len(result_2.data), 1)  # Single epoch
-        epoch = result_2.data[0]
-        self.assertIsInstance(epoch, EpochIMUData)
-
-        # Test epoch timestamps
-        self.assertEqual(epoch.epoch_start_time, TestConstants.TIME_DATA.value[0])
-        self.assertEqual(epoch.epoch_end_time, TestConstants.TIME_DATA.value[-1])
-
         # Test sensor data for each sensor type
-        for sensor_data in result_2.data[0].data:  # For each sensor in the epoch
+        for sensor_data in result_2.data:
             self.assertIn(
                 sensor_data.metadata.sensor_type,
                 [sensor_type for sensor_type, _ in TestConstants.SENSORS.value],

@@ -2,7 +2,6 @@ import numpy as np  # type: ignore
 
 from src.data_io.builders.model_builders.data.imu.imu_data_builder import IMUDataBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
@@ -55,17 +54,8 @@ class TestIMUDataBuilder(BaseTest):
         self.assertEqual(result.start_time, TestConstants.TIME_DATA.value[0])
         self.assertEqual(result.end_time, TestConstants.TIME_DATA.value[-1])
 
-        # Test epoch data
-        self.assertEqual(len(result.data), 1)  # Single epoch
-        epoch = result.data[0]
-        self.assertIsInstance(epoch, EpochIMUData)
-
-        # Test epoch timestamps
-        self.assertEqual(epoch.epoch_start_time, TestConstants.TIME_DATA.value[0])
-        self.assertEqual(epoch.epoch_end_time, TestConstants.TIME_DATA.value[-1])
-
         # Test sensor data for each sensor type
-        for sensor_data in result.data[0].data:  # For each sensor in the epoch
+        for sensor_data in result.data:
             self.assertIn(
                 sensor_data.metadata.sensor_type,
                 [sensor_type for sensor_type, _ in TestConstants.SENSORS.value],

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import shutil
 from enum import Enum
@@ -28,7 +30,6 @@ from src.data_io.model_fields.instrument_specification.instrument_specification_
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
 from src.data_io.model_fields.registry.registry_fields import RegistryFields
 from src.data_io.read_write.writers.hdf5.hdf5_file_writer import HDF5FileWriter
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
@@ -44,20 +45,6 @@ from src.data_model.dataset.dataset import Dataset
 from src.data_model.dataset.dataset_entry import DatasetEntry
 from src.data_model.feature_set.feature_set import FeatureSet
 from src.data_model.feature_set.feature_set_entry import FeatureSetEntry
-from src.data_model.features.aggregate.aggregate_feature import AggregateFeature
-from src.data_model.features.aggregate.aggregate_feature_set_entry import (
-    AggregateFeatureSetEntry,
-)
-from src.data_model.features.aggregate.descriptive_statistic import DescriptiveStatistic
-from src.data_model.features.aggregate.metadata.aggregate_feature_set_entry_metadata import (
-    AggregateFeatureSetEntryMetadata,
-)
-from src.data_model.features.raw.metadata.raw_feature_set_entry_metadata import (
-    RawFeatureSetEntryMetadata,
-)
-from src.data_model.features.raw.raw_epoch_features import RawEpochFeature
-from src.data_model.features.raw.raw_feature import RawFeature
-from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_model.instrument_specifications.imu_specifications import (
     IMUSpecifications,
 )
@@ -67,7 +54,7 @@ from src.data_model.instrument_specifications.sensor_specifications import (
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from src.data_types.feature.feature_type import FeatureType
 from src.data_types.instrument.sensor_type import SensorType
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
@@ -150,9 +137,9 @@ class TestConstants(Enum):
 
     ############### Feature DATA ###############
     RAW_FEATURE_NAMES = [
-        RawFeatureType.DAY_N.value,
-        RawFeatureType.DAY_N.value,
-        RawFeatureType.DAY_N.value,
+        FeatureType.DAY_N.value,
+        FeatureType.DAY_N.value,
+        FeatureType.DAY_N.value,
     ]
     EPOCH_START_TIMES = [0.0, 1.0, 2.0]
     EPOCH_END_TIMES = [10.0, 11.0, 12.0]
@@ -445,30 +432,24 @@ class IMUDataHelper:
         )
 
     def create_test_imu_data(self) -> IMUData:
-        # Build epoch data
-        epoch_data_list: List[EpochIMUData] = [self.__build_epoch_imu_data()]
+        # Build sensor data list
+        sensor_data_list: List[SensorData] = self.__build_sensor_data_list()
         # Build metadata
         imu_metadata: IMUMetadata = self.__build_imu_metadata()
-        # Add start and end time (inferred from single epoch)
+        # Add start and end time from the sensor time axis
         start_time, end_time = (
-            epoch_data_list[0].epoch_start_time,
-            epoch_data_list[0].epoch_end_time,
+            sensor_data_list[0].time[0],
+            sensor_data_list[0].time[-1],
         )
-        return IMUData(epoch_data_list, imu_metadata, start_time, end_time)
+        return IMUData(sensor_data_list, imu_metadata, start_time, end_time)
 
-    def __build_epoch_imu_data(self) -> EpochIMUData:
+    def __build_sensor_data_list(self) -> List[SensorData]:
         sensor_data_list: List[SensorData] = []
         # For every sensor
         for sensor_type, _ in TestConstants.SENSORS.value:
             # Build sensor data
             sensor_data_list.append(self.__build_sensor_data(sensor_type))
-
-        # Get epoch start and end time (inferred from the sensor time axis)
-        epoch_start_time, epoch_end_time = (
-            sensor_data_list[0].time[0],
-            sensor_data_list[0].time[-1],
-        )
-        return EpochIMUData(sensor_data_list, epoch_start_time, epoch_end_time)
+        return sensor_data_list
 
     def __build_sensor_data(self, sensor_type: SensorType) -> SensorData:
         # Get time data.
@@ -610,11 +591,11 @@ class FeatureDataHelper:
         return [
             AggregateFeature(
                 descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=RawFeatureType.DAY_N,
+                feature_type=FeatureType.DAY_N,
             ),
             AggregateFeature(
                 descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=RawFeatureType.DAY_N,
+                feature_type=FeatureType.DAY_N,
             ),
         ]
 
@@ -743,11 +724,11 @@ class FeatureDataHelper:
     def __build_raw_feature_list(self) -> List[RawFeature]:
         return [
             RawFeature(
-                feature_type=RawFeatureType.DAY_N,
+                feature_type=FeatureType.DAY_N,
                 value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value,
             ),
             RawFeature(
-                feature_type=RawFeatureType.DAY_N,
+                feature_type=FeatureType.DAY_N,
                 value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value + 1.0,
             ),
         ]

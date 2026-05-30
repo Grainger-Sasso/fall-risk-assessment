@@ -4,7 +4,7 @@ from typing import Dict, List, Type
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.csv.csv_file import CSVFile
 from src.data_io.model_fields.mappings.mapping_fields import MappingFields
-from src.database_manager.mapping.mapping import Mapping
+from src.data_model.mapping.mapping import Mapping
 from src.identifiers.identifier import Identifier
 
 

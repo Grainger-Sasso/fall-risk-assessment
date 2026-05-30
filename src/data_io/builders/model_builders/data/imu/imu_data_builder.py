@@ -5,7 +5,6 @@ import numpy as np  # type: ignore
 from src.data_io.builders.model_builders.model_builder import ModelBuilder
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
 from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
-from src.data_model.data.imu.epoch_imu_data import EpochIMUData
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.metadata.sensor_metadata import SensorMetadata
@@ -93,46 +92,38 @@ class IMUDataBuilder(ModelBuilder):
         except ValueError as e:
             raise ValueError(f"Missing sensor data group: {e}")
 
-        # Build epoch data
-        epoch_data_list: List[EpochIMUData] = [
-            self.__build_epoch_imu_data(sensor_data_group)
-        ]
+        # Build sensor data
+        sensor_data_list: List[SensorData] = self.__build_sensor_data_list(sensor_data_group)
         # Build metadata
         imu_metadata: IMUMetadata = self.__build_imu_metadata(input_file)
-        # Add start and end time (inferred from single epoch)
+        # Add start and end time from the sensor time axis
         start_time, end_time = (
-            epoch_data_list[0].epoch_start_time,
-            epoch_data_list[0].epoch_end_time,
+            sensor_data_list[0].time[0],
+            sensor_data_list[0].time[-1],
         )
-        return IMUData(epoch_data_list, imu_metadata, start_time, end_time)
+        return IMUData(sensor_data_list, imu_metadata, start_time, end_time)
 
-    def __build_epoch_imu_data(self, senor_data_groups: HDF5Group) -> EpochIMUData:
-        """Build epoch IMU data from sensor data groups.
+    def __build_sensor_data_list(self, sensor_data_groups: HDF5Group) -> List[SensorData]:
+        """Build sensor data list from sensor data groups.
 
         Args:
-            senor_data_groups (HDF5Group): Group containing sensor data
+            sensor_data_groups (HDF5Group): Group containing sensor data
 
         Returns:
-            EpochIMUData: Constructed epoch data
+            List[SensorData]: Constructed sensor data list
 
         Raises:
             ValueError: If no sensor data is present
         """
-        if not senor_data_groups.items:
+        if not sensor_data_groups.items:
             raise ValueError("No sensor data found in groups")
 
         sensor_data_list: List[SensorData] = []
         # For every sensor
-        for sensor_data_group in senor_data_groups.items:
+        for sensor_data_group in sensor_data_groups.items:
             # Build sensor data
             sensor_data_list.append(self.__build_sensor_data(sensor_data_group))
-
-        # Get epoch start and end time (inferred from the sensor time axis)
-        epoch_start_time, epoch_end_time = (
-            sensor_data_list[0].time[0],
-            sensor_data_list[0].time[-1],
-        )
-        return EpochIMUData(sensor_data_list, epoch_start_time, epoch_end_time)
+        return sensor_data_list
 
     def __build_sensor_data(self, sensor_data_group: HDF5Group) -> SensorData:
         """Build sensor data from HDF5 group.

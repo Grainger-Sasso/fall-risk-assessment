@@ -1,8 +1,8 @@
 from enum import Enum
 from pathlib import Path
 
-from src.database_manager.mapping.mapping import Mapping
-from src.database_manager.registry.registry import Registry
+from src.data_model.mapping.mapping import Mapping
+from src.data_model.registry.registry import Registry
 from src.identifiers.identifier import Identifier
 
 

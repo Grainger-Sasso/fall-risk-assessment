@@ -1,14 +1,15 @@
 from typing import List, Optional, Tuple
-import numpy as np
 
-from src.data_model.data.user.user_data import UserData
+import numpy as np
 from src.data_model.features.aggregate.aggregate_feature_set_entry import (
     AggregateFeatureSetEntry,
 )
+
+from src.data_model.data.user.user_data import UserData
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
 from src.database_manager.database_manager import DatabaseManager
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
@@ -38,7 +39,7 @@ class FeaturePreprocessor:
         feature_ids: List[AggregateFeatureIdentifier],
         db_manager: DatabaseManager,
         selected_feature_pairs: Optional[
-            List[Tuple[RawFeatureType, DescriptiveStatisticType]]
+            List[Tuple[FeatureType, DescriptiveStatisticType]]
         ] = None,
     ):
         self.feature_ids: List[AggregateFeatureIdentifier] = feature_ids
@@ -56,12 +57,12 @@ class FeaturePreprocessor:
         labels: List[int] = []
         user_ids: List[str] = []
         aggregate_feature_ids: List[str] = []
-        feature_names: List[Tuple[RawFeatureType, DescriptiveStatisticType]] = []
+        feature_names: List[Tuple[FeatureType, DescriptiveStatisticType]] = []
 
         for feature_id in self.feature_ids:
-            agg_feature_set_entry: AggregateFeatureSetEntry = self.db_manager.import_data(
-                [feature_id]
-            )[0]
+            agg_feature_set_entry: AggregateFeatureSetEntry = (
+                self.db_manager.import_data([feature_id])[0]
+            )
             user_id: UserIdentifier = agg_feature_set_entry.metadata.user_identifier
             user_data: UserData = self.db_manager.import_data([user_id])[0]
             label_value = user_data.clinical_demographic_data.faller_status.to_bool()
@@ -80,13 +81,17 @@ class FeaturePreprocessor:
             aggregate_feature_ids.append(feature_id.value)
 
         if not features:
-            raise ValueError("No labeled aggregate feature rows available for preprocessing.")
+            raise ValueError(
+                "No labeled aggregate feature rows available for preprocessing."
+            )
 
         X = np.array(features, dtype=float)
         y = np.array(labels)
         X, feature_names = self._drop_all_missing_columns(X, feature_names)
         if X.shape[1] == 0:
-            raise ValueError("No usable feature columns remain after dropping all-missing columns.")
+            raise ValueError(
+                "No usable feature columns remain after dropping all-missing columns."
+            )
         return PreparedDataset(
             feature_names=feature_names,
             features=X,
@@ -98,7 +103,7 @@ class FeaturePreprocessor:
     def collect_features(
         self,
         agg_feature_set: AggregateFeatureSetEntry,
-        feature_names: List[Tuple[RawFeatureType, DescriptiveStatisticType]],
+        feature_names: List[Tuple[FeatureType, DescriptiveStatisticType]],
     ) -> List[float]:
         features: List[float] = []
         for feature_type, stat_type in feature_names:
@@ -118,10 +123,10 @@ class FeaturePreprocessor:
 
     def get_feature_names(
         self, agg_feature_set: AggregateFeatureSetEntry
-    ) -> List[Tuple[RawFeatureType, DescriptiveStatisticType]]:
+    ) -> List[Tuple[FeatureType, DescriptiveStatisticType]]:
         names = []
         for agg_feature in agg_feature_set.aggregate_features:
-            feature_type: RawFeatureType = agg_feature.feature_type
+            feature_type: FeatureType = agg_feature.feature_type
             for stat in agg_feature.descriptive_statistics:
                 stat_type: DescriptiveStatisticType = stat.statistic_type
                 names.append((feature_type, stat_type))
@@ -130,14 +135,12 @@ class FeaturePreprocessor:
     def _drop_all_missing_columns(
         self,
         X: np.ndarray,
-        feature_names: List[Tuple[RawFeatureType, DescriptiveStatisticType]],
-    ) -> Tuple[np.ndarray, List[Tuple[RawFeatureType, DescriptiveStatisticType]]]:
+        feature_names: List[Tuple[FeatureType, DescriptiveStatisticType]],
+    ) -> Tuple[np.ndarray, List[Tuple[FeatureType, DescriptiveStatisticType]]]:
         """Remove columns that are entirely NaN across all samples."""
         keep_mask = ~np.all(np.isnan(X), axis=0)
         filtered_X = X[:, keep_mask]
         filtered_feature_names = [
-            feature_name
-            for feature_name, keep in zip(feature_names, keep_mask)
-            if keep
+            feature_name for feature_name, keep in zip(feature_names, keep_mask) if keep
         ]
         return filtered_X, filtered_feature_names

@@ -27,23 +27,24 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
+from matplotlib.backends.backend_pdf import PdfPages
+from src.data_model.features.aggregate.aggregate_feature_set_entry import (
+    AggregateFeatureSetEntry,
+)
 
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     FallerStatus,
 )
-from src.data_model.features.aggregate.aggregate_feature_set_entry import (
-    AggregateFeatureSetEntry,
-)
-from src.database_manager.database_generator import DatabaseGenerator
-from src.database_manager.database_manager import DatabaseManager
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
+from src.database_manager.database_generator import DatabaseGenerator
+from src.database_manager.database_manager import DatabaseManager
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
@@ -94,8 +95,8 @@ def _get_database_manager(base_path: Path) -> DatabaseManager:
 def _load_aggregate_feature_data(
     db_manager: DatabaseManager,
 ) -> Tuple[
-    Dict[Tuple[RawFeatureType, DescriptiveStatisticType], List[float]],
-    Dict[Tuple[RawFeatureType, DescriptiveStatisticType], Dict[FallerStatus, List[float]]],
+    Dict[Tuple[FeatureType, DescriptiveStatisticType], List[float]],
+    Dict[Tuple[FeatureType, DescriptiveStatisticType], Dict[FallerStatus, List[float]]],
 ]:
     """
     Load aggregate features and extract mean/median values per participant.
@@ -104,14 +105,12 @@ def _load_aggregate_feature_data(
         overall: Dict mapping (feature_type, stat_type) -> list of values (all participants)
         by_class: Dict mapping (feature_type, stat_type) -> {FallerStatus: list of values}
     """
-    agg_registry = db_manager.registry_manager.get_provider(
-        AggregateFeatureIdentifier
+    agg_registry = db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
+    overall: Dict[Tuple[FeatureType, DescriptiveStatisticType], List[float]] = (
+        defaultdict(list)
     )
-    overall: Dict[
-        Tuple[RawFeatureType, DescriptiveStatisticType], List[float]
-    ] = defaultdict(list)
     by_class: Dict[
-        Tuple[RawFeatureType, DescriptiveStatisticType],
+        Tuple[FeatureType, DescriptiveStatisticType],
         Dict[FallerStatus, List[float]],
     ] = defaultdict(lambda: {FallerStatus.FALLER: [], FallerStatus.NON_FALLER: []})
 
@@ -184,7 +183,7 @@ def _format_auc(auc: Optional[float]) -> str:
 
 def _build_auc_summary_rows(
     by_class: Dict[
-        Tuple[RawFeatureType, DescriptiveStatisticType],
+        Tuple[FeatureType, DescriptiveStatisticType],
         Dict[FallerStatus, List[float]],
     ],
 ) -> List[Dict[str, str]]:
@@ -231,7 +230,7 @@ def _write_auc_summary_csv(rows: List[Dict[str, str]], output_path: Path) -> Non
 
 
 def _create_overall_violin_plots(
-    overall: Dict[Tuple[RawFeatureType, DescriptiveStatisticType], List[float]],
+    overall: Dict[Tuple[FeatureType, DescriptiveStatisticType], List[float]],
     pdf: PdfPages,
 ) -> None:
     """Create violin plots for mean/median aggregate features (all participants)."""
@@ -294,7 +293,7 @@ def _create_overall_violin_plots(
 
 def _create_class_separated_violin_plots(
     by_class: Dict[
-        Tuple[RawFeatureType, DescriptiveStatisticType],
+        Tuple[FeatureType, DescriptiveStatisticType],
         Dict[FallerStatus, List[float]],
     ],
     pdf: PdfPages,

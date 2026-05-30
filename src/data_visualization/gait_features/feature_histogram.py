@@ -23,6 +23,10 @@ from typing import List, Optional
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from src.data_model.features.aggregate.aggregate_feature_set_entry import (
+    AggregateFeatureSetEntry,
+)
+from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 
 from src.data_io.import_export.importers.features.aggregate.aggregate_feature_importer import (
     AggregateFeatureImporter,
@@ -34,14 +38,10 @@ from src.data_io.import_export.importers.mapping.mapping_importer import Mapping
 from src.data_io.import_export.importers.registry.registry_importer import (
     RegistryImporter,
 )
-from src.data_model.features.aggregate.aggregate_feature_set_entry import (
-    AggregateFeatureSetEntry,
-)
-from src.data_model.features.raw.raw_feature_set_entry import RawFeatureSetEntry
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
 from src.identifiers.feature.aggregate_feature_identifier import (
     AggregateFeatureIdentifier,
 )
@@ -61,7 +61,7 @@ STAT_DISPLAY_CONFIG = [
 
 def _extract_raw_values(
     raw_feature_set_entry: RawFeatureSetEntry,
-    feature_type: RawFeatureType,
+    feature_type: FeatureType,
 ) -> List[float]:
     """Extract raw feature values for the given feature type from all epochs."""
     values = []
@@ -74,7 +74,7 @@ def _extract_raw_values(
 
 def _get_aggregate_stats(
     agg_feature_set_entry: AggregateFeatureSetEntry,
-    feature_type: RawFeatureType,
+    feature_type: FeatureType,
 ) -> dict:
     """Extract aggregate statistics for the given feature type."""
     agg_feature = agg_feature_set_entry.get_feature_from_type(feature_type)
@@ -111,7 +111,7 @@ def _find_aggregate_id_from_raw_id(
 def plot_feature_histogram(
     raw_values: List[float],
     stats: dict,
-    feature_type: RawFeatureType,
+    feature_type: FeatureType,
     output_path: Optional[Path] = None,
 ) -> None:
     """
@@ -214,11 +214,11 @@ def main(
     """
     # Resolve feature type
     try:
-        feature_type = RawFeatureType[feature_type_name]
+        feature_type = FeatureType[feature_type_name]
     except KeyError:
         raise ValueError(
             f"Unknown feature type: {feature_type_name}. "
-            f"Valid options: {[e.name for e in RawFeatureType]}"
+            f"Valid options: {[e.name for e in FeatureType]}"
         )
 
     # Load registries

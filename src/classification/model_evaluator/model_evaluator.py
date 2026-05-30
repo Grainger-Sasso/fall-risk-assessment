@@ -1,6 +1,6 @@
 import argparse
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Dict, List, Optional
@@ -21,10 +21,12 @@ from src.classification.models.svm.rbf_svm_model import RbfSvmModel
 from src.data_types.descriptive_statistics.descriptive_statistic_type import (
     DescriptiveStatisticType,
 )
-from src.data_types.feature.raw_feature_type import RawFeatureType
+from data_types.feature.feature_type import FeatureType
 from src.database_manager.database_generator import DatabaseGenerator
 from src.database_manager.database_manager import DatabaseManager
-from src.identifiers.feature.aggregate_feature_identifier import AggregateFeatureIdentifier
+from src.identifiers.feature.aggregate_feature_identifier import (
+    AggregateFeatureIdentifier,
+)
 from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
@@ -85,8 +87,8 @@ def _get_database_manager(base_path: Path) -> DatabaseManager:
     )
 
 
-def _resolve_raw_feature_type(value: str) -> RawFeatureType:
-    for raw_type in RawFeatureType:
+def _resolve_raw_feature_type(value: str) -> FeatureType:
+    for raw_type in FeatureType:
         if raw_type.value == value:
             return raw_type
     raise ValueError(f"Unknown raw feature type value in config: {value}")
@@ -101,14 +103,14 @@ def _resolve_descriptive_stat_type(value: str) -> DescriptiveStatisticType:
 
 def _load_feature_pair_config_json(
     config_path: Path,
-) -> List[tuple[RawFeatureType, DescriptiveStatisticType]]:
+) -> List[tuple[FeatureType, DescriptiveStatisticType]]:
     with config_path.open("r", encoding="utf-8") as file_handle:
         payload = json.load(file_handle)
     feature_pairs_payload = payload.get("feature_pairs")
     if not isinstance(feature_pairs_payload, list):
         raise ValueError("Feature config JSON must contain list field 'feature_pairs'.")
 
-    feature_pairs: List[tuple[RawFeatureType, DescriptiveStatisticType]] = []
+    feature_pairs: List[tuple[FeatureType, DescriptiveStatisticType]] = []
     for index, item in enumerate(feature_pairs_payload):
         if not isinstance(item, dict):
             raise ValueError(f"feature_pairs[{index}] must be an object.")
@@ -138,7 +140,7 @@ class ModelEvaluator:
         aggregate_feature_ids: List[AggregateFeatureIdentifier],
         models: List[BaseClassifierModel],
         selected_feature_pairs: Optional[
-            List[tuple[RawFeatureType, DescriptiveStatisticType]]
+            List[tuple[FeatureType, DescriptiveStatisticType]]
         ] = None,
     ):
         self.db_manager = db_manager
@@ -247,7 +249,9 @@ def _load_all_aggregate_feature_ids(
     agg_registry = db_manager.registry_manager.get_provider(AggregateFeatureIdentifier)
     values = sorted(list(agg_registry.registry.keys()))
     if not values:
-        raise ValueError("No aggregate feature IDs found in aggregate feature registry.")
+        raise ValueError(
+            "No aggregate feature IDs found in aggregate feature registry."
+        )
     return [AggregateFeatureIdentifier(str(value)) for value in values]
 
 
@@ -257,7 +261,9 @@ def _default_results_output_path(output_dir: Path, fast_mode: bool) -> Path:
     return output_dir / f"model_evaluator_report_{mode_suffix}_{timestamp}.json"
 
 
-def _resolve_cv_config(n_splits: int, n_repeats: int, fast_mode: bool) -> Dict[str, int]:
+def _resolve_cv_config(
+    n_splits: int, n_repeats: int, fast_mode: bool
+) -> Dict[str, int]:
     if not fast_mode:
         return {"n_splits": n_splits, "n_repeats": n_repeats}
     return {
@@ -316,7 +322,7 @@ def _evaluate_models_with_mode(
     return model_results
 
 
-def  run_model_evaluator(
+def run_model_evaluator(
     base_path: Path,
     feature_id_file: Optional[Path] = None,
     results_output_dir: Optional[Path] = None,
