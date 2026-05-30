@@ -48,6 +48,16 @@ CREATE INDEX IF NOT EXISTS idx_relations_type
 ON relations(relation_type);
 """
 
+CREATE_RELATIONS_SOURCE_TYPE_REL_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_relations_source_relation
+ON relations(source_type, source_id, relation_type);
+"""
+
+CREATE_RELATIONS_TARGET_TYPE_REL_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_relations_target_relation
+ON relations(target_type, target_id, relation_type);
+"""
+
 DDL_STATEMENTS = [
     CREATE_SCHEMA_VERSION_TABLE_SQL,
     CREATE_RECORDS_TABLE_SQL,
@@ -56,4 +66,6 @@ DDL_STATEMENTS = [
     CREATE_RELATIONS_SOURCE_INDEX_SQL,
     CREATE_RELATIONS_TARGET_INDEX_SQL,
     CREATE_RELATIONS_TYPE_INDEX_SQL,
+    CREATE_RELATIONS_SOURCE_TYPE_REL_INDEX_SQL,
+    CREATE_RELATIONS_TARGET_TYPE_REL_INDEX_SQL,
 ]

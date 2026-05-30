@@ -5,6 +5,7 @@ from typing import Optional, Type, TypeVar
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.user.user_data import UserData
 from src.data_model.features.record_features import RecordFeatures
+from src.data_model.instrument_specifications.imu_specifications import IMUSpecifications
 from src.database_manager.data_access.domain_io_router import DomainIORouter
 from src.database_manager.database_errors import (
     DatabaseReadError,
@@ -12,11 +13,18 @@ from src.database_manager.database_errors import (
     MetadataIndexError,
 )
 from src.database_manager.metadata.metadata_repository import MetadataRepository
-from src.database_manager.metadata.relation_types import FEATURE_TO_IMU, IMU_TO_USER
+from src.database_manager.metadata.relation_types import (
+    FEATURE_TO_IMU,
+    IMU_TO_INSTRUMENT_SPEC,
+    IMU_TO_USER,
+)
 from src.database_manager.metadata.type_registry import IdentifierTypeRegistry
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.identifier import Identifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
+)
 from src.identifiers.user.user_identifier import UserIdentifier
 
 IdentifierT = TypeVar("IdentifierT", bound=Identifier)
@@ -31,7 +39,11 @@ class DatabaseManager:
         self.repository = metadata_repository
         self.io = io_router
 
-    def save_imu(self, imu_data: IMUData) -> Path:
+    def save_imu(
+        self,
+        imu_data: IMUData,
+        instrument_spec_id: Optional[InstrumentSpecificationIdentifier] = None,
+    ) -> Path:
         source_id = imu_data.metadata.imu_data_identifier
         user_id = imu_data.metadata.user_identifier
         output_path: Optional[Path] = None
@@ -39,11 +51,26 @@ class DatabaseManager:
             output_path = self.io.export_imu(imu_data)
             self._upsert_record(source_id, output_path)
             self._add_relation(source_id, user_id, IMU_TO_USER)
+            if instrument_spec_id is not None:
+                self._add_relation(source_id, instrument_spec_id, IMU_TO_INSTRUMENT_SPEC)
             return output_path
         except Exception as exc:
             self._rollback_output(output_path)
             raise DatabaseWriteError(
                 f"Failed to save IMU data {source_id.value}: {exc}"
+            ) from exc
+
+    def save_instrument_spec(self, specifications: IMUSpecifications) -> Path:
+        spec_id = specifications.specification_id
+        output_path: Optional[Path] = None
+        try:
+            output_path = self.io.export_instrument_spec(specifications)
+            self._upsert_record(spec_id, output_path)
+            return output_path
+        except Exception as exc:
+            self._rollback_output(output_path)
+            raise DatabaseWriteError(
+                f"Failed to save instrument specification {spec_id.value}: {exc}"
             ) from exc
 
     def save_features(self, record_features: RecordFeatures) -> Path:
@@ -94,6 +121,17 @@ class DatabaseManager:
                 f"Failed to load feature data for {feature_id.value}: {exc}"
             ) from exc
 
+    def load_instrument_spec(
+        self, spec_id: InstrumentSpecificationIdentifier
+    ) -> IMUSpecifications:
+        try:
+            directory = self._get_record_path(spec_id)
+            return self.io.import_instrument_spec(spec_id, directory)
+        except Exception as exc:
+            raise DatabaseReadError(
+                f"Failed to load instrument specification for {spec_id.value}: {exc}"
+            ) from exc
+
     def list_imu_ids(self) -> list[IMUDataIdentifier]:
         return self._list_ids(IMUDataIdentifier)
 
@@ -102,6 +140,9 @@ class DatabaseManager:
 
     def list_user_ids(self) -> list[UserIdentifier]:
         return self._list_ids(UserIdentifier)
+
+    def list_instrument_spec_ids(self) -> list[InstrumentSpecificationIdentifier]:
+        return self._list_ids(InstrumentSpecificationIdentifier)
 
     def get_user_for_imu(self, imu_id: IMUDataIdentifier) -> Optional[UserIdentifier]:
         target = self._get_single_target(imu_id, IMU_TO_USER)
@@ -123,6 +164,24 @@ class DatabaseManager:
         if not isinstance(target, IMUDataIdentifier):
             raise MetadataIndexError(
                 "Expected IMU identifier for feature relation, found "
+                f"{type(target).__name__}"
+            )
+        return target
+
+    def link_imu_to_instrument_spec(
+        self, imu_id: IMUDataIdentifier, spec_id: InstrumentSpecificationIdentifier
+    ) -> None:
+        self._add_relation(imu_id, spec_id, IMU_TO_INSTRUMENT_SPEC)
+
+    def get_instrument_spec_for_imu(
+        self, imu_id: IMUDataIdentifier
+    ) -> Optional[InstrumentSpecificationIdentifier]:
+        target = self._get_single_target(imu_id, IMU_TO_INSTRUMENT_SPEC)
+        if target is None:
+            return None
+        if not isinstance(target, InstrumentSpecificationIdentifier):
+            raise MetadataIndexError(
+                "Expected instrument specification identifier for IMU relation, found "
                 f"{type(target).__name__}"
             )
         return target

@@ -26,6 +26,7 @@ class IdentifierTypeRegistry:
 
     DEFAULT_RELATIONS = {
         ("imu_data", "user_data"): "imu_to_user",
+        ("imu_data", "instrument_specification"): "imu_to_instrument_spec",
         ("feature", "imu_data"): "feature_to_imu",
         ("raw_feature", "imu_data"): "raw_to_imu",
         ("aggregate_feature", "raw_feature"): "agg_to_raw",

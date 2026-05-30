@@ -5,6 +5,9 @@ from src.database_manager.database_manager import DatabaseManager
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.identifier import Identifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
+)
 
 
 class DatabaseValidator:
@@ -32,6 +35,15 @@ class DatabaseValidator:
                     raise ValueError(
                         f"For IMU ID -{imu_identifier.value}-: User ID in mapping does not match ID in file."
                     )
+                spec_id_from_mapping = db_manager.get_instrument_spec_for_imu(
+                    imu_identifier
+                )
+                if spec_id_from_mapping is not None:
+                    if spec_id_from_mapping not in db_manager.list_instrument_spec_ids():
+                        raise ValueError(
+                            f"For IMU ID -{imu_identifier.value}-: Instrument specification ID not present in registry -{spec_id_from_mapping.value}-"
+                        )
+                    db_manager.load_instrument_spec(spec_id_from_mapping)
                 user_data: UserData = db_manager.load_user(user_id)
                 user_id_from_data: Identifier = user_data.get_data_id()
                 if user_id_from_data.value != user_id.value:
@@ -78,4 +90,18 @@ class DatabaseValidator:
         return self.validate_feature_data(db_manager)
 
     def validate_aggregate_features(self, db_manager: DatabaseManager):
+        return True
+
+    def validate_instrument_spec_data(self, db_manager: DatabaseManager):
+        spec_ids = db_manager.list_instrument_spec_ids()
+        for spec_id in spec_ids:
+            try:
+                loaded_spec = db_manager.load_instrument_spec(spec_id)
+                loaded_id: Identifier = loaded_spec.get_data_id()
+                if loaded_id.value != spec_id.value:
+                    raise ValueError(
+                        f"Instrument spec ID in registry -{spec_id.value}- does not match ID in file -{loaded_id.value}-"
+                    )
+            except Exception as e:
+                raise Exception(e)
         return True
