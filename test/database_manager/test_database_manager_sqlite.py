@@ -8,10 +8,17 @@ from src.database_manager.data_access.domain_io_router import DomainIORouter
 from src.database_manager.database_errors import DatabaseWriteError
 from src.database_manager.database_manager import DatabaseManager
 from src.database_manager.metadata.metadata_repository import MetadataRepository
-from src.database_manager.metadata.relation_types import FEATURE_TO_IMU, IMU_TO_USER
+from src.database_manager.metadata.relation_types import (
+    FEATURE_TO_IMU,
+    IMU_TO_INSTRUMENT_SPEC,
+    IMU_TO_USER,
+)
 from src.database_manager.metadata.sqlite_store import SQLiteStore
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
+)
 from src.identifiers.user.user_identifier import UserIdentifier
 
 
@@ -29,6 +36,11 @@ class _FakeRecordFeatures:
             feature_identifier=feature_id,
             imu_data_identifier=imu_id,
         )
+
+
+class _FakeInstrumentSpec:
+    def __init__(self, spec_id: InstrumentSpecificationIdentifier):
+        self.specification_id = spec_id
 
 
 class TestDatabaseManagerSQLite(unittest.TestCase):
@@ -126,6 +138,44 @@ class TestDatabaseManagerSQLite(unittest.TestCase):
                 self.db_manager.save_imu(fake_data)
 
         self.assertFalse(exported_path.exists())
+
+    def test_save_and_load_instrument_spec(self):
+        spec_id = InstrumentSpecificationIdentifier("ltmm_spec_v1")
+        spec_data = _FakeInstrumentSpec(spec_id)
+        exported_path = self.root / "instrument_spec_output" / "instrument_specification_1"
+        exported_path.mkdir(parents=True, exist_ok=True)
+        (exported_path / "instrument_spec.json").write_text("dummy")
+        self.io_router.export_instrument_spec.return_value = exported_path
+        self.io_router.import_instrument_spec.return_value = "spec_loaded"
+
+        self.db_manager.save_instrument_spec(spec_data)
+
+        self.assertEqual(
+            self.repository.get_record_path("instrument_specification", spec_id.value),
+            exported_path,
+        )
+        result = self.db_manager.load_instrument_spec(spec_id)
+        self.io_router.import_instrument_spec.assert_called_once_with(spec_id, exported_path)
+        self.assertEqual(result, "spec_loaded")
+
+    def test_link_and_get_instrument_spec_for_imu(self):
+        imu_id = IMUDataIdentifier("imu_with_spec")
+        spec_id = InstrumentSpecificationIdentifier("ltmm_spec_v1")
+
+        self.db_manager.link_imu_to_instrument_spec(imu_id, spec_id)
+
+        target = self.db_manager.get_instrument_spec_for_imu(imu_id)
+        self.assertIsNotNone(target)
+        self.assertEqual(target.value, spec_id.value)
+        self.assertTrue(
+            self.repository.relation_exists(
+                source_type="imu_data",
+                source_id=imu_id.value,
+                target_type="instrument_specification",
+                target_id=spec_id.value,
+                relation_type=IMU_TO_INSTRUMENT_SPEC,
+            )
+        )
 
 
 if __name__ == "__main__":

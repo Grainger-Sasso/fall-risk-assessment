@@ -19,11 +19,6 @@ from src.data_io.model_fields.data.user.clinical_demographic_data_fields import 
 )
 from src.data_io.model_fields.data.user.user_data_fields import UserDataFields
 from src.data_io.model_fields.dataset.dataset_fields import DatasetFields
-from src.data_io.model_fields.feature_set.feature_set_fields import FeatureSetFields
-from src.data_io.model_fields.features.aggregate.aggregate_feature_fields import (
-    AggregateFeatureFields,
-)
-from src.data_io.model_fields.features.raw.raw_feature_fields import RawFeatureFields
 from src.data_io.model_fields.instrument_specification.instrument_specification_fields import (
     InstrumentSpecificationFields,
 )
@@ -43,8 +38,6 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
 from src.data_model.data.user.user_data import UserData
 from src.data_model.dataset.dataset import Dataset
 from src.data_model.dataset.dataset_entry import DatasetEntry
-from src.data_model.feature_set.feature_set import FeatureSet
-from src.data_model.feature_set.feature_set_entry import FeatureSetEntry
 from src.data_model.instrument_specifications.imu_specifications import (
     IMUSpecifications,
 )
@@ -56,10 +49,6 @@ from src.data_types.descriptive_statistics.descriptive_statistic_type import (
 )
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.instrument.sensor_type import SensorType
-from src.identifiers.feature.aggregate_feature_identifier import (
-    AggregateFeatureIdentifier,
-)
-from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.identifier import Identifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
@@ -508,245 +497,6 @@ class IMUDataHelper:
         return SensorMetadata(sensor_type, sampling_rate, unit)
 
 
-class FeatureDataHelper:
-    """Helper class for creating test feature data."""
-
-    def __init__(self):
-        self.test_data_helper = TestDataHelper()
-
-    ############### AGGREGATE ###############
-    def create_test_aggregate_feature_file(self, path: Optional[Path] = None) -> Path:
-        """Create test aggregate feature file.
-
-        Args:
-            path (Optional[Path]): Path where to create the file. If None, uses default location.
-
-        Returns:
-            Path: Path to the created file
-        """
-        if path is None:
-            path = Path("test/test_data/aggregate_feature.h5")
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        writer = HDF5FileWriter()
-        test_data = self.create_test_aggregate_feature_hdf5()
-        success, error = writer.write(path, test_data)
-        if not success:
-            raise RuntimeError(f"Failed to write test aggregate feature file: {error}")
-
-        return path
-
-    def create_test_aggregate_feature_hdf5(self) -> HDF5Group:
-        # Build feature dataset
-        feature_dataset: HDF5Dataset = self.__build_agg_feature_dataset()
-        # Build feature names (rows, feature names)
-        feature_names: HDF5Dataset = self.__build_agg_feature_names()
-        # Build stat names (cols, stat names)
-        stat_names: HDF5Dataset = self.__build_stat_names()
-        # Build attributes
-        attributes: Dict[str, str] = self.__build_agg_attributes()
-        return HDF5Group(
-            name=AggregateFeatureFields.AGGREGATE_FEATURE.value,
-            items=[feature_dataset, feature_names, stat_names],
-            attributes=attributes,
-        )
-
-    def __build_agg_feature_dataset(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=AggregateFeatureFields.FEATURES.value,
-            data=TestConstants.FEATURE_DATA.value,
-            attributes={},
-        )
-
-    def __build_agg_feature_names(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=AggregateFeatureFields.FEATURE_NAMES.value,
-            data=TestConstants.RAW_FEATURE_NAMES.value,
-            attributes={},
-        )
-
-    def __build_stat_names(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=AggregateFeatureFields.DESCRIPTIVE_STATISTIC_NAMES.value,
-            data=TestConstants.STAT_NAMES.value,
-            attributes={},
-        )
-
-    def __build_agg_attributes(self) -> Dict[str, str]:
-        return {
-            AggregateFeatureFields.AGGREGATE_FEATURE_IDENTIFIER.value: TestConstants.AGG_FEATURE_ID.value,
-            AggregateFeatureFields.RAW_FEATURE_IDENTIFIER.value: TestConstants.RAW_FEATURE_ID.value,
-            AggregateFeatureFields.IMU_DATA_IDENTIFIER.value: TestConstants.FEATURE_IMU_DATA_ID.value,
-            AggregateFeatureFields.USER_DATA_IDENTIFIER.value: TestConstants.FEATURE_USER_DATA_ID.value,
-        }
-
-    def create_test_aggregate_feature(self) -> AggregateFeatureSetEntry:
-        return AggregateFeatureSetEntry(
-            aggregate_features=self.__build_aggregate_feature_list(),
-            metadata=self.__build_aggregate_metadata(),
-        )
-
-    def __build_aggregate_feature_list(self) -> List[AggregateFeature]:
-        return [
-            AggregateFeature(
-                descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=FeatureType.DAY_N,
-            ),
-            AggregateFeature(
-                descriptive_statistics=self.__build_descriptive_statistics_list(),
-                feature_type=FeatureType.DAY_N,
-            ),
-        ]
-
-    def __build_descriptive_statistics_list(self) -> List[DescriptiveStatistic]:
-        return [
-            DescriptiveStatistic(
-                statistic_type=DescriptiveStatisticType.MEAN,
-                value=TestConstants.PLACEHOLDER_STAT_VALUE.value,
-            ),
-            DescriptiveStatistic(
-                statistic_type=DescriptiveStatisticType.MEAN,
-                value=TestConstants.PLACEHOLDER_STAT_VALUE.value + 1.0,
-            ),
-        ]
-
-    def __build_aggregate_metadata(self) -> AggregateFeatureSetEntryMetadata:
-        return AggregateFeatureSetEntryMetadata(
-            aggregate_feature_identifier=AggregateFeatureIdentifier(
-                TestConstants.AGG_FEATURE_ID.value
-            ),
-            raw_feature_identifier=RawFeatureIdentifier(
-                TestConstants.RAW_FEATURE_ID.value
-            ),
-            user_identifier=UserIdentifier(TestConstants.FEATURE_USER_DATA_ID.value),
-            imu_data_identifier=IMUDataIdentifier(
-                TestConstants.FEATURE_IMU_DATA_ID.value
-            ),
-        )
-
-    ############### RAW ###############
-    def create_test_raw_feature_file(self, path: Optional[Path] = None) -> Path:
-        """Create test raw feature file.
-
-        Args:
-            path (Optional[Path]): Path where to create the file. If None, uses default location.
-
-        Returns:
-            Path: Path to the created file
-        """
-        if path is None:
-            path = Path("test/test_data/raw_feature.h5")
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        writer = HDF5FileWriter()
-        test_data = self.create_test_raw_feature_hdf5()
-        success, error = writer.write(path, test_data)
-        if not success:
-            raise RuntimeError(f"Failed to write test raw feature file: {error}")
-
-        return path
-
-    def create_test_raw_feature_hdf5(self) -> HDF5Group:
-        # Build feature dataset
-        feature_dataset: HDF5Dataset = self.__build_raw_feature_dataset()
-        # Build feature names (rows, feature names)
-        feature_names: HDF5Dataset = self.__build_raw_feature_names()
-        # Build stat names (cols, stat names)
-        epoch_starts: HDF5Dataset = self.__build_epoch_starts()
-        epoch_ends: HDF5Dataset = self.__build_epoch_ends()
-        # Build attributes
-        attributes: Dict[str, str] = self.__build_raw_attributes()
-        return HDF5Group(
-            name=RawFeatureFields.RAW_FEATURE.value,
-            items=[feature_dataset, feature_names, epoch_starts, epoch_ends],
-            attributes=attributes,
-        )
-
-    def __build_raw_feature_dataset(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=RawFeatureFields.FEATURES.value,
-            data=TestConstants.FEATURE_DATA.value,
-            attributes={},
-        )
-
-    def __build_raw_feature_names(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=RawFeatureFields.FEATURE_NAMES.value,
-            data=TestConstants.RAW_FEATURE_NAMES.value,
-            attributes={},
-        )
-
-    def __build_epoch_starts(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=RawFeatureFields.EPOCH_STARTS.value,
-            data=TestConstants.EPOCH_START_TIMES.value,
-            attributes={},
-        )
-
-    def __build_epoch_ends(self) -> HDF5Dataset:
-        return HDF5Dataset(
-            name=RawFeatureFields.EPOCH_ENDS.value,
-            data=TestConstants.EPOCH_END_TIMES.value,
-            attributes={},
-        )
-
-    def __build_raw_attributes(self) -> Dict[str, Any]:
-        return {
-            RawFeatureFields.RAW_FEATURE_IDENTIFIER.value: TestConstants.RAW_FEATURE_ID.value,
-            RawFeatureFields.IMU_DATA_IDENTIFIER.value: TestConstants.FEATURE_IMU_DATA_ID.value,
-            RawFeatureFields.USER_DATA_IDENTIFIER.value: TestConstants.FEATURE_USER_DATA_ID.value,
-            RawFeatureFields.START_TIME.value: TestConstants.RAW_FEATURE_START_TIME.value,
-            RawFeatureFields.EPOCH_LEN.value: TestConstants.RAW_FEATURE_EPOCH_LEN.value,
-        }
-
-    def create_test_raw_feature(self) -> RawFeatureSetEntry:
-        return RawFeatureSetEntry(
-            raw_epoch_features=self.__build_raw_epoch_feature_list(),
-            metadata=self.__build_raw_metadata(),
-        )
-
-    def __build_raw_epoch_feature_list(self) -> List[RawEpochFeature]:
-        return [
-            RawEpochFeature(
-                raw_features=self.__build_raw_feature_list(),
-                epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value,
-                epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value,
-            ),
-            RawEpochFeature(
-                raw_features=self.__build_raw_feature_list(),
-                epoch_start_time=TestConstants.RAW_FEATURE_START_TIME.value + 0.1,
-                epoch_end_time=TestConstants.RAW_FEATURE_END_TIME.value + 0.1,
-            ),
-        ]
-
-    def __build_raw_feature_list(self) -> List[RawFeature]:
-        return [
-            RawFeature(
-                feature_type=FeatureType.DAY_N,
-                value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value,
-            ),
-            RawFeature(
-                feature_type=FeatureType.DAY_N,
-                value=TestConstants.PLACEHOLDER_FEATURE_VALUE.value + 1.0,
-            ),
-        ]
-
-    def __build_raw_metadata(self) -> RawFeatureSetEntryMetadata:
-        return RawFeatureSetEntryMetadata(
-            raw_feature_identifier=RawFeatureIdentifier(
-                TestConstants.RAW_FEATURE_ID.value
-            ),
-            user_identifier=UserIdentifier(TestConstants.FEATURE_USER_DATA_ID.value),
-            imu_data_identifier=IMUDataIdentifier(
-                TestConstants.FEATURE_IMU_DATA_ID.value
-            ),
-            start_time=TestConstants.RAW_FEATURE_START_TIME.value,
-            epoch_length=TestConstants.RAW_FEATURE_EPOCH_LEN.value,
-        )
-
-
 class UserDataHelper:
     """Helper class for creating test user data."""
 
@@ -907,57 +657,6 @@ class DatasetHelper:
             data={
                 DatasetFields.USER_DATA_IDENTIFIER.value: TestConstants.DATASET_USER_IDS.value,
                 DatasetFields.IMU_DATA_IDENTIFIER.value: TestConstants.DATASET_IMU_IDS.value,
-            },
-        )
-
-
-class FeatureSetHelper:
-    """Helper class for creating test feature set data."""
-
-    def create_test_feature_set(self) -> FeatureSet:
-        """Create test feature set model object."""
-        entries = [
-            FeatureSetEntry(
-                raw_feature_identifier=RawFeatureIdentifier(raw_id),
-                aggregate_feature_identifier=AggregateFeatureIdentifier(agg_id),
-            )
-            for raw_id, agg_id in zip(
-                TestConstants.FEATURE_SET_RAW_IDS.value,
-                TestConstants.FEATURE_SET_AGG_IDS.value,
-            )
-        ]
-        return FeatureSet(name=TestConstants.FEATURE_SET_NAME.value, entries=entries)
-
-    def create_test_feature_set_file(self, path: Optional[Path] = None) -> Path:
-        """Create test feature set file.
-
-        Args:
-            path (Optional[Path]): Path where to create the file. If None, uses default location.
-
-        Returns:
-            Path: Path to the created file
-        """
-        if path is None:
-            path = Path("test/test_data/feature_set.csv")
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        test_data = self.create_test_feature_set_csv()
-        df = pd.DataFrame(test_data.data)
-        df.to_csv(path)
-
-        return path
-
-    def create_test_feature_set_csv(self) -> CSVFile:
-        """Create test feature set CSV file."""
-        return CSVFile(
-            fieldnames=[
-                FeatureSetFields.RAW_FEATURE_IDENTIFIER.value,
-                FeatureSetFields.AGGREGATE_FEATURE_IDENTIFIER.value,
-            ],
-            data={
-                FeatureSetFields.RAW_FEATURE_IDENTIFIER.value: TestConstants.FEATURE_SET_RAW_IDS.value,
-                FeatureSetFields.AGGREGATE_FEATURE_IDENTIFIER.value: TestConstants.FEATURE_SET_AGG_IDS.value,
             },
         )
 

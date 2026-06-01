@@ -1,27 +1,10 @@
-"""
-Read IMU data files from a parent directory and build registry and mapping.
-
-Input: A single parent directory path. The parent contains subdirectories,
-       each with a single file named "imu_data.h5".
-
-Reads each file to extract IDs, builds a mapping (user ID -> IMU data ID) and
-registry (IMU data ID -> directory path), then exports both. Does not retain
-file data in memory.
-
-Usage:
-    python -m src.util.dataset_generator.read_imu_data
-
-Edit the hard-coded paths below to change inputs/outputs.
-"""
+"""Build SQLite metadata indexes from assessment data folders."""
 
 from pathlib import Path
+from typing import Optional, Sequence, Union
 
-from src.data_io.formats.csv.csv_file import CSVFile
-from src.data_io.import_export.exporters.mapping.mapping_exporter import (
-    MappingExporter,
-)
-from src.data_io.import_export.exporters.registry.registry_exporter import (
-    RegistryExporter,
+from src.data_io.builders.model_builders.instrument_specifications.instrument_specification_builder import (
+    IMUSpecificationBuilder,
 )
 from src.data_io.import_export.importers.data.imu.imu_data_importer import (
     IMUDataFileNames,
@@ -29,265 +12,246 @@ from src.data_io.import_export.importers.data.imu.imu_data_importer import (
 )
 from src.data_io.import_export.importers.data.user.user_data_importer import (
     UserDataFileNames,
+    UserDataImporter,
 )
-from src.data_io.model_fields.dataset.dataset_fields import DatasetFields
-from src.data_io.read_write.writers.csv.csv_file_writer import CSVFileWriter
-from src.data_model.data.imu.imu_data import IMUData
-from src.data_model.mapping.mapping import Mapping
-from src.data_model.registry.registry import Registry
-from src.identifiers.feature.aggregate_feature_identifier import (
-    AggregateFeatureIdentifier,
+from src.data_io.import_export.importers.features.feature_importer import (
+    FeatureFileNames,
+    FeatureImporter,
 )
-from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
+from src.data_io.read_write.readers.json.json_dict_file_reader import JSONDictFileReader
+from src.database_manager.metadata.metadata_repository import MetadataRepository
+from src.database_manager.metadata.relation_types import (
+    FEATURE_TO_IMU,
+    IMU_TO_INSTRUMENT_SPEC,
+    IMU_TO_USER,
+)
+from src.database_manager.metadata.sqlite_store import SQLiteStore
+from src.database_manager.metadata.type_registry import IdentifierTypeRegistry
+from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+from src.identifiers.instrument_specification.instrument_specification_identifier import (
+    InstrumentSpecificationIdentifier,
+)
 from src.identifiers.user.user_identifier import UserIdentifier
 
-IMU_DATA_FILENAME = IMUDataFileNames.IMU_DATA.value
-IMU_DATA_SUFFIX = ".h5"
-IMU_DATA_FILE = IMU_DATA_FILENAME + IMU_DATA_SUFFIX
-
-USER_DATA_FILENAME = UserDataFileNames.USER_DATA.value
-USER_DATA_SUFFIX = ".json"
-USER_DATA_FILE = USER_DATA_FILENAME + USER_DATA_SUFFIX
-
-IMU_SUBDIR = "imu_data"
-USER_SUBDIR = "user_data"
-REGISTRIES_SUBDIR = "registries"
-MAPPINGS_SUBDIR = "mappings"
-DATASET_SUBDIR = "dataset"
-
-IMU_REG_SUBDIR = "imu_data"
-USER_REG_SUBDIR = "user_data"
-RAW_REG_SUBDIR = "raw_feature"
-AGG_REG_SUBDIR = "agg_feature"
-
-IMU_MAP_SUBDIR = "imu_to_user_mapping"
-RAW_MAP_SUBDIR = "raw_feat_to_imu_mapping"
-AGG_MAP_SUBDIR = "agg_feat_to_raw_feat_mapping"
+IMU_DATA_FILE = f"{IMUDataFileNames.IMU_DATA.value}.h5"
+USER_DATA_FILE = f"{UserDataFileNames.USER_DATA.value}.json"
+CLINICAL_DEMO_FILE = f"{UserDataFileNames.CLININCAL_DEMOGRAPHIC_DATA.value}.json"
+FEATURE_DATA_FILE = f"{FeatureFileNames.FEATURES.value}.h5"
 
 
-def _get_subdirs_with_required_file(
-    parent_dir: Path, required_filename: str
+def _validate_parent_dir(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"{label} parent directory not found: {path}")
+    if not path.is_dir():
+        raise NotADirectoryError(f"{label} parent path must be a directory: {path}")
+
+
+def _get_subdirs_with_required_files(
+    parent_dir: Path, required_filenames: Sequence[str]
 ) -> list[Path]:
-    """
-    Validate parent directory and collect subdirectories containing a required file.
-    """
-    if not parent_dir.exists():
-        raise FileNotFoundError(f"Parent directory not found: {parent_dir}")
-
     subdirs = [
         d
         for d in parent_dir.iterdir()
-        if d.is_dir() and (d / required_filename).exists()
+        if d.is_dir() and all((d / filename).exists() for filename in required_filenames)
     ]
     if not subdirs:
+        required = ", ".join(required_filenames)
         raise FileNotFoundError(
-            f"No subdirectories with {required_filename} found in {parent_dir}"
+            f"No subdirectories with required files ({required}) found in {parent_dir}"
         )
-    return subdirs
+    return sorted(subdirs)
 
 
-def _write_dataset_csv(
-    imu_to_user_map: dict[str, str],
-    dataset_output: Path,
-) -> Path:
-    """Write dataset.csv mapping user IDs to IMU IDs."""
-    if not dataset_output.exists():
-        raise FileNotFoundError(f"Required output directory not found: {dataset_output}")
-    if not dataset_output.is_dir():
-        raise NotADirectoryError(f"Expected directory path: {dataset_output}")
-    imu_ids = imu_to_user_map.keys()
-    dataset_csv = CSVFile(
-        fieldnames=[
-            DatasetFields.USER_DATA_IDENTIFIER.value,
-            DatasetFields.IMU_DATA_IDENTIFIER.value,
-        ],
-        data={
-            DatasetFields.USER_DATA_IDENTIFIER.value: [
-                imu_to_user_map[imu_id] for imu_id in imu_ids
-            ],
-            DatasetFields.IMU_DATA_IDENTIFIER.value: imu_ids,
-        },
+def _normalize_instrument_spec_files(
+    instrument_spec_inputs: Union[Path, Sequence[Path]]
+) -> list[Path]:
+    input_paths: list[Path]
+    if isinstance(instrument_spec_inputs, Path):
+        input_paths = [instrument_spec_inputs]
+    else:
+        input_paths = list(instrument_spec_inputs)
+
+    if not input_paths:
+        raise ValueError("At least one instrument specification input must be provided")
+
+    spec_files: list[Path] = []
+    for input_path in input_paths:
+        if not input_path.exists():
+            raise FileNotFoundError(f"Instrument spec input not found: {input_path}")
+        if input_path.is_file():
+            if input_path.suffix != ".json":
+                raise ValueError(f"Instrument spec file must be JSON: {input_path}")
+            spec_files.append(input_path.resolve())
+            continue
+
+        for candidate in input_path.rglob("*.json"):
+            spec_files.append(candidate.resolve())
+
+    if not spec_files:
+        raise FileNotFoundError("No instrument specification JSON files found")
+    return sorted(set(spec_files))
+
+
+def _upsert_record(
+    repository: MetadataRepository, identifier_type: type, identifier_value: str, path: Path
+) -> None:
+    id_type_name = IdentifierTypeRegistry.get_type_name(identifier_type)
+    repository.upsert_record(
+        id_type=id_type_name,
+        identifier=identifier_value,
+        path=path.resolve(),
     )
-    dataset_writer = CSVFileWriter()
-    dataset_path = dataset_output / "dataset.csv"
-    write_success, error_msg = dataset_writer.write(dataset_path, dataset_csv)
-    if not write_success:
-        raise RuntimeError(f"Failed writing dataset CSV: {error_msg}")
-    return dataset_path
 
 
-def _require_existing_subdir(root_dir: Path, subdir_name: str) -> Path:
-    """Resolve required direct child directory under root and validate it exists."""
-    path = root_dir / subdir_name
-    if not path.exists():
-        raise FileNotFoundError(f"Required subdir not found: {path}")
-    if not path.is_dir():
-        raise NotADirectoryError(f"Expected directory path: {path}")
-    return path
+def _add_relation(
+    repository: MetadataRepository,
+    source_type: type,
+    source_id: str,
+    target_type: type,
+    target_id: str,
+    relation_type: str,
+) -> None:
+    repository.add_relation(
+        source_type=IdentifierTypeRegistry.get_type_name(source_type),
+        source_id=source_id,
+        target_type=IdentifierTypeRegistry.get_type_name(target_type),
+        target_id=target_id,
+        relation_type=relation_type,
+    )
 
 
-def _get_or_create_subdir(root_dir: Path, subdir_name: str) -> Path:
-    """Resolve direct child directory under root, creating it if needed."""
-    path = root_dir / subdir_name
-    path.mkdir(parents=True, exist_ok=True)
-    if not path.is_dir():
-        raise NotADirectoryError(f"Expected directory path: {path}")
-    return path
+def build_sql_index(
+    imu_parent_dir: Path,
+    user_parent_dir: Path,
+    instrument_spec_inputs: Union[Path, Sequence[Path]],
+    sqlite_db_path: Path,
+    feature_parent_dir: Optional[Path] = None,
+) -> Path:
+    """Build SQLite records/relations indexes from filesystem data payloads."""
+    _validate_parent_dir(imu_parent_dir, "IMU")
+    _validate_parent_dir(user_parent_dir, "User")
+    if feature_parent_dir is not None:
+        _validate_parent_dir(feature_parent_dir, "Feature")
 
-
-def _require_empty_dir(path: Path, label: str) -> None:
-    """Ensure directory exists and is empty before writing outputs."""
-    if any(path.iterdir()):
-        raise ValueError(f"Expected empty {label} directory, but found contents: {path}")
-
-
-def build_dataset(root_dir: Path) -> None:
-    """
-    Read imu_data.h5 files from subdirectories, build mapping and registry,
-    and export both to the specified output directories. File data is not
-    retained in memory.
-
-    Args:
-        root_dir: Converted-data root directory containing required subdirs.
-    """
-    print("Dataset generation started")
-    if not root_dir.exists():
-        raise FileNotFoundError(f"Root directory not found: {root_dir}")
-    if not root_dir.is_dir():
-        raise NotADirectoryError(f"Expected directory path: {root_dir}")
-
-    imu_parent_dir = _require_existing_subdir(root_dir, IMU_SUBDIR)
-    user_parent_dir = _require_existing_subdir(root_dir, USER_SUBDIR)
-
-    # Create output directory structure if missing.
-    registries_root = _get_or_create_subdir(root_dir, REGISTRIES_SUBDIR)
-    mappings_root = _get_or_create_subdir(root_dir, MAPPINGS_SUBDIR)
-    dataset_output_path = _get_or_create_subdir(root_dir, DATASET_SUBDIR)
-
-    imu_reg_ouput_path = _get_or_create_subdir(registries_root, IMU_REG_SUBDIR)
-    user_reg_ouput_path = _get_or_create_subdir(registries_root, USER_REG_SUBDIR)
-    raw_reg_ouput_path = _get_or_create_subdir(registries_root, RAW_REG_SUBDIR)
-    agg_reg_ouput_path = _get_or_create_subdir(registries_root, AGG_REG_SUBDIR)
-
-    imu_map_output_path = _get_or_create_subdir(mappings_root, IMU_MAP_SUBDIR)
-    raw_map_output_path = _get_or_create_subdir(mappings_root, RAW_MAP_SUBDIR)
-    agg_map_output_path = _get_or_create_subdir(mappings_root, AGG_MAP_SUBDIR)
-
-    # Output directories must be empty before generation.
-    _require_empty_dir(imu_reg_ouput_path, "registry")
-    _require_empty_dir(user_reg_ouput_path, "registry")
-    _require_empty_dir(raw_reg_ouput_path, "registry")
-    _require_empty_dir(agg_reg_ouput_path, "registry")
-    _require_empty_dir(imu_map_output_path, "mapping")
-    _require_empty_dir(raw_map_output_path, "mapping")
-    _require_empty_dir(agg_map_output_path, "mapping")
-    _require_empty_dir(dataset_output_path, "dataset")
-
-    # Must be non-empty with valid data subdirectories.
-    imu_subdirs = _get_subdirs_with_required_file(imu_parent_dir, IMU_DATA_FILE)
-    user_subdirs = _get_subdirs_with_required_file(user_parent_dir, USER_DATA_FILE)
+    sqlite_store = SQLiteStore(sqlite_db_path.resolve())
+    repository = MetadataRepository(sqlite_store)
 
     imu_importer = IMUDataImporter()
+    user_importer = UserDataImporter()
+    feature_importer = FeatureImporter()
+    json_reader = JSONDictFileReader()
+    spec_builder = IMUSpecificationBuilder()
 
-    # Mapping: source (user ID) -> target (IMU data ID)
-    imu_to_user_map: dict[str, str] = {}
-    # Registry: IMU data ID -> directory path (where imu_data.h5 lives)
-    imu_id_to_path_registry: dict[str, Path] = {}
+    imu_dirs = _get_subdirs_with_required_files(imu_parent_dir, [IMU_DATA_FILE])
+    user_dirs = _get_subdirs_with_required_files(
+        user_parent_dir, [USER_DATA_FILE, CLINICAL_DEMO_FILE]
+    )
+    feature_dirs = []
+    if feature_parent_dir is not None:
+        feature_dirs = _get_subdirs_with_required_files(feature_parent_dir, [FEATURE_DATA_FILE])
+    spec_files = _normalize_instrument_spec_files(instrument_spec_inputs)
 
-    for imu_subdir in sorted(imu_subdirs):
-        imu_data: IMUData = imu_importer.import_data(imu_subdir)
+    spec_ids: list[InstrumentSpecificationIdentifier] = []
+    spec_name_to_id: dict[str, InstrumentSpecificationIdentifier] = {}
+    for spec_file in spec_files:
+        spec_json = json_reader.read(spec_file)
+        specification = spec_builder.build(spec_json)
+        spec_id = specification.specification_id
+        spec_ids.append(spec_id)
+        spec_name_to_id[specification.imu_name.strip().lower()] = spec_id
+        _upsert_record(repository, InstrumentSpecificationIdentifier, spec_id.value, spec_file.parent)
+
+    imu_to_instrument_name: dict[str, str] = {}
+    for imu_dir in imu_dirs:
+        imu_data = imu_importer.import_data(imu_dir)
         imu_id = imu_data.get_data_id()
         user_id = imu_data.get_associated_data_id()
-        print(f"Fetched file for IMU data: {imu_id.value}")
+        instrument_name = imu_data.metadata.instrument_identifier.name
 
-        imu_to_user_map[imu_id.value] = user_id.value
-        imu_id_to_path_registry[imu_id.value] = imu_subdir.resolve()
+        _upsert_record(repository, IMUDataIdentifier, imu_id.value, imu_dir)
+        _add_relation(
+            repository,
+            IMUDataIdentifier,
+            imu_id.value,
+            UserIdentifier,
+            user_id.value,
+            IMU_TO_USER,
+        )
+        imu_to_instrument_name[imu_id.value] = instrument_name
 
-    user_id_to_path_registry: dict[str, Path] = {}
-    for user_subdir in sorted(user_subdirs):
-        # Get user ID from subdir name in format: user_USERID
-        prefix = "user_"
-        subdir_name = user_subdir.name
-        if not subdir_name.startswith(prefix):
-            raise ValueError(
-                f"Invalid user subdir name '{subdir_name}'. Expected format: user_USERID"
+    for user_dir in user_dirs:
+        user_data = user_importer.import_data(user_dir)
+        user_id = user_data.get_data_id()
+        _upsert_record(repository, UserIdentifier, user_id.value, user_dir)
+
+    for feature_dir in feature_dirs:
+        feature_data = feature_importer.import_data(feature_dir)
+        feature_id = feature_data.get_data_id()
+        imu_id = feature_data.get_associated_data_id()
+        _upsert_record(repository, FeatureIdentifier, feature_id.value, feature_dir)
+        _add_relation(
+            repository,
+            FeatureIdentifier,
+            feature_id.value,
+            IMUDataIdentifier,
+            imu_id.value,
+            FEATURE_TO_IMU,
+        )
+
+    unresolved_imu_ids: list[str] = []
+    if len(spec_ids) == 1:
+        singleton_spec = spec_ids[0]
+        for imu_id_value in imu_to_instrument_name:
+            _add_relation(
+                repository,
+                IMUDataIdentifier,
+                imu_id_value,
+                InstrumentSpecificationIdentifier,
+                singleton_spec.value,
+                IMU_TO_INSTRUMENT_SPEC,
             )
-        user_id = subdir_name[len(prefix) :]
-        if not user_id:
-            raise ValueError(
-                f"Invalid user subdir name '{subdir_name}'. USERID cannot be empty."
-            )
-        user_id_to_path_registry[user_id] = user_subdir.resolve()
+    else:
+        for imu_id_value, instrument_name in imu_to_instrument_name.items():
+            lookup_key = instrument_name.strip().lower()
+            if lookup_key in spec_name_to_id:
+                _add_relation(
+                    repository,
+                    IMUDataIdentifier,
+                    imu_id_value,
+                    InstrumentSpecificationIdentifier,
+                    spec_name_to_id[lookup_key].value,
+                    IMU_TO_INSTRUMENT_SPEC,
+                )
+            else:
+                unresolved_imu_ids.append(imu_id_value)
 
-    # Build Dataset CSV: output mapping between user IDs and IMU IDs
-    dataset_path = _write_dataset_csv(imu_to_user_map, dataset_output_path)
+    if unresolved_imu_ids:
+        unresolved_text = ", ".join(sorted(unresolved_imu_ids))
+        print(
+            "Warning: no instrument specification relation added for IMU IDs: "
+            f"{unresolved_text}"
+        )
 
-    # Build IMU Registry (IMU data ID -> directory path)
-    imu_registry = Registry(
-        registry=imu_id_to_path_registry,
-        id_type=IMUDataIdentifier,
-        subdir_path=imu_reg_ouput_path,
-    )
-    # Build USER Registry (USER ID -> directory path)
-    user_registry = Registry(
-        registry=user_id_to_path_registry,
-        id_type=UserIdentifier,
-        subdir_path=user_reg_ouput_path,
-    )
-    # Build Raw Feature Registry - WILL BE BLANK (Raw Feat ID -> directory path)
-    raw_feat_registry = Registry(
-        registry={}, id_type=RawFeatureIdentifier, subdir_path=raw_reg_ouput_path
-    )
-    # Build Agg Feature Registry - WILL BE BLANK (Agg Feat ID -> directory path)
-    agg_feat_registry = Registry(
-        registry={}, id_type=AggregateFeatureIdentifier, subdir_path=agg_reg_ouput_path
-    )
-    # Export registries
-    registry_exporter = RegistryExporter()
-    registry_exporter.export_data(imu_reg_ouput_path, imu_registry)
-    registry_exporter.export_data(user_reg_ouput_path, user_registry)
-    registry_exporter.export_data(raw_reg_ouput_path, raw_feat_registry)
-    registry_exporter.export_data(agg_reg_ouput_path, agg_feat_registry)
-
-    # Build Mapping (IMU data ID -> user ID)
-    imu_to_user_mapping = Mapping(
-        map=imu_to_user_map,
-        source_id_type=IMUDataIdentifier,
-        target_id_type=UserIdentifier,
-        subdir_path=imu_map_output_path,
-    )
-    # Build Mapping (raw feat ID -> imu data ID)
-    raw_feat_to_imu_mapping = Mapping(
-        map={},
-        source_id_type=RawFeatureIdentifier,
-        target_id_type=IMUDataIdentifier,
-        subdir_path=raw_map_output_path,
-    )
-    # Build Mapping (agg feat ID -> raw feat ID)
-    agg_feat_to_raw_feat_mapping = Mapping(
-        map={},
-        source_id_type=AggregateFeatureIdentifier,
-        target_id_type=RawFeatureIdentifier,
-        subdir_path=agg_map_output_path,
-    )
-
-    # Export Mappings
-    mapping_exporter = MappingExporter()
-    mapping_exporter.export_data(imu_map_output_path, imu_to_user_mapping)
-    mapping_exporter.export_data(raw_map_output_path, raw_feat_to_imu_mapping)
-    mapping_exporter.export_data(agg_map_output_path, agg_feat_to_raw_feat_mapping)
-
-    print(f"Dataset written to {dataset_path}")
-    print("Dataset generation completed")
+    print(f"SQLite metadata index created at: {sqlite_db_path.resolve()}")
+    return sqlite_db_path.resolve()
 
 
 def main() -> None:
-    root_dir = Path(
-        "/Users/graingersasso/Desktop/fafra/fafra_data/converted_data/ltmm_lab_walks_2026_05_09"
+    build_sql_index(
+        imu_parent_dir=Path(
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/imu_data/lab_walks"
+        ),
+        user_parent_dir=Path(
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/user_data/lab_walks"
+        ),
+        instrument_spec_inputs=Path(
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/instrument_specs/lab_walks/instrument_spec.json"
+        ),
+        sqlite_db_path=Path(
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/sql_db_indexes/lab_walks/index.db"
+        ),
     )
-
-    build_dataset(root_dir)
 
 
 if __name__ == "__main__":

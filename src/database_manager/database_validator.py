@@ -85,13 +85,6 @@ class DatabaseValidator:
                 raise Exception(e)
         return True
 
-    # Backward compatibility wrappers for legacy call sites.
-    def validate_raw_features(self, db_manager: DatabaseManager):
-        return self.validate_feature_data(db_manager)
-
-    def validate_aggregate_features(self, db_manager: DatabaseManager):
-        return True
-
     def validate_instrument_spec_data(self, db_manager: DatabaseManager):
         spec_ids = db_manager.list_instrument_spec_ids()
         for spec_id in spec_ids:

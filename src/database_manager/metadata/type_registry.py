@@ -1,8 +1,6 @@
 from typing import Type
 
-from src.identifiers.feature.aggregate_feature_identifier import AggregateFeatureIdentifier
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
-from src.identifiers.feature.raw_feature_identifier import RawFeatureIdentifier
 from src.identifiers.identifier import Identifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
@@ -18,8 +16,6 @@ class IdentifierTypeRegistry:
         UserIdentifier: "user_data",
         IMUDataIdentifier: "imu_data",
         FeatureIdentifier: "feature",
-        RawFeatureIdentifier: "raw_feature",
-        AggregateFeatureIdentifier: "aggregate_feature",
         InstrumentSpecificationIdentifier: "instrument_specification",
     }
     NAME_TO_TYPE = {v: k for k, v in TYPE_TO_NAME.items()}
@@ -28,8 +24,6 @@ class IdentifierTypeRegistry:
         ("imu_data", "user_data"): "imu_to_user",
         ("imu_data", "instrument_specification"): "imu_to_instrument_spec",
         ("feature", "imu_data"): "feature_to_imu",
-        ("raw_feature", "imu_data"): "raw_to_imu",
-        ("aggregate_feature", "raw_feature"): "agg_to_raw",
     }
 
     @classmethod
