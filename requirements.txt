@@ -3,6 +3,7 @@ lightgbm
 matplotlib
 numpy
 pandas
+PySide6
 pint
 pygt3x
 scikit-digital-health==0.17.9

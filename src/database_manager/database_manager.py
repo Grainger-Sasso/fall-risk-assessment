@@ -101,7 +101,7 @@ class DatabaseManager:
         try:
             directory = self._get_record_path(user_id)
             user_data = self.io.import_user(directory)
-            if user_data.user_metadata.user_identifier.value != user_id.value:
+            if user_data.user_identifier.value != user_id.value:
                 raise ValueError(
                     "User payload identifier does not match requested identifier: "
                     f"{user_id.value}"
