@@ -19,6 +19,19 @@ class TestVisualizationAppSmoke(unittest.TestCase):
         )
 
         class _FakeService:
+            class _Repo:
+                def list_record_ids(self, _id_type):
+                    return []
+
+                def get_record_path(self, _id_type, _record_id):
+                    return "/tmp"
+
+                def get_targets(self, _source_type, _source_id, relation_type=None):
+                    return []
+
+            def __init__(self):
+                self.repository = self._Repo()
+
             def list_imu_ids(self):
                 return []
 

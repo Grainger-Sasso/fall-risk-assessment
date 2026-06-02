@@ -36,6 +36,19 @@ class _FakeDBManager:
         self.feature_ids = [_FakeIdentifier("feature_1")]
         self.user_for_imu = {"imu_1": _FakeIdentifier("user_1")}
         self.spec_for_imu = {"imu_1": _FakeIdentifier("spec_1")}
+        self._record_paths = {
+            ("imu_data", "imu_1"): "/tmp/imu_1",
+            ("imu_data", "imu_2"): "/tmp/imu_2",
+            ("user_data", "user_1"): "/tmp/user_1",
+            ("feature", "feature_1"): "/tmp/feature_1",
+            ("instrument_specification", "spec_1"): "/tmp/spec_1",
+        }
+        self._relations = {
+            ("imu_data", "imu_1"): [("user_data", "user_1"), ("instrument_specification", "spec_1")],
+            ("imu_data", "imu_2"): [],
+            ("feature", "feature_1"): [("imu_data", "imu_1")],
+        }
+        self.repository = self._FakeRepository(self._record_paths, self._relations)
         self.feature_records = {
             "feature_1": RecordFeatures(
                 epoch_features=BoutFeatures(
@@ -65,6 +78,24 @@ class _FakeDBManager:
                 ),
             )
         }
+
+    class _FakeRepository:
+        def __init__(self, record_paths, relations):
+            self.record_paths = record_paths
+            self.relations = relations
+
+        def list_record_ids(self, id_type):
+            return [
+                record_id
+                for (candidate_type, record_id), _path in self.record_paths.items()
+                if candidate_type == id_type
+            ]
+
+        def get_record_path(self, id_type, record_id):
+            return self.record_paths[(id_type, record_id)]
+
+        def get_targets(self, source_type, source_id, relation_type=None):
+            return self.relations.get((source_type, source_id), [])
 
     def list_imu_ids(self):
         return self.imu_ids
@@ -141,6 +172,14 @@ class TestVisualizationDataService(unittest.TestCase):
         )
         self.assertIn("faller", grouped)
         self.assertEqual(grouped["faller"].tolist(), [40.0, 50.0])
+
+    def test_sql_index_snapshot(self):
+        snapshot = self.service.get_sql_index_snapshot()
+        self.assertEqual(len(snapshot["imu_records"]), 2)
+        self.assertEqual(len(snapshot["user_records"]), 1)
+        self.assertEqual(len(snapshot["feature_records"]), 1)
+        self.assertEqual(len(snapshot["instrument_spec_records"]), 1)
+        self.assertGreaterEqual(len(snapshot["relations"]), 2)
 
 
 if __name__ == "__main__":

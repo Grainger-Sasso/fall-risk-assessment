@@ -88,3 +88,63 @@ class VisualizationDataService:
             for class_label, samples in grouped.items()
             if samples
         }
+
+    def get_sql_index_snapshot(self) -> Dict[str, List[Dict[str, str]]]:
+        """
+        Return UI-ready metadata index contents from SQLite records + relations.
+        """
+        repository = self.db_manager.repository
+
+        def _records_for_type(id_type: str) -> List[Dict[str, str]]:
+            items: List[Dict[str, str]] = []
+            for record_id in repository.list_record_ids(id_type):
+                path = repository.get_record_path(id_type, record_id)
+                items.append(
+                    {
+                        "id": record_id,
+                        "type": id_type,
+                        "path": str(path),
+                    }
+                )
+            return items
+
+        imu_records = _records_for_type("imu_data")
+        user_records = _records_for_type("user_data")
+        feature_records = _records_for_type("feature")
+        spec_records = _records_for_type("instrument_specification")
+
+        relations: List[Dict[str, str]] = []
+        for imu in imu_records:
+            for target_type, target_id in repository.get_targets(
+                source_type="imu_data",
+                source_id=imu["id"],
+            ):
+                relations.append(
+                    {
+                        "source_type": "imu_data",
+                        "source_id": imu["id"],
+                        "target_type": target_type,
+                        "target_id": target_id,
+                    }
+                )
+        for feature in feature_records:
+            for target_type, target_id in repository.get_targets(
+                source_type="feature",
+                source_id=feature["id"],
+            ):
+                relations.append(
+                    {
+                        "source_type": "feature",
+                        "source_id": feature["id"],
+                        "target_type": target_type,
+                        "target_id": target_id,
+                    }
+                )
+
+        return {
+            "imu_records": imu_records,
+            "user_records": user_records,
+            "feature_records": feature_records,
+            "instrument_spec_records": spec_records,
+            "relations": relations,
+        }

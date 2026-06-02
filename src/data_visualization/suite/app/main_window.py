@@ -13,6 +13,9 @@ from src.data_visualization.suite.plugins.feature_analytics_plugin import (
     FeatureAnalyticsPlugin,
 )
 from src.data_visualization.suite.plugins.imu_record_explorer import IMURecordExplorerPlugin
+from src.data_visualization.suite.plugins.sql_index_inspector_plugin import (
+    SQLIndexInspectorPlugin,
+)
 from src.data_visualization.suite.plugins.registry import VisualizationRegistry
 from src.data_visualization.suite.services.visualization_data_service import (
     VisualizationDataService,
@@ -34,6 +37,7 @@ class VisualizationMainWindow(QMainWindow):
         self.registry = VisualizationRegistry()
         self.registry.register(IMURecordExplorerPlugin())
         self.registry.register(FeatureAnalyticsPlugin())
+        self.registry.register(SQLIndexInspectorPlugin())
 
         self._plugin_order = self.registry.list_plugins()
         self._plugin_widgets: Dict[str, QWidget] = {}
