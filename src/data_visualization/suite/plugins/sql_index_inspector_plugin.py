@@ -32,8 +32,14 @@ class SQLIndexInspectorPlugin(VisualizationPlugin):
         title = QLabel("SQLite Metadata Index Contents", root)
         refresh_button = QPushButton("Refresh", root)
         refresh_button.clicked.connect(self._refresh_tables)
+        rollback_button = QPushButton("Rollback Last Feature Run", root)
+        rollback_button.clicked.connect(self._rollback_last_feature_run)
+        cleanup_button = QPushButton("Cleanup All Features", root)
+        cleanup_button.clicked.connect(self._cleanup_all_features)
         header_row.addWidget(title)
         header_row.addStretch(1)
+        header_row.addWidget(rollback_button)
+        header_row.addWidget(cleanup_button)
         header_row.addWidget(refresh_button)
 
         self._status_label = QLabel("-", root)
@@ -76,7 +82,7 @@ class SQLIndexInspectorPlugin(VisualizationPlugin):
         table.setAlternatingRowColors(True)
         return table
 
-    def _refresh_tables(self) -> None:
+    def _refresh_tables(self, status_message: Optional[str] = None) -> None:
         if self._context is None:
             return
         snapshot = self._context.data_service.get_sql_index_snapshot()
@@ -99,13 +105,37 @@ class SQLIndexInspectorPlugin(VisualizationPlugin):
         self._populate_relation_table(self._tables["relations"], snapshot.get("relations", []))
 
         if self._status_label is not None:
-            self._status_label.setText(
-                "Loaded "
-                f"{len(snapshot.get('imu_records', []))} IMU, "
-                f"{len(snapshot.get('user_records', []))} user, "
-                f"{len(snapshot.get('feature_records', []))} feature, "
-                f"{len(snapshot.get('instrument_spec_records', []))} instrument spec records "
-                f"and {len(snapshot.get('relations', []))} relations."
+            if status_message is not None:
+                self._status_label.setText(status_message)
+            else:
+                self._status_label.setText(
+                    "Loaded "
+                    f"{len(snapshot.get('imu_records', []))} IMU, "
+                    f"{len(snapshot.get('user_records', []))} user, "
+                    f"{len(snapshot.get('feature_records', []))} feature, "
+                    f"{len(snapshot.get('instrument_spec_records', []))} instrument spec records "
+                    f"and {len(snapshot.get('relations', []))} relations."
+                )
+
+    def _cleanup_all_features(self) -> None:
+        if self._context is None or self._status_label is None:
+            return
+        deleted_count = self._context.data_service.cleanup_all_features()
+        self._refresh_tables(
+            f"Feature cleanup completed. Removed {deleted_count} feature record(s)."
+        )
+
+    def _rollback_last_feature_run(self) -> None:
+        if self._context is None or self._status_label is None:
+            return
+        deleted_count = self._context.data_service.rollback_last_feature_generation_run()
+        if deleted_count == 0:
+            self._refresh_tables(
+                "No rollback was performed. Last run metadata may be absent or already rolled back."
+            )
+        else:
+            self._refresh_tables(
+                f"Rollback completed. Removed {deleted_count} feature record(s)."
             )
 
     @staticmethod

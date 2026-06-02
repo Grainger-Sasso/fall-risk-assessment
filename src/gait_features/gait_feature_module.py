@@ -265,43 +265,78 @@ class GaitFeatureExtractor:
                 f"Instrument specification missing sensor type {sensor_type.value}."
             ) from exc
 
-        spec_unit = self._canonicalize_unit(sensor_spec.units)
-        if spec_unit is None:
-            raise ValueError(f"Unsupported instrument specification unit '{sensor_spec.units}'.")
-        if spec_unit != inferred_unit:
-            raise ValueError(
-                "Instrument specification unit mismatch: "
-                f"spec={spec_unit} inferred={inferred_unit}."
+        spec_unit = None
+        if sensor_spec.units is None:
+            self._warn(
+                "Instrument specification field 'units' is None; skipping unit validation "
+                f"for sensor '{sensor_spec.sensor_name}'."
             )
+        else:
+            spec_unit = self._canonicalize_unit(sensor_spec.units)
+            if spec_unit is None:
+                raise ValueError(
+                    f"Unsupported instrument specification unit '{sensor_spec.units}'."
+                )
+            if spec_unit != inferred_unit:
+                raise ValueError(
+                    "Instrument specification unit mismatch: "
+                    f"spec={spec_unit} inferred={inferred_unit}."
+                )
 
-        declared_meta_unit = self._canonicalize_unit(sensor_data.metadata.unit)
-        if declared_meta_unit != spec_unit:
-            raise ValueError(
-                "Instrument specification and sensor metadata unit mismatch: "
-                f"spec={spec_unit} metadata={declared_meta_unit}."
-            )
+            declared_meta_unit = self._canonicalize_unit(sensor_data.metadata.unit)
+            if declared_meta_unit != spec_unit:
+                raise ValueError(
+                    "Instrument specification and sensor metadata unit mismatch: "
+                    f"spec={spec_unit} metadata={declared_meta_unit}."
+                )
 
-        max_allowed_delta = max(1.0, float(sensor_spec.sampling_rate) * 0.05)
-        if abs(float(sensor_spec.sampling_rate) - inferred_sampling_rate) > max_allowed_delta:
-            raise ValueError(
-                "Instrument specification sampling_rate mismatch: "
-                f"spec={sensor_spec.sampling_rate:.4f}Hz inferred={inferred_sampling_rate:.4f}Hz."
+        if sensor_spec.sampling_rate is None:
+            self._warn(
+                "Instrument specification field 'sampling_rate' is None; skipping sampling-rate "
+                f"validation for sensor '{sensor_spec.sensor_name}'."
             )
+        else:
+            sampling_rate_value = float(sensor_spec.sampling_rate)
+            max_allowed_delta = max(1.0, sampling_rate_value * 0.05)
+            if abs(sampling_rate_value - inferred_sampling_rate) > max_allowed_delta:
+                raise ValueError(
+                    "Instrument specification sampling_rate mismatch: "
+                    f"spec={sampling_rate_value:.4f}Hz inferred={inferred_sampling_rate:.4f}Hz."
+                )
 
-        range_min, range_max = sensor_spec.range
-        if not np.isfinite(range_min) or not np.isfinite(range_max) or range_min >= range_max:
-            raise ValueError(
-                "Instrument specification range must be finite and increasing."
+        if sensor_spec.range is None:
+            self._warn(
+                "Instrument specification field 'range' is None; skipping range validation "
+                f"for sensor '{sensor_spec.sensor_name}'."
             )
-        observed_min = float(np.nanmin(raw_accel))
-        observed_max = float(np.nanmax(raw_accel))
-        tolerance = max(0.1, abs(range_max - range_min) * 0.05)
-        if observed_min < range_min - tolerance or observed_max > range_max + tolerance:
-            raise ValueError(
-                "Instrument specification range mismatch: "
-                f"observed=[{observed_min:.4f}, {observed_max:.4f}] "
-                f"spec=[{range_min:.4f}, {range_max:.4f}] in {spec_unit}."
-            )
+        else:
+            range_min, range_max = sensor_spec.range
+            if range_min is None or range_max is None:
+                self._warn(
+                    "Instrument specification field 'range' has None bounds; skipping range "
+                    f"validation for sensor '{sensor_spec.sensor_name}'."
+                )
+            elif (
+                not np.isfinite(float(range_min))
+                or not np.isfinite(float(range_max))
+                or float(range_min) >= float(range_max)
+            ):
+                raise ValueError(
+                    "Instrument specification range must be finite and increasing."
+                )
+            else:
+                observed_min = float(np.nanmin(raw_accel))
+                observed_max = float(np.nanmax(raw_accel))
+                range_min = float(range_min)
+                range_max = float(range_max)
+                tolerance = max(0.1, abs(range_max - range_min) * 0.05)
+                if observed_min < range_min - tolerance or observed_max > range_max + tolerance:
+                    range_unit = spec_unit or inferred_unit
+                    raise ValueError(
+                        "Instrument specification range mismatch: "
+                        f"observed=[{observed_min:.4f}, {observed_max:.4f}] "
+                        f"spec=[{range_min:.4f}, {range_max:.4f}] in {range_unit}."
+                    )
 
     def _validate_instrument_specification_shape(
         self, instrument_specifications: IMUSpecifications
@@ -310,38 +345,133 @@ class GaitFeatureExtractor:
             self._validate_single_sensor_spec(sensor_spec)
 
     def _validate_single_sensor_spec(self, sensor_spec: SensorSpecification) -> None:
-        if not sensor_spec.sensor_name or not isinstance(sensor_spec.sensor_name, str):
-            raise ValueError("Instrument specification sensor_name must be a non-empty string.")
-        if not np.isfinite(float(sensor_spec.sampling_rate)) or float(sensor_spec.sampling_rate) <= 0:
-            raise ValueError("Instrument specification sampling_rate must be positive and finite.")
-        if not np.isfinite(float(sensor_spec.sensitivity)) or float(sensor_spec.sensitivity) <= 0:
-            raise ValueError("Instrument specification sensitivity must be positive and finite.")
-        if not isinstance(sensor_spec.resolution, int) or sensor_spec.resolution <= 0:
-            raise ValueError("Instrument specification resolution must be a positive integer.")
-        if not np.isfinite(float(sensor_spec.noise_density)) or float(sensor_spec.noise_density) < 0:
-            raise ValueError("Instrument specification noise_density must be finite and non-negative.")
-        if not np.isfinite(float(sensor_spec.bias_stability)) or float(sensor_spec.bias_stability) < 0:
-            raise ValueError("Instrument specification bias_stability must be finite and non-negative.")
-        if not np.isfinite(float(sensor_spec.alignment_error)) or float(sensor_spec.alignment_error) < 0:
-            raise ValueError("Instrument specification alignment_error must be finite and non-negative.")
-        if not np.isfinite(float(sensor_spec.cross_axis_sensitivity)) or float(sensor_spec.cross_axis_sensitivity) < 0:
-            raise ValueError("Instrument specification cross_axis_sensitivity must be finite and non-negative.")
-        if not np.isfinite(float(sensor_spec.power_consumption)) or float(sensor_spec.power_consumption) < 0:
-            raise ValueError("Instrument specification power_consumption must be finite and non-negative.")
-        if not np.isfinite(float(sensor_spec.mass)) or float(sensor_spec.mass) < 0:
-            raise ValueError("Instrument specification mass must be finite and non-negative.")
+        sensor_name = sensor_spec.sensor_name
+        if sensor_name is None or not isinstance(sensor_name, str) or not sensor_name.strip():
+            self._warn(
+                "Instrument specification field 'sensor_name' is missing; using "
+                "'<unknown_sensor>' in validation messages."
+            )
+            sensor_name = "<unknown_sensor>"
+
+        self._validate_positive_finite_numeric(
+            sensor_spec.sampling_rate, "sampling_rate", sensor_name
+        )
+        self._validate_positive_finite_numeric(
+            sensor_spec.sensitivity, "sensitivity", sensor_name
+        )
+        if sensor_spec.resolution is None:
+            self._warn(
+                f"Instrument specification field 'resolution' is None for sensor '{sensor_name}'."
+            )
+        elif not isinstance(sensor_spec.resolution, int) or sensor_spec.resolution <= 0:
+            raise ValueError(
+                f"Instrument specification field 'resolution' is not a positive integer "
+                f"for sensor '{sensor_name}'."
+            )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.noise_density, "noise_density", sensor_name
+        )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.bias_stability, "bias_stability", sensor_name
+        )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.alignment_error, "alignment_error", sensor_name
+        )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.cross_axis_sensitivity,
+            "cross_axis_sensitivity",
+            sensor_name,
+        )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.power_consumption, "power_consumption", sensor_name
+        )
+        self._validate_nonnegative_finite_numeric(
+            sensor_spec.mass, "mass", sensor_name
+        )
+        if sensor_spec.physical_size is None:
+            self._warn(
+                f"Instrument specification field 'physical_size' is None for sensor '{sensor_name}'."
+            )
+            return
+
         if (
             not isinstance(sensor_spec.physical_size, tuple)
             or len(sensor_spec.physical_size) != 3
-            or any(float(value) <= 0 for value in sensor_spec.physical_size)
         ):
             raise ValueError(
-                "Instrument specification physical_size must be a 3-tuple of positive values."
+                "Instrument specification field 'physical_size' must be a 3-tuple "
+                f"for sensor '{sensor_name}'."
             )
+
+        for axis_name, value in zip(("length", "width", "height"), sensor_spec.physical_size):
+            if value is None:
+                self._warn(
+                    "Instrument specification field "
+                    f"'physical_size.{axis_name}' is None for sensor '{sensor_name}'."
+                )
+                continue
+            numeric_value = self._coerce_float_field(
+                value=value,
+                field_name=f"physical_size.{axis_name}",
+                sensor_name=sensor_name,
+            )
+            if numeric_value <= 0:
+                raise ValueError(
+                    "Instrument specification field "
+                    f"'physical_size.{axis_name}' must be positive for sensor '{sensor_name}'."
+                )
+
+    def _coerce_float_field(self, value, field_name: str, sensor_name: str) -> float:
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Instrument specification field '{field_name}' must be numeric "
+                f"for sensor '{sensor_name}'."
+            ) from exc
+        if not np.isfinite(numeric_value):
+            raise ValueError(
+                f"Instrument specification field '{field_name}' must be finite "
+                f"for sensor '{sensor_name}'."
+            )
+        return numeric_value
 
     def _canonicalize_unit(self, unit_value: str) -> Optional[str]:
         normalized = str(unit_value).strip().lower().replace(" ", "")
         return self.UNIT_ALIASES.get(normalized)
+
+    def _validate_positive_finite_numeric(
+        self, value, field_name: str, sensor_name: str
+    ) -> None:
+        if value is None:
+            self._warn(
+                f"Instrument specification field '{field_name}' is None for sensor '{sensor_name}'."
+            )
+            return
+        numeric_value = self._coerce_float_field(value, field_name, sensor_name)
+        if numeric_value <= 0:
+            raise ValueError(
+                f"Instrument specification field '{field_name}' must be positive and finite "
+                f"for sensor '{sensor_name}'."
+            )
+
+    def _validate_nonnegative_finite_numeric(
+        self, value, field_name: str, sensor_name: str
+    ) -> None:
+        if value is None:
+            self._warn(
+                f"Instrument specification field '{field_name}' is None for sensor '{sensor_name}'."
+            )
+            return
+        numeric_value = self._coerce_float_field(value, field_name, sensor_name)
+        if numeric_value < 0:
+            raise ValueError(
+                f"Instrument specification field '{field_name}' must be non-negative and finite "
+                f"for sensor '{sensor_name}'."
+            )
+
+    def _warn(self, message: str) -> None:
+        print(f"[WARNING] {message}")
 
     @staticmethod
     def _estimate_sampling_rate_hz(numeric_time: np.ndarray) -> float:

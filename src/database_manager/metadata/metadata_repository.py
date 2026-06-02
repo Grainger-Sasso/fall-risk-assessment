@@ -135,3 +135,24 @@ class MetadataRepository:
             (source_type, source_id, target_type, target_id, relation_type),
         )
         return row is not None
+
+    def delete_record(self, id_type: str, identifier: str) -> None:
+        with self.store.transaction() as conn:
+            conn.execute(
+                "DELETE FROM records WHERE id_type=? AND id=?;",
+                (id_type, identifier),
+            )
+
+    def delete_relations_by_source(self, source_type: str, source_id: str) -> None:
+        with self.store.transaction() as conn:
+            conn.execute(
+                "DELETE FROM relations WHERE source_type=? AND source_id=?;",
+                (source_type, source_id),
+            )
+
+    def delete_relations_by_target(self, target_type: str, target_id: str) -> None:
+        with self.store.transaction() as conn:
+            conn.execute(
+                "DELETE FROM relations WHERE target_type=? AND target_id=?;",
+                (target_type, target_id),
+            )

@@ -177,6 +177,74 @@ class TestDatabaseManagerSQLite(unittest.TestCase):
             )
         )
 
+    def test_delete_features_by_ids_removes_record_relations_and_payload(self):
+        feature_id = FeatureIdentifier("feature_cleanup_1")
+        imu_id = IMUDataIdentifier("imu_cleanup_1")
+        fake_data = _FakeRecordFeatures(feature_id, imu_id)
+        exported_path = self.root / "feature_output" / "features_cleanup_1"
+        exported_path.mkdir(parents=True, exist_ok=True)
+        (exported_path / "features.h5").write_text("dummy")
+        self.io_router.export_features.return_value = exported_path
+        self.db_manager.save_features(fake_data)
+
+        deleted = self.db_manager.delete_features_by_ids([feature_id], delete_payloads=True)
+
+        self.assertEqual([item.value for item in deleted], [feature_id.value])
+        self.assertFalse(
+            self.repository.record_exists("feature", feature_id.value)
+        )
+        self.assertEqual(
+            self.repository.get_targets(
+                source_type="feature",
+                source_id=feature_id.value,
+                relation_type=FEATURE_TO_IMU,
+            ),
+            [],
+        )
+        self.assertFalse(exported_path.exists())
+
+    def test_cleanup_all_features_only_removes_feature_records(self):
+        feature_1 = FeatureIdentifier("feature_cleanup_2")
+        feature_2 = FeatureIdentifier("feature_cleanup_3")
+        imu_id = IMUDataIdentifier("imu_keep")
+        user_id = UserIdentifier("user_keep")
+
+        imu_path = self.root / "imu_output" / "imu_keep"
+        imu_path.mkdir(parents=True, exist_ok=True)
+        self.repository.upsert_record("imu_data", imu_id.value, imu_path)
+        user_path = self.root / "user_output" / "user_keep"
+        user_path.mkdir(parents=True, exist_ok=True)
+        self.repository.upsert_record("user_data", user_id.value, user_path)
+
+        feature_path_1 = self.root / "feature_output" / "feature_cleanup_2"
+        feature_path_1.mkdir(parents=True, exist_ok=True)
+        self.repository.upsert_record("feature", feature_1.value, feature_path_1)
+        self.repository.add_relation(
+            source_type="feature",
+            source_id=feature_1.value,
+            target_type="imu_data",
+            target_id=imu_id.value,
+            relation_type=FEATURE_TO_IMU,
+        )
+
+        feature_path_2 = self.root / "feature_output" / "feature_cleanup_3"
+        feature_path_2.mkdir(parents=True, exist_ok=True)
+        self.repository.upsert_record("feature", feature_2.value, feature_path_2)
+        self.repository.add_relation(
+            source_type="feature",
+            source_id=feature_2.value,
+            target_type="imu_data",
+            target_id=imu_id.value,
+            relation_type=FEATURE_TO_IMU,
+        )
+
+        deleted = self.db_manager.cleanup_all_features(delete_payloads=True)
+
+        self.assertEqual(sorted([item.value for item in deleted]), sorted([feature_1.value, feature_2.value]))
+        self.assertTrue(self.repository.record_exists("imu_data", imu_id.value))
+        self.assertTrue(self.repository.record_exists("user_data", user_id.value))
+        self.assertEqual(self.repository.list_record_ids("feature"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

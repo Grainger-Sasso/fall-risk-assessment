@@ -1,4 +1,5 @@
 import unittest
+from typing import Optional
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -95,7 +96,17 @@ def _make_imu_data(unit: str, sampling_rate: float) -> IMUData:
     )
 
 
-def _make_spec(units: str, sampling_rate: float, rng: tuple[float, float]) -> IMUSpecifications:
+def _make_spec(
+    units: Optional[str],
+    sampling_rate: Optional[float],
+    rng: Optional[tuple[float, float]],
+    sensitivity: Optional[float] = 2048.0,
+    physical_size: Optional[tuple[Optional[float], Optional[float], Optional[float]]] = (
+        1.0,
+        1.0,
+        1.0,
+    ),
+) -> IMUSpecifications:
     return IMUSpecifications(
         sensor_specifications=[
             SensorSpecification(
@@ -103,7 +114,7 @@ def _make_spec(units: str, sampling_rate: float, rng: tuple[float, float]) -> IM
                 sensor_name="accel",
                 units=units,
                 range=rng,
-                sensitivity=2048.0,
+                sensitivity=sensitivity,
                 resolution=16,
                 sampling_rate=sampling_rate,
                 noise_density=0.001,
@@ -112,7 +123,7 @@ def _make_spec(units: str, sampling_rate: float, rng: tuple[float, float]) -> IM
                 cross_axis_sensitivity=1.0,
                 power_consumption=0.5,
                 operating_conditions={"temp": "ok"},
-                physical_size=(1.0, 1.0, 1.0),
+                physical_size=physical_size,
                 mass=1.0,
             )
         ],
@@ -144,6 +155,70 @@ class TestGaitFeatureExtractorMetadataValidation(unittest.TestCase):
         extractor = self._build_extractor()
         imu_data = _make_imu_data(unit="g", sampling_rate=100.0)
         spec = _make_spec(units="g", sampling_rate=100.0, rng=(-0.2, 0.2))
+        with self.assertRaises(ValueError):
+            extractor.extract_gait_features(
+                imu_data=imu_data,
+                user_data=_make_user_data(),
+                instrument_specifications=spec,
+            )
+
+    def test_none_instrument_spec_values_warn_but_do_not_raise(self):
+        extractor = self._build_extractor()
+        imu_data = _make_imu_data(unit="g", sampling_rate=100.0)
+        spec = _make_spec(
+            units="g",
+            sampling_rate=100.0,
+            rng=(-2.0, 2.0),
+            sensitivity=None,
+        )
+        result = extractor.extract_gait_features(
+            imu_data=imu_data,
+            user_data=_make_user_data(),
+            instrument_specifications=spec,
+        )
+        self.assertEqual(result.data, {})
+
+    def test_none_physical_size_warns_but_does_not_raise(self):
+        extractor = self._build_extractor()
+        imu_data = _make_imu_data(unit="g", sampling_rate=100.0)
+        spec = _make_spec(
+            units="g",
+            sampling_rate=100.0,
+            rng=(-2.0, 2.0),
+            physical_size=None,
+        )
+        result = extractor.extract_gait_features(
+            imu_data=imu_data,
+            user_data=_make_user_data(),
+            instrument_specifications=spec,
+        )
+        self.assertEqual(result.data, {})
+
+    def test_none_physical_size_component_warns_but_does_not_raise(self):
+        extractor = self._build_extractor()
+        imu_data = _make_imu_data(unit="g", sampling_rate=100.0)
+        spec = _make_spec(
+            units="g",
+            sampling_rate=100.0,
+            rng=(-2.0, 2.0),
+            physical_size=(1.0, None, 1.0),
+        )
+        result = extractor.extract_gait_features(
+            imu_data=imu_data,
+            user_data=_make_user_data(),
+            instrument_specifications=spec,
+        )
+        self.assertEqual(result.data, {})
+
+    def test_invalid_non_null_physical_size_component_raises(self):
+        extractor = self._build_extractor()
+        imu_data = _make_imu_data(unit="g", sampling_rate=100.0)
+        spec = _make_spec(
+            units="g",
+            sampling_rate=100.0,
+            rng=(-2.0, 2.0),
+            physical_size=(1.0, "bad_value", 1.0),
+        )
         with self.assertRaises(ValueError):
             extractor.extract_gait_features(
                 imu_data=imu_data,

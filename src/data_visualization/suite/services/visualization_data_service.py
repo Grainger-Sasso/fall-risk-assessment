@@ -148,3 +148,17 @@ class VisualizationDataService:
             "instrument_spec_records": spec_records,
             "relations": relations,
         }
+
+    def cleanup_all_features(self) -> int:
+        deleted = self.db_manager.cleanup_all_features(delete_payloads=True)
+        return len(deleted)
+
+    def rollback_last_feature_generation_run(self) -> int:
+        # Imported lazily to avoid introducing orchestrator imports across the suite.
+        from src.gait_features.gait_feature_dataset_orchestrator import (
+            GaitFeatureDatasetOrchestrator,
+        )
+
+        orchestrator = GaitFeatureDatasetOrchestrator(db_manager=self.db_manager)
+        deleted_count, _ = orchestrator.rollback_last_run_features()
+        return deleted_count

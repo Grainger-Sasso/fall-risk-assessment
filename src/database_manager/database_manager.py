@@ -211,6 +211,22 @@ class DatabaseManager:
                 feature_ids.append(identifier)
         return feature_ids
 
+    def delete_features_by_ids(
+        self, feature_ids: list[FeatureIdentifier], delete_payloads: bool = True
+    ) -> list[FeatureIdentifier]:
+        deleted: list[FeatureIdentifier] = []
+        for feature_id in feature_ids:
+            if self._delete_single_feature(feature_id, delete_payloads=delete_payloads):
+                deleted.append(feature_id)
+        return deleted
+
+    def cleanup_all_features(self, delete_payloads: bool = True) -> list[FeatureIdentifier]:
+        feature_ids = self.list_feature_ids()
+        return self.delete_features_by_ids(
+            feature_ids=feature_ids,
+            delete_payloads=delete_payloads,
+        )
+
     def _get_record_path(self, identifier: Identifier) -> Path:
         id_type = IdentifierTypeRegistry.get_type_name(type(identifier))
         try:
@@ -219,6 +235,33 @@ class DatabaseManager:
             raise MetadataIndexError(
                 f"Failed to resolve record path for {id_type}:{identifier.value}"
             ) from exc
+
+    def _delete_single_feature(
+        self, feature_id: FeatureIdentifier, delete_payloads: bool = True
+    ) -> bool:
+        id_type = IdentifierTypeRegistry.get_type_name(type(feature_id))
+        if not self.repository.record_exists(id_type, feature_id.value):
+            return False
+
+        payload_path: Optional[Path] = None
+        try:
+            payload_path = self.repository.get_record_path(id_type, feature_id.value)
+        except Exception:
+            payload_path = None
+
+        self.repository.delete_relations_by_source(
+            source_type=id_type,
+            source_id=feature_id.value,
+        )
+        self.repository.delete_relations_by_target(
+            target_type=id_type,
+            target_id=feature_id.value,
+        )
+        self.repository.delete_record(id_type=id_type, identifier=feature_id.value)
+
+        if delete_payloads and payload_path is not None:
+            self._rollback_output(payload_path)
+        return True
 
     def _upsert_record(self, identifier: Identifier, path: Path) -> None:
         id_type = IdentifierTypeRegistry.get_type_name(type(identifier))

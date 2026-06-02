@@ -126,6 +126,9 @@ class _FakeDBManager:
     def load_features(self, feature_id):
         return self.feature_records[feature_id.value]
 
+    def cleanup_all_features(self, delete_payloads=True):
+        return [_FakeIdentifier("feature_1")]
+
 
 class TestVisualizationDataService(unittest.TestCase):
     def setUp(self) -> None:
@@ -180,6 +183,10 @@ class TestVisualizationDataService(unittest.TestCase):
         self.assertEqual(len(snapshot["feature_records"]), 1)
         self.assertEqual(len(snapshot["instrument_spec_records"]), 1)
         self.assertGreaterEqual(len(snapshot["relations"]), 2)
+
+    def test_cleanup_all_features(self):
+        deleted_count = self.service.cleanup_all_features()
+        self.assertEqual(deleted_count, 1)
 
 
 if __name__ == "__main__":
