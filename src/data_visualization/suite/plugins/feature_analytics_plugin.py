@@ -19,8 +19,14 @@ from src.data_visualization.suite.plots.feature_plot_engine import FeaturePlotEn
 from src.data_visualization.suite.plugins.base import PluginContext, VisualizationPlugin
 
 
+VIEW_CLASS_VIOLIN = "Class Violin (selected feature)"
+VIEW_CORRELATION = "Correlation Heatmap (all features)"
+VIEW_CLASS_SEPARATION = "Class Separation (all features)"
+VIEW_FEATURE_COVERAGE = "Feature Coverage (all features)"
+
+
 class FeatureAnalyticsPlugin(VisualizationPlugin):
-    """Feature distribution analytics with class-based violin plots."""
+    """Feature distribution analytics with class-based and population views."""
 
     plugin_id = "feature_analytics"
     display_name = "Feature Analytics"
@@ -59,13 +65,24 @@ class FeatureAnalyticsPlugin(VisualizationPlugin):
         self.basis_selector.addItems([SampleBasis.EPOCH.value, SampleBasis.STRIDE.value])
         self.basis_selector.currentIndexChanged.connect(self._on_basis_or_feature_changed)
 
+        self.view_selector = QComboBox(controls)
+        self.view_selector.addItems(
+            [
+                VIEW_CLASS_VIOLIN,
+                VIEW_CORRELATION,
+                VIEW_CLASS_SEPARATION,
+                VIEW_FEATURE_COVERAGE,
+            ]
+        )
+
         self.feature_type_selector = QComboBox(controls)
         self.feature_type_selector.currentIndexChanged.connect(self._on_feature_type_selected)
 
-        render_button = QPushButton("Render Violin Plot", controls)
+        render_button = QPushButton("Render", controls)
         render_button.clicked.connect(self._render_current)
 
         form = QFormLayout()
+        form.addRow("View", self.view_selector)
         form.addRow("Feature record", self.feature_selector)
         form.addRow("Basis", self.basis_selector)
         form.addRow("Feature type", self.feature_type_selector)
@@ -149,12 +166,20 @@ class FeatureAnalyticsPlugin(VisualizationPlugin):
     def _render_current(self) -> None:
         if self._context is None:
             return
+
+        view = self.view_selector.currentText()
+        basis = SampleBasis(self.basis_selector.currentText())
+
+        if view == VIEW_CLASS_VIOLIN:
+            self._render_class_violin(basis)
+            return
+        self._render_population_view(view, basis)
+
+    def _render_class_violin(self, basis: SampleBasis) -> None:
         if self._selected_feature_type is None:
             self.summary_label.setText("No feature type selected.")
             self._render_empty("No feature type selected")
             return
-
-        basis = SampleBasis(self.basis_selector.currentText())
         grouped_values = self._context.data_service.collect_feature_values_by_class(
             basis=basis,
             feature_type=self._selected_feature_type,
@@ -166,6 +191,58 @@ class FeatureAnalyticsPlugin(VisualizationPlugin):
         )
         self._canvas.draw_idle()
         self.summary_label.setText(self._format_summary(summary))
+
+    def _render_population_view(self, view: str, basis: SampleBasis) -> None:
+        population = self._context.data_service.collect_population_feature_matrix(basis)
+        if population.is_empty:
+            self.summary_label.setText("No feature values available for this basis.")
+            self._render_empty("No feature values available")
+            return
+
+        if view == VIEW_CORRELATION:
+            self._plot_engine.render_feature_correlation_heatmap(
+                feature_types=population.feature_types,
+                feature_matrix=population.matrix,
+                basis=basis,
+            )
+            self.summary_label.setText(
+                f"Correlation across {len(population.feature_types)} features "
+                f"({population.matrix.shape[0]} samples)."
+            )
+        elif view == VIEW_CLASS_SEPARATION:
+            separation = self._plot_engine.render_class_separation(
+                feature_matrix=population.matrix,
+                row_class_labels=population.row_class_labels,
+                feature_types=population.feature_types,
+                basis=basis,
+            )
+            if separation:
+                top = max(separation.items(), key=lambda kv: abs(kv[1]))
+                self.summary_label.setText(
+                    f"Most discriminative: {top[0].value} (Cohen's d = {top[1]:.3f})."
+                )
+            else:
+                self.summary_label.setText("Class separation requires two populated classes.")
+        elif view == VIEW_FEATURE_COVERAGE:
+            coverage = self._plot_engine.render_feature_coverage(
+                feature_matrix=population.matrix,
+                row_class_labels=population.row_class_labels,
+                feature_types=population.feature_types,
+                basis=basis,
+            )
+            empty_features = [
+                feature_type.value
+                for feature_type, stats in coverage.items()
+                if stats["valid_fraction"] == 0.0
+            ]
+            if empty_features:
+                self.summary_label.setText(
+                    f"{len(empty_features)} feature(s) with no valid samples: "
+                    + ", ".join(empty_features)
+                )
+            else:
+                self.summary_label.setText("All features have at least some valid samples.")
+        self._canvas.draw_idle()
 
     def _render_empty(self, message: str) -> None:
         self._figure.clear()

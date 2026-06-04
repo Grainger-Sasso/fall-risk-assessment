@@ -17,6 +17,24 @@ from src.identifiers.instrument_specification.instrument_specification_identifie
 
 
 @dataclass
+class PopulationFeatureMatrix:
+    """
+    Sample-wise feature matrix aggregated across all feature records for a basis.
+
+    Each row is a single sample (epoch or stride) and each column is a feature
+    type. `row_class_labels` holds the class (faller status) label per row.
+    """
+
+    feature_types: List[FeatureType]
+    matrix: np.ndarray
+    row_class_labels: List[str]
+
+    @property
+    def is_empty(self) -> bool:
+        return self.matrix.size == 0 or not self.feature_types
+
+
+@dataclass
 class VisualizationDataService:
     """UI-friendly facade over DatabaseManager for visualizations."""
 
@@ -88,6 +106,57 @@ class VisualizationDataService:
             for class_label, samples in grouped.items()
             if samples
         }
+
+    def collect_population_feature_matrix(
+        self,
+        basis: SampleBasis,
+        feature_types: Optional[List[FeatureType]] = None,
+    ) -> PopulationFeatureMatrix:
+        """
+        Build a sample-wise (rows) by feature-type (columns) matrix across all
+        feature records for a basis, aligned to a common feature-type ordering.
+
+        Rows that are entirely NaN (e.g., records with no detected strides) are
+        retained so coverage analytics can reflect them.
+        """
+        reference_types: Optional[List[FeatureType]] = (
+            list(feature_types) if feature_types else None
+        )
+        row_blocks: List[np.ndarray] = []
+        labels: List[str] = []
+
+        for feature_id in self.list_feature_ids():
+            record = self.load_features(feature_id)
+            bout = record.get_features_by_basis(basis)
+            record_types = list(bout.feature_names)
+            if reference_types is None:
+                reference_types = record_types
+
+            features = np.asarray(bout.features, dtype=float)
+            if features.size == 0:
+                continue
+            num_bouts, _, num_samples = features.shape
+            per_sample = np.transpose(features, (0, 2, 1)).reshape(
+                num_bouts * num_samples, len(record_types)
+            )
+
+            aligned = np.full((per_sample.shape[0], len(reference_types)), np.nan)
+            index_by_type = {ftype: idx for idx, ftype in enumerate(record_types)}
+            for col, ftype in enumerate(reference_types):
+                source_index = index_by_type.get(ftype)
+                if source_index is not None:
+                    aligned[:, col] = per_sample[:, source_index]
+
+            user = self.db_manager.load_user(record.feature_metadata.user_identifier)
+            label = user.clinical_demographic_data.faller_status.value
+            row_blocks.append(aligned)
+            labels.extend([label] * aligned.shape[0])
+
+        if reference_types is None or not row_blocks:
+            return PopulationFeatureMatrix(reference_types or [], np.empty((0, 0)), [])
+
+        matrix = np.vstack(row_blocks)
+        return PopulationFeatureMatrix(reference_types, matrix, labels)
 
     def get_sql_index_snapshot(self) -> Dict[str, List[Dict[str, str]]]:
         """

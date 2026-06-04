@@ -33,6 +33,97 @@ class GaitResults:
         self.data: Dict[str, Any] = results
 
 
+class StrideFeatureGenerationError(ValueError):
+    """
+    Raised when stride feature generation produces no usable values.
+
+    Carries a structured `diagnosis` describing which stage introduced the NaN
+    (missing SKDH stride keys, zero-width stride event ranges, or an all-NaN
+    stride tensor) so callers can log and categorize the failure precisely.
+    """
+
+    def __init__(self, message: str, diagnosis: Dict[str, Any]):
+        super().__init__(message)
+        self.diagnosis = diagnosis
+
+
+def diagnose_stride_nan_source(
+    gait_results: "GaitResults",
+    bout_ranges: List["BoutRange"],
+    stride_features: BoutFeatures,
+    stride_feature_types: List[FeatureType],
+) -> Dict[str, Any]:
+    """
+    Localize the stage at which stride values become NaN/absent.
+
+    Returns a structured report whose `stage` is the first failing stage, one of:
+      - "skdh_missing_all_stride_keys": SKDH output contained none of the
+        expected stride feature keys (NaN originates in SKDH output).
+      - "no_stride_events": one or more bouts have a zero-width event range
+        (event_end <= event_start), so the stride mapper has nothing to slice.
+      - "stride_tensor_all_nan": the assembled stride tensor is entirely NaN.
+      - "ok": stride values are present.
+    """
+    feature_values = np.asarray(stride_features.features, dtype=float)
+    present_keys = [ft.value for ft in stride_feature_types if ft.value in gait_results.data]
+    missing_keys = [ft.value for ft in stride_feature_types if ft.value not in gait_results.data]
+    bouts_without_events = [
+        idx
+        for idx, item in enumerate(bout_ranges)
+        if item.event_end <= item.event_start
+    ]
+    if feature_values.size == 0:
+        bouts_all_nan: List[int] = []
+        tensor_all_nan = True
+    else:
+        tensor_all_nan = bool(np.isnan(feature_values).all())
+        bouts_all_nan = [
+            idx for idx in range(feature_values.shape[0]) if np.isnan(feature_values[idx]).all()
+        ]
+
+    report: Dict[str, Any] = {
+        "stage": "ok",
+        "tensor_shape": tuple(int(dim) for dim in feature_values.shape),
+        "expected_stride_keys": len(stride_feature_types),
+        "present_stride_keys": present_keys,
+        "missing_stride_keys": missing_keys,
+        "bouts_without_events": bouts_without_events,
+        "tensor_all_nan": tensor_all_nan,
+        "bouts_all_nan": bouts_all_nan,
+        "detail": "Stride values are present.",
+    }
+
+    if feature_values.size == 0:
+        report["stage"] = "stride_tensor_all_nan"
+        report["detail"] = "Stride tensor is empty."
+        return report
+    if len(present_keys) == 0:
+        report["stage"] = "skdh_missing_all_stride_keys"
+        report["detail"] = (
+            "SKDH output contained none of the expected stride feature keys; "
+            "no gait bouts/strides were detected (likely wrong SKDH profile)."
+        )
+        return report
+    if bouts_without_events:
+        report["stage"] = "no_stride_events"
+        report["detail"] = (
+            "Zero-width stride event range(s) for bout index/indices "
+            f"{bouts_without_events}; SKDH detected no stride events to slice."
+        )
+        return report
+    if tensor_all_nan:
+        report["stage"] = "stride_tensor_all_nan"
+        report["detail"] = "All stride feature values are NaN."
+        return report
+    if bouts_all_nan:
+        report["stage"] = "stride_tensor_all_nan"
+        report["detail"] = (
+            f"NaN-only stride values for bout index/indices {bouts_all_nan}."
+        )
+        return report
+    return report
+
+
 class GaitFeatureExtractor:
     GRAVITY_M_PER_S2 = 9.80665
     UNIT_ALIASES = {
@@ -803,6 +894,11 @@ class RecordFeatureGenerationBuilder:
             bout_event_ranges=[(item.event_start, item.event_end) for item in bout_ranges],
             bout_time_ranges=[(item.start_time, item.end_time) for item in bout_ranges],
         )
+        self._validate_stride_feature_generation(
+            gait_results=gait_results,
+            bout_ranges=bout_ranges,
+            stride_features=stride_features,
+        )
         epoch_features = self.epoch_generator.build(
             sensor_data=sensor_data,
             bout_sample_ranges=[(item.sample_start, item.sample_end) for item in bout_ranges],
@@ -814,6 +910,25 @@ class RecordFeatureGenerationBuilder:
             imu_data_identifier=imu_data.metadata.imu_data_identifier,
         )
         return RecordFeatures(epoch_features=epoch_features, stride_features=stride_features, feature_metadata=metadata)
+
+    def _validate_stride_feature_generation(
+        self,
+        gait_results: GaitResults,
+        bout_ranges: List[BoutRange],
+        stride_features: BoutFeatures,
+    ) -> None:
+        diagnosis = diagnose_stride_nan_source(
+            gait_results=gait_results,
+            bout_ranges=bout_ranges,
+            stride_features=stride_features,
+            stride_feature_types=self.stride_mapper.feature_types,
+        )
+        if diagnosis["stage"] != "ok":
+            raise StrideFeatureGenerationError(
+                f"Stride feature generation failed [{diagnosis['stage']}]: "
+                f"{diagnosis['detail']}",
+                diagnosis=diagnosis,
+            )
 
     def _resolve_bout_ranges(self, gait_results: GaitResults, sensor_data: SensorData, treadmill_profile: bool) -> List[BoutRange]:
         day_values = gait_results.data.get("Day N")

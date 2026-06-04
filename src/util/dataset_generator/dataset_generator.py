@@ -240,16 +240,16 @@ def build_sql_index(
 def main() -> None:
     build_sql_index(
         imu_parent_dir=Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/imu_data/lab_walks"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/imu_data/ltmm"
         ),
         user_parent_dir=Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/user_data/lab_walks"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/user_data/ltmm"
         ),
         instrument_spec_inputs=Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/instrument_specs/lab_walks/instrument_spec.json"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/instrument_specs/ltmm/instrument_spec.json"
         ),
         sqlite_db_path=Path(
-            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/sql_db_indexes/lab_walks/index.db"
+            "/Users/graingersasso/Desktop/fafra/fafra_data/assessment_database/sql_db_indexes/ltmm/index.db"
         ),
     )
 

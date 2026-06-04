@@ -14,11 +14,15 @@ from src.data_model.data.user.clinical.clinical_demographic_data import (
     Sex,
 )
 from src.data_model.data.user.user_data import UserData
+from src.data_types.feature.feature_type import FeatureType
 from src.data_types.instrument.sensor_type import SensorType
 from src.gait_features.gait_feature_module import (
+    BoutRange,
     GaitResults,
     RecordFeatureGenerationBuilder,
     StrideFeatureGenerationError,
+    StrideFeatureMapper,
+    diagnose_stride_nan_source,
 )
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument.instrument_identifier import InstrumentIdentifier
@@ -92,10 +96,69 @@ def _make_user_data() -> UserData:
     )
 
 
-class TestRecordFeatureGenerationBuilder(unittest.TestCase):
-    def test_no_bouts_detected_raises_stride_failure(self):
-        # When SKDH detects no gait bouts/strides, stride generation must fail
-        # loudly rather than silently emitting an all-NaN stride tensor.
+class TestStrideNaNDiagnosis(unittest.TestCase):
+    """Pins down the exact stage at which stride values become NaN/absent."""
+
+    def test_missing_skdh_stride_keys_is_the_nan_source(self):
+        # Mirrors the real DB failure: SKDH yielded no stride keys and a
+        # zero-width event range, which the mapper fills entirely with NaN.
+        gait_results = GaitResults({})
+        mapper = StrideFeatureMapper()
+        stride_features = mapper.build(
+            gait_results=gait_results,
+            bout_event_ranges=[(0, 0)],
+            bout_time_ranges=[(10.0, 20.0)],
+        )
+        self.assertTrue(np.isnan(stride_features.features).all())
+
+        report = diagnose_stride_nan_source(
+            gait_results=gait_results,
+            bout_ranges=[
+                BoutRange(
+                    sample_start=0,
+                    sample_end=100,
+                    event_start=0,
+                    event_end=0,
+                    start_time=10.0,
+                    end_time=20.0,
+                )
+            ],
+            stride_features=stride_features,
+            stride_feature_types=mapper.feature_types,
+        )
+        self.assertEqual(report["stage"], "skdh_missing_all_stride_keys")
+        self.assertEqual(len(report["present_stride_keys"]), 0)
+        self.assertTrue(report["tensor_all_nan"])
+
+    def test_present_stride_keys_yield_ok_diagnosis(self):
+        mapper = StrideFeatureMapper()
+        gait_results = GaitResults(
+            {FeatureType.STRIDE_TIME.value: np.array([0.9, 1.1])}
+        )
+        stride_features = mapper.build(
+            gait_results=gait_results,
+            bout_event_ranges=[(0, 2)],
+            bout_time_ranges=[(10.0, 20.0)],
+        )
+        report = diagnose_stride_nan_source(
+            gait_results=gait_results,
+            bout_ranges=[
+                BoutRange(
+                    sample_start=0,
+                    sample_end=100,
+                    event_start=0,
+                    event_end=2,
+                    start_time=10.0,
+                    end_time=20.0,
+                )
+            ],
+            stride_features=stride_features,
+            stride_feature_types=mapper.feature_types,
+        )
+        self.assertEqual(report["stage"], "ok")
+        self.assertFalse(report["tensor_all_nan"])
+
+    def test_builder_raises_stride_error_when_no_bouts_detected(self):
         builder = RecordFeatureGenerationBuilder(window_seconds=8.0, overlap_seconds=2.0)
         gait_results = GaitResults(
             {
@@ -104,14 +167,14 @@ class TestRecordFeatureGenerationBuilder(unittest.TestCase):
                 "IC Time": np.array([]),
             }
         )
-
-        with self.assertRaises(StrideFeatureGenerationError):
+        with self.assertRaises(StrideFeatureGenerationError) as ctx:
             builder.build(
                 gait_results=gait_results,
                 imu_data=_make_imu_data(),
                 user_data=_make_user_data(),
                 treadmill_profile=True,
             )
+        self.assertEqual(ctx.exception.diagnosis["stage"], "skdh_missing_all_stride_keys")
 
 
 if __name__ == "__main__":

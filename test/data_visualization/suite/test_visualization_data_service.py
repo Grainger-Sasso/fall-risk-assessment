@@ -188,6 +188,18 @@ class TestVisualizationDataService(unittest.TestCase):
         deleted_count = self.service.cleanup_all_features()
         self.assertEqual(deleted_count, 1)
 
+    def test_collect_population_feature_matrix(self):
+        population = self.service.collect_population_feature_matrix(SampleBasis.EPOCH)
+        self.assertEqual(
+            population.feature_types, [FeatureType.GAIT_SPEED, FeatureType.CADENCE]
+        )
+        self.assertEqual(population.matrix.shape, (3, 2))
+        self.assertEqual(population.row_class_labels, ["faller", "faller", "faller"])
+        self.assertEqual(population.matrix[0, 0], 1.0)
+        self.assertEqual(population.matrix[0, 1], 4.0)
+        self.assertTrue(np.isnan(population.matrix[2, 0]))
+        self.assertFalse(population.is_empty)
+
 
 if __name__ == "__main__":
     unittest.main()

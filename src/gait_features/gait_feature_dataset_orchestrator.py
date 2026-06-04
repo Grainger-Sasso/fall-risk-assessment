@@ -27,6 +27,7 @@ from src.database_manager.metadata.sqlite_store import SQLiteStore
 from src.gait_features.gait_feature_module import (
     GaitFeatureExtractor,
     RecordFeatureGenerationBuilder,
+    StrideFeatureGenerationError,
 )
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
@@ -41,6 +42,7 @@ class FeatureGenerationRunSummary:
     generated_feature_ids: List[FeatureIdentifier] = field(default_factory=list)
     failed_imu_ids: List[IMUDataIdentifier] = field(default_factory=list)
     errors_by_imu_id: Dict[str, str] = field(default_factory=dict)
+    stride_failure_imu_ids: List[IMUDataIdentifier] = field(default_factory=list)
     rollback_performed: bool = False
     rolled_back_feature_ids: List[FeatureIdentifier] = field(default_factory=list)
 
@@ -108,6 +110,29 @@ class GaitFeatureDatasetOrchestrator:
                     f"[{index}/{total}] Completed IMU '{imu_id.value}' -> "
                     f"feature '{feature_id.value}'."
                 )
+            except StrideFeatureGenerationError as exc:
+                diagnosis = getattr(exc, "diagnosis", {})
+                print(
+                    f"[{index}/{total}] [STRIDE-FAILURE] IMU '{imu_id.value}': "
+                    f"stage={diagnosis.get('stage', 'unknown')} :: {exc}"
+                )
+                print(
+                    f"    missing_stride_keys="
+                    f"{len(diagnosis.get('missing_stride_keys', []))}/"
+                    f"{diagnosis.get('expected_stride_keys', 0)}, "
+                    f"bouts_without_events={diagnosis.get('bouts_without_events', [])}, "
+                    f"tensor_all_nan={diagnosis.get('tensor_all_nan')}"
+                )
+                summary.failed_imu_ids.append(imu_id)
+                summary.stride_failure_imu_ids.append(imu_id)
+                summary.errors_by_imu_id[imu_id.value] = str(exc)
+                if not continue_on_error:
+                    summary.status = "failed"
+                    self._persist_last_run_summary(summary)
+                    raise RuntimeError(
+                        f"Feature generation failed for IMU '{imu_id.value}': {exc}"
+                    ) from exc
+                continue
             except Exception as exc:
                 print(
                     f"[{index}/{total}] Failed IMU '{imu_id.value}': {exc}"
@@ -178,6 +203,9 @@ class GaitFeatureDatasetOrchestrator:
             "attempted_imu_ids": [item.value for item in summary.attempted_imu_ids],
             "generated_feature_ids": [item.value for item in summary.generated_feature_ids],
             "failed_imu_ids": [item.value for item in summary.failed_imu_ids],
+            "stride_failure_imu_ids": [
+                item.value for item in summary.stride_failure_imu_ids
+            ],
             "errors_by_imu_id": summary.errors_by_imu_id,
             "rollback_performed": summary.rollback_performed,
             "rolled_back_feature_ids": [
@@ -347,6 +375,13 @@ def main() -> None:
         print("Failures:")
         for imu_id in summary.failed_imu_ids:
             print(f"- {imu_id.value}: {summary.errors_by_imu_id.get(imu_id.value, '')}")
+    if summary.stride_failure_imu_ids:
+        print(
+            f"Stride-feature failures (all-NaN/no strides detected): "
+            f"{len(summary.stride_failure_imu_ids)}"
+        )
+        for imu_id in summary.stride_failure_imu_ids:
+            print(f"- {imu_id.value}")
     if summary.rollback_performed:
         print(
             "Rollback complete for this run. Removed "

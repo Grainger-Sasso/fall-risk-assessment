@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from matplotlib.figure import Figure
@@ -77,3 +77,210 @@ class FeaturePlotEngine:
                 "iqr": float(np.percentile(values, 75) - np.percentile(values, 25)),
             }
         return summary
+
+    # ------------------------------------------------------------------
+    # Population-level analytics
+    # ------------------------------------------------------------------
+    def render_feature_correlation_heatmap(
+        self,
+        feature_types: List[FeatureType],
+        feature_matrix: np.ndarray,
+        basis: SampleBasis,
+        title: Optional[str] = None,
+    ) -> np.ndarray:
+        """Render a Pearson correlation heatmap across feature types."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        matrix = np.asarray(feature_matrix, dtype=float)
+        correlation = self.compute_correlation_matrix(matrix)
+
+        if correlation.size == 0 or not feature_types:
+            ax.text(0.5, 0.5, "No feature values available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return correlation
+
+        image = ax.imshow(
+            np.ma.masked_invalid(correlation),
+            vmin=-1.0,
+            vmax=1.0,
+            cmap="coolwarm",
+            aspect="auto",
+        )
+        labels = [feature_type.value for feature_type in feature_types]
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=90, fontsize=6)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=6)
+        ax.set_title(title or f"Feature correlation ({basis.value})")
+        self.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04, label="Pearson r")
+        self.figure.tight_layout()
+        return correlation
+
+    def render_class_separation(
+        self,
+        feature_matrix: np.ndarray,
+        row_class_labels: List[str],
+        feature_types: List[FeatureType],
+        basis: SampleBasis,
+        top_n: Optional[int] = None,
+    ) -> Dict[FeatureType, float]:
+        """Render Cohen's d per feature between the two classes (ranked)."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        separation, classes = self.compute_class_separation(
+            np.asarray(feature_matrix, dtype=float), row_class_labels, feature_types
+        )
+
+        if not separation:
+            ax.text(
+                0.5,
+                0.5,
+                "Class separation requires exactly two populated classes",
+                ha="center",
+                va="center",
+            )
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        ordered = sorted(separation.items(), key=lambda kv: abs(kv[1]), reverse=True)
+        if top_n is not None and top_n > 0:
+            ordered = ordered[:top_n]
+        names = [feature_type.value for feature_type, _ in ordered]
+        values = [value for _, value in ordered]
+        positions = range(len(ordered))
+
+        ax.barh(list(positions), values, color="#4c72b0")
+        ax.set_yticks(list(positions))
+        ax.set_yticklabels(names, fontsize=6)
+        ax.invert_yaxis()
+        ax.axvline(0.0, color="black", linewidth=0.8)
+        ax.set_xlabel(f"Cohen's d  ({classes[0]} minus {classes[1]})")
+        ax.set_title(f"Class separation by feature ({basis.value})")
+        ax.grid(alpha=0.2, axis="x")
+        self.figure.tight_layout()
+        return dict(ordered)
+
+    def render_feature_coverage(
+        self,
+        feature_matrix: np.ndarray,
+        row_class_labels: List[str],
+        feature_types: List[FeatureType],
+        basis: SampleBasis,
+    ) -> Dict[FeatureType, Dict[str, float]]:
+        """Render the fraction of valid (non-NaN) samples per feature."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        coverage = self.compute_feature_coverage(
+            np.asarray(feature_matrix, dtype=float), row_class_labels, feature_types
+        )
+
+        if not coverage:
+            ax.text(0.5, 0.5, "No feature values available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        items = list(coverage.items())
+        names = [feature_type.value for feature_type, _ in items]
+        fractions = [stats["valid_fraction"] for _, stats in items]
+        positions = range(len(items))
+        colors = [
+            "#d62728" if fraction == 0.0 else ("#ff7f0e" if fraction < 0.5 else "#2ca02c")
+            for fraction in fractions
+        ]
+
+        ax.barh(list(positions), fractions, color=colors)
+        ax.set_yticks(list(positions))
+        ax.set_yticklabels(names, fontsize=6)
+        ax.invert_yaxis()
+        ax.set_xlim(0.0, 1.0)
+        ax.set_xlabel("Valid sample fraction")
+        ax.set_title(f"Feature coverage ({basis.value})")
+        ax.grid(alpha=0.2, axis="x")
+        self.figure.tight_layout()
+        return coverage
+
+    @staticmethod
+    def compute_correlation_matrix(feature_matrix: np.ndarray) -> np.ndarray:
+        """Pairwise-complete Pearson correlation across feature columns."""
+        matrix = np.asarray(feature_matrix, dtype=float)
+        if matrix.ndim != 2 or matrix.shape[1] == 0:
+            return np.empty((0, 0))
+        num_features = matrix.shape[1]
+        correlation = np.full((num_features, num_features), np.nan)
+        for i in range(num_features):
+            for j in range(num_features):
+                left = matrix[:, i]
+                right = matrix[:, j]
+                mask = np.isfinite(left) & np.isfinite(right)
+                if int(mask.sum()) < 3:
+                    continue
+                left_valid = left[mask]
+                right_valid = right[mask]
+                if left_valid.std() < 1e-12 or right_valid.std() < 1e-12:
+                    continue
+                correlation[i, j] = float(np.corrcoef(left_valid, right_valid)[0, 1])
+        return correlation
+
+    @staticmethod
+    def compute_class_separation(
+        feature_matrix: np.ndarray,
+        row_class_labels: List[str],
+        feature_types: List[FeatureType],
+    ) -> Tuple[Dict[FeatureType, float], List[str]]:
+        """Cohen's d per feature between exactly two classes."""
+        classes = sorted(set(row_class_labels))
+        if len(classes) != 2 or feature_matrix.size == 0:
+            return {}, classes
+        labels = np.asarray(row_class_labels)
+        first_mask = labels == classes[0]
+        second_mask = labels == classes[1]
+        separation: Dict[FeatureType, float] = {}
+        for col, feature_type in enumerate(feature_types):
+            first = feature_matrix[first_mask, col]
+            second = feature_matrix[second_mask, col]
+            first = first[np.isfinite(first)]
+            second = second[np.isfinite(second)]
+            if first.size < 2 or second.size < 2:
+                continue
+            pooled_variance = (
+                (first.size - 1) * first.var(ddof=1)
+                + (second.size - 1) * second.var(ddof=1)
+            ) / (first.size + second.size - 2)
+            pooled_std = float(np.sqrt(pooled_variance))
+            if pooled_std < 1e-12:
+                continue
+            separation[feature_type] = float((first.mean() - second.mean()) / pooled_std)
+        return separation, classes
+
+    @staticmethod
+    def compute_feature_coverage(
+        feature_matrix: np.ndarray,
+        row_class_labels: List[str],
+        feature_types: List[FeatureType],
+    ) -> Dict[FeatureType, Dict[str, float]]:
+        """Per-feature valid-sample counts and fractions (overall and per class)."""
+        if feature_matrix.ndim != 2 or feature_matrix.shape[1] == 0:
+            return {}
+        total_rows = feature_matrix.shape[0]
+        labels = np.asarray(row_class_labels)
+        classes = sorted(set(row_class_labels))
+        coverage: Dict[FeatureType, Dict[str, float]] = {}
+        for col, feature_type in enumerate(feature_types):
+            column = feature_matrix[:, col]
+            valid = int(np.isfinite(column).sum())
+            per_class: Dict[str, Dict[str, int]] = {}
+            for class_label in classes:
+                class_mask = labels == class_label
+                class_total = int(class_mask.sum())
+                class_valid = int(np.isfinite(column[class_mask]).sum()) if class_total else 0
+                per_class[class_label] = {"valid": class_valid, "total": class_total}
+            coverage[feature_type] = {
+                "valid": valid,
+                "total": int(total_rows),
+                "valid_fraction": float(valid / total_rows) if total_rows else 0.0,
+                "per_class": per_class,
+            }
+        return coverage
