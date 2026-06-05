@@ -23,6 +23,7 @@ VIEW_CLASS_VIOLIN = "Class Violin (selected feature)"
 VIEW_CORRELATION = "Correlation Heatmap (all features)"
 VIEW_CLASS_SEPARATION = "Class Separation (all features)"
 VIEW_FEATURE_COVERAGE = "Feature Coverage (all features)"
+VIEW_SAMPLE_COUNTS = "Sample Counts (per participant, by class & basis)"
 
 
 class FeatureAnalyticsPlugin(VisualizationPlugin):
@@ -72,6 +73,7 @@ class FeatureAnalyticsPlugin(VisualizationPlugin):
                 VIEW_CORRELATION,
                 VIEW_CLASS_SEPARATION,
                 VIEW_FEATURE_COVERAGE,
+                VIEW_SAMPLE_COUNTS,
             ]
         )
 
@@ -168,12 +170,33 @@ class FeatureAnalyticsPlugin(VisualizationPlugin):
             return
 
         view = self.view_selector.currentText()
+
+        if view == VIEW_SAMPLE_COUNTS:
+            self._render_sample_counts()
+            return
+
         basis = SampleBasis(self.basis_selector.currentText())
 
         if view == VIEW_CLASS_VIOLIN:
             self._render_class_violin(basis)
             return
         self._render_population_view(view, basis)
+
+    def _render_sample_counts(self) -> None:
+        counts = self._context.data_service.collect_sample_counts_by_basis_class()
+        summary = self._plot_engine.render_sample_count_by_basis_class(counts)
+        self._canvas.draw_idle()
+        if not summary:
+            self.summary_label.setText("No samples available for any basis.")
+            return
+        lines = []
+        for key in sorted(summary.keys()):
+            stats = summary[key]
+            lines.append(
+                f"{key}: mean={stats['mean']:.1f}, std={stats['std']:.1f} "
+                f"(n_participants={int(stats['n_participants'])})"
+            )
+        self.summary_label.setText("\n".join(lines))
 
     def _render_class_violin(self, basis: SampleBasis) -> None:
         if self._selected_feature_type is None:

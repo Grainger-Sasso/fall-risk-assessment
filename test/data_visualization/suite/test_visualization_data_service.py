@@ -188,6 +188,14 @@ class TestVisualizationDataService(unittest.TestCase):
         deleted_count = self.service.cleanup_all_features()
         self.assertEqual(deleted_count, 1)
 
+    def test_collect_sample_counts_by_basis_class(self):
+        counts = self.service.collect_sample_counts_by_basis_class()
+        self.assertIn("epoch", counts)
+        self.assertIn("stride", counts)
+        # Single faller participant: 3 valid epoch samples, 2 valid stride samples.
+        self.assertEqual(counts["epoch"]["faller"].tolist(), [3.0])
+        self.assertEqual(counts["stride"]["faller"].tolist(), [2.0])
+
     def test_collect_population_feature_matrix(self):
         population = self.service.collect_population_feature_matrix(SampleBasis.EPOCH)
         self.assertEqual(

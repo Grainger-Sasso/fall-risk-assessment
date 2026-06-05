@@ -202,6 +202,81 @@ class FeaturePlotEngine:
         self.figure.tight_layout()
         return coverage
 
+    def render_sample_count_by_basis_class(
+        self,
+        counts_by_basis_class: Dict[str, Dict[str, np.ndarray]],
+    ) -> Dict[str, Dict[str, float]]:
+        """
+        Grouped bar chart of mean +/- std per-participant sample count, with the
+        x-axis split by class and one bar per sampling basis within each class.
+
+        ``counts_by_basis_class`` is ``{basis_value: {class_label: counts}}`` as
+        produced by ``VisualizationDataService.collect_sample_counts_by_basis_class``.
+        Returns a summary keyed by ``"basis|class"``.
+        """
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        bases = [SampleBasis.EPOCH.value, SampleBasis.STRIDE.value]
+        classes = sorted(
+            {
+                class_label
+                for basis in bases
+                for class_label in counts_by_basis_class.get(basis, {})
+            }
+        )
+
+        if not classes:
+            ax.text(0.5, 0.5, "No samples available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        summary: Dict[str, Dict[str, float]] = {}
+        bar_colors = {
+            SampleBasis.EPOCH.value: "#4c72b0",
+            SampleBasis.STRIDE.value: "#dd8452",
+        }
+        width = 0.38
+        x = np.arange(len(classes))
+
+        for basis_index, basis in enumerate(bases):
+            means: List[float] = []
+            stds: List[float] = []
+            for class_label in classes:
+                counts = counts_by_basis_class.get(basis, {}).get(
+                    class_label, np.array([], dtype=float)
+                )
+                mean = float(np.mean(counts)) if counts.size else 0.0
+                std = float(np.std(counts)) if counts.size else 0.0
+                means.append(mean)
+                stds.append(std)
+                summary[f"{basis}|{class_label}"] = {
+                    "mean": mean,
+                    "std": std,
+                    "n_participants": float(counts.size),
+                }
+            offset = (basis_index - (len(bases) - 1) / 2.0) * width
+            ax.bar(
+                x + offset,
+                means,
+                width,
+                yerr=stds,
+                capsize=4,
+                label=basis,
+                color=bar_colors.get(basis),
+            )
+
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(classes)
+        ax.set_xlabel("Class")
+        ax.set_ylabel("Mean samples per participant")
+        ax.set_title("Per-participant sample count by class and basis (mean +/- std)")
+        ax.legend(title="Sample basis")
+        ax.grid(alpha=0.2, axis="y")
+        self.figure.tight_layout()
+        return summary
+
     @staticmethod
     def compute_correlation_matrix(feature_matrix: np.ndarray) -> np.ndarray:
         """Pairwise-complete Pearson correlation across feature columns."""

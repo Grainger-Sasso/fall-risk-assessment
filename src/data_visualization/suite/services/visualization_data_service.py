@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -157,6 +158,55 @@ class VisualizationDataService:
 
         matrix = np.vstack(row_blocks)
         return PopulationFeatureMatrix(reference_types, matrix, labels)
+
+    def collect_sample_counts_by_basis_class(
+        self,
+    ) -> Dict[str, Dict[str, np.ndarray]]:
+        """
+        Per-participant usable sample counts grouped by sampling basis and class.
+
+        Returns ``{basis_value: {class_label: ndarray of per-participant counts}}``.
+        A participant's count is the number of samples (across all of their
+        feature records) that have at least one non-NaN feature, i.e. samples
+        that would survive into a classification run. Participants with a record
+        but no usable samples for a basis contribute a count of zero.
+        """
+        per_basis_counts: Dict[SampleBasis, Dict[str, int]] = {
+            SampleBasis.EPOCH: defaultdict(int),
+            SampleBasis.STRIDE: defaultdict(int),
+        }
+        participant_class: Dict[str, str] = {}
+
+        for feature_id in self.list_feature_ids():
+            record = self.load_features(feature_id)
+            participant = record.feature_metadata.user_identifier.value
+            user = self.db_manager.load_user(record.feature_metadata.user_identifier)
+            participant_class[participant] = user.clinical_demographic_data.faller_status.value
+
+            for basis in (SampleBasis.EPOCH, SampleBasis.STRIDE):
+                bout = record.get_features_by_basis(basis)
+                features = np.asarray(bout.features, dtype=float)
+                # Ensure the participant is registered even with zero usable samples.
+                per_basis_counts[basis].setdefault(participant, 0)
+                if features.size == 0:
+                    continue
+                num_bouts, num_feature_types, num_samples = features.shape
+                per_sample = np.transpose(features, (0, 2, 1)).reshape(
+                    num_bouts * num_samples, num_feature_types
+                )
+                valid = int(np.sum(~np.all(np.isnan(per_sample), axis=1)))
+                per_basis_counts[basis][participant] += valid
+
+        result: Dict[str, Dict[str, np.ndarray]] = {}
+        for basis in (SampleBasis.EPOCH, SampleBasis.STRIDE):
+            grouped: Dict[str, List[int]] = defaultdict(list)
+            for participant, class_label in participant_class.items():
+                grouped[class_label].append(per_basis_counts[basis].get(participant, 0))
+            result[basis.value] = {
+                class_label: np.asarray(values, dtype=float)
+                for class_label, values in grouped.items()
+            }
+        return result
 
     def get_sql_index_snapshot(self) -> Dict[str, List[Dict[str, str]]]:
         """

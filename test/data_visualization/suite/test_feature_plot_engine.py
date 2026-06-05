@@ -28,6 +28,36 @@ class TestFeaturePlotEngine(unittest.TestCase):
         self.assertEqual(summary["faller"]["count"], 3.0)
         self.assertGreater(summary["non-faller"]["mean"], summary["faller"]["mean"])
 
+    def test_render_sample_count_by_basis_class(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        counts = {
+            "epoch": {
+                "faller": np.array([6.0, 8.0]),
+                "non-faller": np.array([10.0, 10.0, 10.0]),
+            },
+            "stride": {
+                "faller": np.array([80.0, 100.0]),
+                "non-faller": np.array([70.0, 90.0, 110.0]),
+            },
+        }
+
+        summary = engine.render_sample_count_by_basis_class(counts)
+
+        self.assertEqual(summary["epoch|faller"]["mean"], 7.0)
+        self.assertEqual(summary["epoch|faller"]["std"], 1.0)
+        self.assertEqual(summary["epoch|non-faller"]["mean"], 10.0)
+        self.assertEqual(summary["stride|faller"]["mean"], 90.0)
+        self.assertEqual(int(summary["stride|non-faller"]["n_participants"]), 3)
+        # Four logical bars: 2 bases x 2 classes.
+        self.assertEqual(len(summary), 4)
+        self.assertTrue(figure.axes)
+
+    def test_render_sample_count_empty(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        self.assertEqual(engine.render_sample_count_by_basis_class({}), {})
+
     def test_compute_correlation_matrix_handles_nan_and_constant(self):
         matrix = np.array(
             [
