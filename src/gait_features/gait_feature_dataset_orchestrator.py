@@ -69,13 +69,18 @@ class GaitFeatureDatasetOrchestrator:
         treadmill_profile: bool = False,
         extractor: Optional[GaitFeatureExtractor] = None,
         record_feature_builder: Optional[RecordFeatureGenerationBuilder] = None,
+        epoch_window_seconds: float = 8.0,
+        epoch_overlap_seconds: float = 2.0,
     ):
         self.db_manager = db_manager
         self.treadmill_profile = treadmill_profile
         self.extractor = extractor or GaitFeatureExtractor(
             treadmill_profile=treadmill_profile
         )
-        self.record_feature_builder = record_feature_builder or RecordFeatureGenerationBuilder()
+        self.record_feature_builder = record_feature_builder or RecordFeatureGenerationBuilder(
+            window_seconds=epoch_window_seconds,
+            overlap_seconds=epoch_overlap_seconds,
+        )
 
     def generate_for_all_imu(
         self,
@@ -300,6 +305,18 @@ def parse_args() -> argparse.Namespace:
         help="Use treadmill SKDH profile for extraction.",
     )
     parser.add_argument(
+        "--epoch-window-seconds",
+        type=float,
+        default=8.0,
+        help="Epoch sliding-window length in seconds (must be between 5 and 10).",
+    )
+    parser.add_argument(
+        "--epoch-overlap-seconds",
+        type=float,
+        default=2.0,
+        help="Epoch sliding-window overlap in seconds (> 0 and < window length).",
+    )
+    parser.add_argument(
         "--continue-on-error",
         action="store_true",
         help="Continue processing remaining IMUs when a record fails.",
@@ -334,6 +351,8 @@ def main() -> None:
     orchestrator = GaitFeatureDatasetOrchestrator(
         db_manager=db_manager,
         treadmill_profile=args.treadmill_profile,
+        epoch_window_seconds=args.epoch_window_seconds,
+        epoch_overlap_seconds=args.epoch_overlap_seconds,
     )
 
     if args.cleanup_features:
