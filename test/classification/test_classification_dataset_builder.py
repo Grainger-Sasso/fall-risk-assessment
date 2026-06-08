@@ -123,6 +123,25 @@ class TestClassificationDatasetBuilder(unittest.TestCase):
         self.assertEqual(labels["u1"], 1)
         self.assertEqual(labels["u2"], 0)
 
+    def test_participant_basis_aggregates_samples_by_mean(self):
+        stride = self.builder.build_participant_basis(SampleBasis.STRIDE)
+        self.assertEqual(stride.n_participants, 2)
+        self.assertEqual(stride.participant_ids, ["u1", "u2"])
+        self.assertEqual(stride.n_features, 2)
+        np.testing.assert_allclose(stride.X[0], [1.5, 3.5])
+        np.testing.assert_allclose(stride.X[1], [5.5, 7.5])
+        self.assertEqual(stride.y.tolist(), [1, 0])
+
+    def test_early_fusion_participant_dataset_concatenates_bases(self):
+        dataset = self.builder.build_early_fusion_participant_dataset()
+        self.assertEqual(dataset.n_participants, 2)
+        self.assertEqual(dataset.participant_ids, ["u1", "u2"])
+        self.assertEqual(len(dataset.stride_feature_names), 2)
+        self.assertEqual(len(dataset.epoch_feature_names), 2)
+        self.assertEqual(dataset.n_features, 4)
+        np.testing.assert_allclose(dataset.X[0, :2], [1.5, 3.5])
+        np.testing.assert_allclose(dataset.X[0, 2:], [0.2, 0.5])
+
 
 if __name__ == "__main__":
     unittest.main()

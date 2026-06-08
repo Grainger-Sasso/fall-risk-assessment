@@ -30,6 +30,7 @@ from src.classification.evaluation.evaluation_artifact import (
     EvaluationArtifact,
     ModelFamilyResult,
 )
+from src.classification.evaluation.evaluation_mode import LATE_FUSION_SAMPLE
 from src.classification.evaluation.metrics import (
     aggregate_fold_metrics,
     compute_classification_metrics,
@@ -92,6 +93,8 @@ class FusionEvaluator:
         ranking = self._build_ranking(model_results)
         return EvaluationArtifact(
             generated_at=datetime.now(timezone.utc).isoformat(),
+            evaluation_mode=LATE_FUSION_SAMPLE,
+            aggregation=None,
             cv_config={
                 "requested_n_splits": self.n_splits,
                 "resolved_n_splits": resolved_splits,

@@ -127,11 +127,24 @@ class ModelEvaluationPlugin(VisualizationPlugin):
             [result.model_name for result in self._artifact.model_results]
         )
         counts = self._artifact.participant_counts
+        mode = (
+            "early fusion (participant-level)"
+            if self._artifact.is_early_fusion_participant()
+            else "late fusion (sample-level)"
+        )
         self.status_label.setText(
-            f"Loaded {len(self._artifact.model_results)} model families. "
+            f"Loaded {len(self._artifact.model_results)} model families ({mode}). "
             f"Participants: {counts.get('common', 0)} "
             f"(faller={counts.get('faller', 0)}, non-faller={counts.get('non_faller', 0)})."
         )
+        fusion_view_index = self.view_selector.findText(VIEW_FUSION_COMPARISON)
+        if fusion_view_index >= 0:
+            self.view_selector.setItemText(
+                fusion_view_index,
+                "Early Fusion (selected model)"
+                if self._artifact.is_early_fusion_participant()
+                else VIEW_FUSION_COMPARISON,
+            )
         self._render_current()
 
     def _render_current(self) -> None:

@@ -4,8 +4,13 @@ from typing import List, Optional
 import numpy as np
 
 from src.classification.data.classification_dataset import (
+    BasisParticipantDataset,
     BasisSampleDataset,
     ClassificationDataset,
+    EarlyFusionParticipantDataset,
+)
+from src.classification.data.participant_aggregation import (
+    aggregate_samples_to_participants,
 )
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
@@ -31,6 +36,69 @@ class ClassificationDatasetBuilder:
         return ClassificationDataset(
             stride=self.build_basis(SampleBasis.STRIDE),
             epoch=self.build_basis(SampleBasis.EPOCH),
+        )
+
+    def build_participant_basis(
+        self,
+        basis: SampleBasis,
+        aggregation: str = "mean",
+        participant_order: Optional[List[str]] = None,
+    ) -> BasisParticipantDataset:
+        sample_dataset = self.build_basis(basis)
+        order = participant_order or sample_dataset.participant_ids()
+        x_rows, labels, kept_ids = aggregate_samples_to_participants(
+            sample_dataset,
+            participant_order=order,
+            aggregation=aggregation,
+        )
+        return BasisParticipantDataset(
+            basis=basis,
+            X=x_rows,
+            y=labels,
+            participant_ids=kept_ids,
+            feature_names=list(sample_dataset.feature_names),
+            aggregation=aggregation,
+        )
+
+    def build_early_fusion_participant_dataset(
+        self,
+        aggregation: str = "mean",
+    ) -> EarlyFusionParticipantDataset:
+        sample_dataset = self.build()
+        common_ids = sample_dataset.common_participant_ids()
+        stride = self.build_participant_basis(
+            SampleBasis.STRIDE,
+            aggregation=aggregation,
+            participant_order=common_ids,
+        )
+        epoch = self.build_participant_basis(
+            SampleBasis.EPOCH,
+            aggregation=aggregation,
+            participant_order=common_ids,
+        )
+        if stride.is_empty or epoch.is_empty:
+            return EarlyFusionParticipantDataset(
+                X=np.empty((0, 0)),
+                y=np.empty((0,), dtype=int),
+                participant_ids=[],
+                stride_feature_names=stride.feature_names,
+                epoch_feature_names=epoch.feature_names,
+                aggregation=aggregation,
+            )
+
+        if stride.participant_ids != epoch.participant_ids:
+            raise ValueError(
+                "Stride and epoch participant aggregation produced mismatched "
+                "participant order."
+            )
+
+        return EarlyFusionParticipantDataset(
+            X=np.hstack([stride.X, epoch.X]),
+            y=stride.y,
+            participant_ids=list(stride.participant_ids),
+            stride_feature_names=list(stride.feature_names),
+            epoch_feature_names=list(epoch.feature_names),
+            aggregation=aggregation,
         )
 
     def build_basis(self, basis: SampleBasis) -> BasisSampleDataset:

@@ -9,9 +9,14 @@ import json
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
+
+from src.classification.evaluation.evaluation_mode import (
+    EARLY_FUSION_PARTICIPANT,
+    LATE_FUSION_SAMPLE,
+)
 
 
 def _to_json_safe(value):
@@ -58,6 +63,11 @@ class EvaluationArtifact:
     fusion_strategies: List[str]
     model_results: List[ModelFamilyResult]
     ranking: List[Dict[str, object]]
+    evaluation_mode: str = LATE_FUSION_SAMPLE
+    aggregation: Optional[str] = None
+
+    def is_early_fusion_participant(self) -> bool:
+        return self.evaluation_mode == EARLY_FUSION_PARTICIPANT
 
     def to_dict(self) -> Dict[str, object]:
         return _to_json_safe(asdict(self))
@@ -101,6 +111,8 @@ class EvaluationArtifact:
             fusion_strategies=payload.get("fusion_strategies", []),
             model_results=model_results,
             ranking=payload.get("ranking", []),
+            evaluation_mode=payload.get("evaluation_mode", LATE_FUSION_SAMPLE),
+            aggregation=payload.get("aggregation"),
         )
 
     @classmethod

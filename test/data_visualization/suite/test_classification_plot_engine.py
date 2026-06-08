@@ -6,6 +6,7 @@ from src.classification.evaluation.evaluation_artifact import (
     EvaluationArtifact,
     ModelFamilyResult,
 )
+from src.classification.evaluation.evaluation_mode import EARLY_FUSION_RESULT_KEY
 from src.data_visualization.suite.plots.classification_plot_engine import (
     ClassificationPlotEngine,
 )
@@ -101,8 +102,61 @@ class TestClassificationPlotEngine(unittest.TestCase):
 
     def test_best_fusion_selection(self):
         engine = self._engine()
-        best = engine.best_fusion(self.artifact.model_results[0])
+        best = engine.best_fusion(self.artifact.model_results[0], self.artifact)
         self.assertEqual(best, "stacking")
+
+    def test_early_fusion_artifact_renders(self):
+        result = ModelFamilyResult(
+            model_name="random_forest",
+            fusion_results={
+                EARLY_FUSION_RESULT_KEY: {
+                    "roc_auc_mean": 0.71,
+                    "roc_auc_std": 0.04,
+                    "pr_auc_mean": 0.69,
+                    "pr_auc_std": 0.03,
+                    "balanced_accuracy_mean": 0.66,
+                }
+            },
+            roc_curves={
+                EARLY_FUSION_RESULT_KEY: {
+                    "fpr": [0.0, 0.5, 1.0],
+                    "tpr": [0.0, 0.8, 1.0],
+                }
+            },
+            pr_curves={
+                EARLY_FUSION_RESULT_KEY: {
+                    "recall": [1.0, 0.5, 0.0],
+                    "precision": [0.5, 0.8, 1.0],
+                }
+            },
+            confusion={EARLY_FUSION_RESULT_KEY: {"tn": 4, "fp": 1, "fn": 1, "tp": 5}},
+        )
+        artifact = EvaluationArtifact(
+            generated_at="2026-06-05T00:00:00+00:00",
+            evaluation_mode="early_fusion_participant",
+            aggregation="mean",
+            cv_config={"resolved_n_splits": 2, "n_repeats": 1},
+            participant_counts={"common": 8, "faller": 4, "non_faller": 4},
+            sample_counts={"stride": 24, "epoch": 32},
+            fusion_strategies=[EARLY_FUSION_RESULT_KEY],
+            model_results=[result],
+            ranking=[
+                {
+                    "model_name": "random_forest",
+                    "fusion": EARLY_FUSION_RESULT_KEY,
+                    "roc_auc_mean": 0.71,
+                    "pr_auc_mean": 0.69,
+                    "balanced_accuracy_mean": 0.66,
+                    "score": 0.7,
+                }
+            ],
+        )
+        engine = self._engine()
+        engine.render_model_comparison(artifact, metric="roc_auc")
+        engine.render_fusion_comparison(artifact, "random_forest")
+        engine.render_ranking_table(artifact)
+        engine.render_confusion(artifact, "random_forest")
+        self.assertTrue(engine.figure.axes)
 
 
 if __name__ == "__main__":

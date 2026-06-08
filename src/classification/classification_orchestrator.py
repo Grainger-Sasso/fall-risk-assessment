@@ -1,9 +1,9 @@
 """CLI orchestration for classification model evaluation on the new sample basis.
 
 Builds stride/epoch classification datasets from a SQLite-backed
-DatabaseManager, runs the late-fusion evaluator across model families and fusion
-strategies, writes a JSON evaluation artifact, and optionally renders a PDF
-comparison report.
+DatabaseManager, runs either late-fusion (sample-level) or early-fusion
+(participant-level) evaluation across model families, writes a JSON evaluation
+artifact, and optionally renders a PDF comparison report.
 """
 
 import argparse
@@ -15,7 +15,16 @@ from src.classification.data.classification_dataset_builder import (
     ClassificationDatasetBuilder,
 )
 from src.classification.evaluation.evaluation_artifact import EvaluationArtifact
+from src.classification.evaluation.evaluation_mode import (
+    EARLY_FUSION_PARTICIPANT,
+    LATE_FUSION_SAMPLE,
+    SUPPORTED_AGGREGATIONS,
+    SUPPORTED_EVALUATION_MODES,
+)
 from src.classification.evaluation.fusion_evaluator import FusionEvaluator
+from src.classification.evaluation.participant_early_fusion_evaluator import (
+    ParticipantEarlyFusionEvaluator,
+)
 from src.classification.fusion.fusion_strategies import available_fusion_names
 from src.classification.models.model_factory import available_model_names
 from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
@@ -61,10 +70,19 @@ def build_database_manager(sqlite_db_path: Path) -> DatabaseManager:
     return DatabaseManager(metadata_repository=repository, io_router=io_router)
 
 
-def _artifact_path(output_dir: Path, fast_mode: bool, generated_at: datetime) -> Path:
+def _artifact_path(
+    output_dir: Path,
+    fast_mode: bool,
+    generated_at: datetime,
+    evaluation_mode: str,
+) -> Path:
     timestamp = generated_at.strftime(ARTIFACT_TIMESTAMP_FORMAT)
-    mode = "fast" if fast_mode else "full"
-    return output_dir / f"classification_evaluation_{mode}_{timestamp}.json"
+    speed = "fast" if fast_mode else "full"
+    if evaluation_mode == EARLY_FUSION_PARTICIPANT:
+        mode_label = "early_fusion"
+    else:
+        mode_label = "late_fusion"
+    return output_dir / f"classification_evaluation_{mode_label}_{speed}_{timestamp}.json"
 
 
 def run_classification_evaluation(
@@ -78,33 +96,82 @@ def run_classification_evaluation(
     random_state: int = 42,
     fast_mode: bool = False,
     generate_report: bool = False,
+    evaluation_mode: str = LATE_FUSION_SAMPLE,
+    aggregation: str = "mean",
 ) -> EvaluationArtifact:
+    if evaluation_mode not in SUPPORTED_EVALUATION_MODES:
+        raise ValueError(
+            f"Unsupported evaluation mode '{evaluation_mode}'. "
+            f"Supported: {SUPPORTED_EVALUATION_MODES}"
+        )
+    if aggregation not in SUPPORTED_AGGREGATIONS:
+        raise ValueError(
+            f"Unsupported aggregation '{aggregation}'. "
+            f"Supported: {SUPPORTED_AGGREGATIONS}"
+        )
+
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"[classification] Building datasets from {sqlite_db_path}")
     db_manager = build_database_manager(sqlite_db_path)
-    dataset = ClassificationDatasetBuilder(db_manager=db_manager).build()
-    print(
-        f"[classification] stride samples={dataset.stride.n_samples}, "
-        f"epoch samples={dataset.epoch.n_samples}, "
-        f"common participants={len(dataset.common_participant_ids())}"
-    )
+    builder = ClassificationDatasetBuilder(db_manager=db_manager)
 
-    evaluator = FusionEvaluator(
-        dataset=dataset,
-        model_names=model_names or available_model_names(),
-        fusion_names=fusion_names or available_fusion_names(),
-        n_splits=n_splits,
-        n_repeats=n_repeats,
-        inner_splits=inner_splits,
-        random_state=random_state,
-        fast_mode=fast_mode,
-    )
-    artifact = evaluator.evaluate()
+    if evaluation_mode == EARLY_FUSION_PARTICIPANT:
+        if fusion_names:
+            print(
+                "[classification] Note: --fusions is ignored for early-fusion "
+                "participant evaluation."
+            )
+        sample_dataset = builder.build()
+        participant_dataset = builder.build_early_fusion_participant_dataset(
+            aggregation=aggregation
+        )
+        print(
+            f"[classification] mode=early_fusion_participant aggregation={aggregation} "
+            f"participants={participant_dataset.n_participants} "
+            f"features={participant_dataset.n_features} "
+            f"(stride={len(participant_dataset.stride_feature_names)}, "
+            f"epoch={len(participant_dataset.epoch_feature_names)})"
+        )
+        evaluator = ParticipantEarlyFusionEvaluator(
+            dataset=participant_dataset,
+            sample_counts={
+                "stride": sample_dataset.stride.n_samples,
+                "epoch": sample_dataset.epoch.n_samples,
+            },
+            model_names=model_names or available_model_names(),
+            n_splits=n_splits,
+            n_repeats=n_repeats,
+            inner_splits=inner_splits,
+            random_state=random_state,
+            fast_mode=fast_mode,
+        )
+        artifact = evaluator.evaluate()
+    else:
+        dataset = builder.build()
+        print(
+            f"[classification] mode=late_fusion_sample "
+            f"stride samples={dataset.stride.n_samples}, "
+            f"epoch samples={dataset.epoch.n_samples}, "
+            f"common participants={len(dataset.common_participant_ids())}"
+        )
+        evaluator = FusionEvaluator(
+            dataset=dataset,
+            model_names=model_names or available_model_names(),
+            fusion_names=fusion_names or available_fusion_names(),
+            n_splits=n_splits,
+            n_repeats=n_repeats,
+            inner_splits=inner_splits,
+            random_state=random_state,
+            fast_mode=fast_mode,
+        )
+        artifact = evaluator.evaluate()
 
     generated_at = datetime.now()
-    artifact_path = _artifact_path(output_dir, fast_mode, generated_at)
+    artifact_path = _artifact_path(
+        output_dir, fast_mode, generated_at, evaluation_mode
+    )
     artifact.to_json(artifact_path)
     print(f"[classification] Evaluation artifact written to: {artifact_path}")
 
@@ -132,10 +199,28 @@ def run_classification_evaluation(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Evaluate late-fusion fall-risk classifiers on the sample basis."
+        description="Evaluate fall-risk classifiers on the stride/epoch sample basis."
     )
     parser.add_argument("--sqlite-db-path", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument(
+        "--evaluation-mode",
+        type=str,
+        default=LATE_FUSION_SAMPLE,
+        choices=list(SUPPORTED_EVALUATION_MODES),
+        help=(
+            "late_fusion_sample: sample-level base classifiers with late fusion "
+            "(default). early_fusion_participant: person-level feature aggregation "
+            "with concatenated stride+epoch features."
+        ),
+    )
+    parser.add_argument(
+        "--aggregation",
+        type=str,
+        default="mean",
+        choices=list(SUPPORTED_AGGREGATIONS),
+        help="Participant-level feature aggregation for early-fusion mode.",
+    )
     parser.add_argument(
         "--models",
         type=str,
@@ -146,7 +231,7 @@ def parse_args() -> argparse.Namespace:
         "--fusions",
         type=str,
         default="",
-        help="Comma-separated fusion strategy names. Empty means all available.",
+        help="Comma-separated fusion strategy names. Late-fusion mode only.",
     )
     parser.add_argument("--n-splits", type=int, default=5)
     parser.add_argument("--n-repeats", type=int, default=5)
@@ -175,6 +260,8 @@ def main() -> None:
         random_state=args.random_state,
         fast_mode=args.fast_mode,
         generate_report=args.report,
+        evaluation_mode=args.evaluation_mode,
+        aggregation=args.aggregation,
     )
 
 

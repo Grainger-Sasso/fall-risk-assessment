@@ -14,6 +14,7 @@ from src.classification.evaluation.evaluation_artifact import (
     EvaluationArtifact,
     ModelFamilyResult,
 )
+from src.classification.evaluation.evaluation_mode import EARLY_FUSION_RESULT_KEY
 from src.classification.evaluation.metrics import ranking_score
 
 _BASIS_KEYS = ["stride", "epoch"]
@@ -32,9 +33,14 @@ class ClassificationPlotEngine:
         return None
 
     @staticmethod
-    def best_fusion(result: ModelFamilyResult) -> Optional[str]:
+    def best_fusion(
+        result: ModelFamilyResult,
+        artifact: Optional[EvaluationArtifact] = None,
+    ) -> Optional[str]:
         if not result.fusion_results:
             return None
+        if artifact is not None and artifact.is_early_fusion_participant():
+            return EARLY_FUSION_RESULT_KEY
         return max(
             result.fusion_results.items(),
             key=lambda item: ranking_score(item[1]),
@@ -57,11 +63,14 @@ class ClassificationPlotEngine:
         means: List[float] = []
         errors: List[float] = []
         for result in artifact.model_results:
-            chosen = fusion or self.best_fusion(result)
+            chosen = fusion or self.best_fusion(result, artifact)
             metrics = result.fusion_results.get(chosen, {})
             mean = metrics.get(f"{metric}_mean", np.nan)
             std = metrics.get(f"{metric}_std", 0.0)
-            names.append(f"{result.model_name}\n[{chosen}]")
+            if artifact.is_early_fusion_participant():
+                names.append(result.model_name)
+            else:
+                names.append(f"{result.model_name}\n[{chosen}]")
             means.append(mean if np.isfinite(mean) else 0.0)
             errors.append(std if np.isfinite(std) else 0.0)
 
@@ -71,15 +80,18 @@ class ClassificationPlotEngine:
         axis.set_xticklabels(names, rotation=30, ha="right", fontsize=7)
         axis.set_ylabel(f"{metric} (mean)")
         axis.set_ylim(0.0, 1.0)
-        axis.set_title(f"Model family comparison - {metric}")
+        title = f"Model family comparison - {metric}"
+        if artifact.is_early_fusion_participant():
+            title += " (participant-level early fusion)"
+        axis.set_title(title)
         axis.grid(alpha=0.2, axis="y")
         self.figure.tight_layout()
 
     def render_roc_overlay(self, artifact: EvaluationArtifact, model_name: str) -> None:
-        self._curve_overlay(artifact, model_name, "roc")
+        self._curve_overlay(artifact, model_name, kind="roc")
 
     def render_pr_overlay(self, artifact: EvaluationArtifact, model_name: str) -> None:
-        self._curve_overlay(artifact, model_name, "pr")
+        self._curve_overlay(artifact, model_name, kind="pr")
 
     def _curve_overlay(
         self, artifact: EvaluationArtifact, model_name: str, kind: str
@@ -93,6 +105,7 @@ class ClassificationPlotEngine:
 
         curves = result.roc_curves if kind == "roc" else result.pr_curves
         plotted = False
+        early_mode = artifact.is_early_fusion_participant()
         for fusion_name, curve in curves.items():
             if kind == "roc":
                 x = curve.get("fpr", [])
@@ -101,7 +114,8 @@ class ClassificationPlotEngine:
                 x = curve.get("recall", [])
                 y = curve.get("precision", [])
             if x and y:
-                axis.plot(x, y, label=fusion_name, linewidth=1.5)
+                label = "early fusion" if early_mode else fusion_name
+                axis.plot(x, y, label=label, linewidth=1.5)
                 plotted = True
 
         if not plotted:
@@ -132,6 +146,26 @@ class ClassificationPlotEngine:
         result = self._find_model(artifact, model_name)
         if result is None:
             self._empty(axis, f"No results for {model_name}")
+            return
+
+        if artifact.is_early_fusion_participant():
+            metrics = result.fusion_results.get(EARLY_FUSION_RESULT_KEY, {})
+            axis.bar(
+                [0],
+                [_safe(metrics.get(f"{metric}_mean"))],
+                yerr=[_safe(metrics.get(f"{metric}_std"))],
+                capsize=4,
+                color="#4c72b0",
+            )
+            axis.set_xticks([0])
+            axis.set_xticklabels(["early_fusion"], rotation=0)
+            axis.set_ylabel(f"{metric} (mean)")
+            axis.set_ylim(0.0, 1.0)
+            axis.set_title(
+                f"Early fusion participant model - {model_name} ({metric})"
+            )
+            axis.grid(alpha=0.2, axis="y")
+            self.figure.tight_layout()
             return
 
         labels: List[str] = []
@@ -169,7 +203,7 @@ class ClassificationPlotEngine:
         if result is None:
             self._empty(axis, f"No results for {model_name}")
             return
-        fusion = fusion or self.best_fusion(result)
+        fusion = fusion or self.best_fusion(result, artifact)
         counts = result.confusion.get(fusion, {})
         matrix = np.array(
             [
@@ -192,7 +226,10 @@ class ClassificationPlotEngine:
                     va="center",
                     color="black",
                 )
-        axis.set_title(f"Confusion (summed) - {model_name} [{fusion}]")
+        if artifact.is_early_fusion_participant():
+            axis.set_title(f"Confusion (summed) - {model_name} [early fusion]")
+        else:
+            axis.set_title(f"Confusion (summed) - {model_name} [{fusion}]")
         self.figure.colorbar(image, ax=axis, fraction=0.046, pad=0.04)
         self.figure.tight_layout()
 
@@ -204,28 +241,46 @@ class ClassificationPlotEngine:
             self._empty(axis, "No ranking available")
             return
         rows = artifact.ranking[:top_n]
-        table_data = [
-            [
-                f"{index + 1}",
-                row["model_name"],
-                row["fusion"],
-                _fmt(row.get("roc_auc_mean")),
-                _fmt(row.get("pr_auc_mean")),
-                _fmt(row.get("balanced_accuracy_mean")),
-                _fmt(row.get("score")),
+        early_mode = artifact.is_early_fusion_participant()
+        if early_mode:
+            table_data = [
+                [
+                    f"{index + 1}",
+                    row["model_name"],
+                    _fmt(row.get("roc_auc_mean")),
+                    _fmt(row.get("pr_auc_mean")),
+                    _fmt(row.get("balanced_accuracy_mean")),
+                    _fmt(row.get("score")),
+                ]
+                for index, row in enumerate(rows)
             ]
-            for index, row in enumerate(rows)
-        ]
+            col_labels = ["#", "Model", "ROC-AUC", "PR-AUC", "Bal Acc", "Score"]
+            title = "Model ranking (participant-level early fusion)"
+        else:
+            table_data = [
+                [
+                    f"{index + 1}",
+                    row["model_name"],
+                    row["fusion"],
+                    _fmt(row.get("roc_auc_mean")),
+                    _fmt(row.get("pr_auc_mean")),
+                    _fmt(row.get("balanced_accuracy_mean")),
+                    _fmt(row.get("score")),
+                ]
+                for index, row in enumerate(rows)
+            ]
+            col_labels = ["#", "Model", "Fusion", "ROC-AUC", "PR-AUC", "Bal Acc", "Score"]
+            title = "Model + fusion ranking"
         table = axis.table(
             cellText=table_data,
-            colLabels=["#", "Model", "Fusion", "ROC-AUC", "PR-AUC", "Bal Acc", "Score"],
+            colLabels=col_labels,
             loc="center",
             cellLoc="center",
         )
         table.auto_set_font_size(False)
         table.set_fontsize(8)
         table.scale(1.0, 1.4)
-        axis.set_title("Model + fusion ranking")
+        axis.set_title(title)
         self.figure.tight_layout()
 
     def _empty(self, axis, message: str) -> None:

@@ -9,6 +9,7 @@ from src.classification.data.classification_dataset import (
     ClassificationDataset,
 )
 from src.classification.evaluation.evaluation_artifact import EvaluationArtifact
+from src.classification.evaluation.evaluation_mode import LATE_FUSION_SAMPLE
 from src.classification.evaluation.fusion_evaluator import FusionEvaluator
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
@@ -71,6 +72,8 @@ class TestFusionEvaluator(unittest.TestCase):
             self.assertIn(fusion_name, result.fusion_results)
             self.assertIn("roc_auc_mean", result.fusion_results[fusion_name])
         self.assertTrue(artifact.ranking)
+        self.assertEqual(artifact.evaluation_mode, LATE_FUSION_SAMPLE)
+        self.assertIsNone(artifact.aggregation)
         self.assertEqual(artifact.participant_counts["common"], 8)
 
         with tempfile.TemporaryDirectory() as tmp_dir:

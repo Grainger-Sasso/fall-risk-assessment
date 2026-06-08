@@ -30,20 +30,31 @@ def _render_cover_page(
     axis.set_axis_off()
     participant_counts = artifact.participant_counts
     sample_counts = artifact.sample_counts
+    mode_label = (
+        "Participant-level early fusion"
+        if artifact.is_early_fusion_participant()
+        else "Sample-level late fusion"
+    )
     lines = [
         "Fall-Risk Classification Report",
         "",
         f"Generated: {generated_at.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Evaluation mode: {mode_label}",
         f"Participants (common): {participant_counts.get('common', 0)} "
         f"(faller={participant_counts.get('faller', 0)}, "
         f"non-faller={participant_counts.get('non_faller', 0)})",
         f"Stride samples: {sample_counts.get('stride', 0)}   "
         f"Epoch samples: {sample_counts.get('epoch', 0)}",
         f"Model families: {len(artifact.model_results)}",
-        f"Fusion strategies: {', '.join(artifact.fusion_strategies)}",
-        f"CV: {artifact.cv_config.get('resolved_n_splits')} splits x "
-        f"{artifact.cv_config.get('n_repeats')} repeats",
     ]
+    if artifact.is_early_fusion_participant():
+        lines.append(f"Aggregation: {artifact.aggregation or 'mean'}")
+    else:
+        lines.append(f"Fusion strategies: {', '.join(artifact.fusion_strategies)}")
+    lines.append(
+        f"CV: {artifact.cv_config.get('resolved_n_splits')} splits x "
+        f"{artifact.cv_config.get('n_repeats')} repeats"
+    )
     axis.text(0.5, 0.6, "\n".join(lines), ha="center", va="center", fontsize=14, linespacing=1.8)
     figure.tight_layout()
     pdf.savefig(figure)
