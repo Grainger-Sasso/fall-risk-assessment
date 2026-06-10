@@ -6,6 +6,9 @@ from matplotlib.figure import Figure
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.data_visualization.suite.plots.feature_plot_engine import FeaturePlotEngine
+from src.data_visualization.suite.services.visualization_data_service import (
+    PerRecordCoverageMatrix,
+)
 
 
 class TestFeaturePlotEngine(unittest.TestCase):
@@ -123,6 +126,35 @@ class TestFeaturePlotEngine(unittest.TestCase):
         self.assertEqual(
             coverage[FeatureType.GAIT_SPEED]["per_class"]["faller"]["valid"], 2
         )
+
+    def test_render_per_record_missingness_heatmap(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        coverage = PerRecordCoverageMatrix(
+            feature_types=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+            matrix=np.array(
+                [
+                    [1.0, 0.0],
+                    [0.5, 1.0],
+                ]
+            ),
+            feature_ids=["feat-a", "feat-b"],
+            participant_ids=["u1", "u2"],
+            class_labels=["faller", "non-faller"],
+            usable_sample_counts=[10, 20],
+        )
+
+        summary = engine.render_per_record_missingness_heatmap(
+            coverage=coverage,
+            basis=SampleBasis.EPOCH,
+            sort_by="worst_first",
+            row_label_mode="participant",
+        )
+
+        self.assertEqual(summary["n_records"], 2)
+        self.assertEqual(summary["records_with_any_missing"], 2)
+        self.assertEqual(summary["records_with_fully_missing_feature"], 1)
+        self.assertTrue(figure.axes)
 
 
 if __name__ == "__main__":

@@ -208,6 +208,67 @@ class TestVisualizationDataService(unittest.TestCase):
         self.assertTrue(np.isnan(population.matrix[2, 0]))
         self.assertFalse(population.is_empty)
 
+    def test_collect_per_record_coverage(self):
+        epoch = self.service.collect_per_record_coverage(SampleBasis.EPOCH)
+        self.assertEqual(epoch.n_records, 1)
+        self.assertEqual(epoch.participant_ids, ["user_1"])
+        self.assertAlmostEqual(epoch.matrix[0, 0], 2.0 / 3.0)
+        self.assertAlmostEqual(epoch.matrix[0, 1], 1.0)
+
+        stride = self.service.collect_per_record_coverage(SampleBasis.STRIDE)
+        self.assertEqual(stride.matrix.tolist(), [[1.0, 1.0]])
+        self.assertEqual(stride.usable_sample_counts, [2])
+
+    def test_collect_population_excludes_padded_stride_slots(self):
+        original_records = dict(self.db_manager.feature_records)
+        original_ids = list(self.db_manager.feature_ids)
+        padded = RecordFeatures(
+            epoch_features=BoutFeatures(
+                sample_basis=SampleBasis.EPOCH,
+                features=np.array([[[1.0, np.nan], [4.0, 5.0]]]),
+                bout_starts=np.array([0.0]),
+                bout_ends=np.array([3.0]),
+                feature_names=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+                sample_starts=np.array([0.0, 1.0]),
+                sample_ends=np.array([1.0, 2.0]),
+                units=["m/s", "steps/min"],
+            ),
+            stride_features=BoutFeatures(
+                sample_basis=SampleBasis.STRIDE,
+                features=np.array(
+                    [
+                        [[10.0, 20.0, np.nan, np.nan], [40.0, 50.0, np.nan, np.nan]],
+                        [[30.0, np.nan, np.nan, np.nan], [60.0, np.nan, np.nan, np.nan]],
+                    ]
+                ),
+                bout_starts=np.array([0.0, 10.0]),
+                bout_ends=np.array([5.0, 15.0]),
+                feature_names=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+                sample_starts=np.array([0.0, 1.0, 2.0, 3.0]),
+                sample_ends=np.array([1.0, 2.0, 3.0, 4.0]),
+                units=["m/s", "steps/min"],
+            ),
+            feature_metadata=FeatureMetadata(
+                feature_identifier=_FakeIdentifier("feature_padded"),
+                user_identifier=_FakeIdentifier("user_1"),
+                imu_data_identifier=_FakeIdentifier("imu_1"),
+            ),
+        )
+        self.db_manager.feature_records = {"feature_padded": padded}
+        self.db_manager.feature_ids = [_FakeIdentifier("feature_padded")]
+
+        population = self.service.collect_population_feature_matrix(SampleBasis.STRIDE)
+        # Two bouts x four padded slots -> three usable stride rows.
+        self.assertEqual(population.matrix.shape[0], 3)
+        self.assertEqual(population.matrix[:, 0].tolist(), [10.0, 20.0, 30.0])
+
+        coverage = self.service.collect_per_record_coverage(SampleBasis.STRIDE)
+        self.assertEqual(coverage.usable_sample_counts, [3])
+        self.assertAlmostEqual(coverage.matrix[0, 0], 1.0)
+        self.assertAlmostEqual(coverage.matrix[0, 1], 1.0)
+        self.db_manager.feature_records = original_records
+        self.db_manager.feature_ids = original_ids
+
 
 if __name__ == "__main__":
     unittest.main()

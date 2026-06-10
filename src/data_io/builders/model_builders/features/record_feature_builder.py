@@ -13,7 +13,7 @@ from src.identifiers.user.user_identifier import UserIdentifier
 import numpy as np
 
 class RecordFeatureBuilder(ModelBuilder):
-    version: str = "1.1"
+    version: str = "1.2"
 
     def build(self, input_file: HDF5Group) -> RecordFeatures:
         if not isinstance(input_file, HDF5Group):
@@ -110,7 +110,9 @@ class RecordFeatureBuilder(ModelBuilder):
                     f"'{feature_name}' is not a recognized stride feature name."
                 ) from exc
 
-        return BoutFeatures(
+        attrs = basis_group.attributes
+        stored_usable_count = attrs.get(FeatureFields.USABLE_SAMPLE_COUNT.value)
+        bout_features = BoutFeatures(
             sample_basis=sample_basis,
             features=features,
             bout_starts=bout_starts,
@@ -120,6 +122,15 @@ class RecordFeatureBuilder(ModelBuilder):
             sample_ends=sample_ends,
             units=units,
         )
+        if stored_usable_count is not None:
+            stored_count = int(stored_usable_count)
+            computed_count = bout_features.usable_sample_count
+            if stored_count != computed_count:
+                raise ValueError(
+                    f"Stored usable_sample_count ({stored_count}) does not match "
+                    f"tensor contents ({computed_count}) for {sample_basis.value} features."
+                )
+        return bout_features
 
     def _get_group_by_names(
         self, parent_group: HDF5Group, candidate_names: list[str]

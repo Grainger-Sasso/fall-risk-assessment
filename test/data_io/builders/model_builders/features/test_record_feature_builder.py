@@ -68,6 +68,23 @@ class TestRecordFeatureBuilder(unittest.TestCase):
         np.testing.assert_array_equal(result.epoch_features.features, np.array([[[1.0]]]))
         np.testing.assert_array_equal(result.stride_features.features, np.array([[[2.0]]]))
 
+    def test_loads_usable_sample_count_when_present(self):
+        group = _build_feature_group()
+        epoch = group.get_item_by_name(FeatureFields.EPOCH_FEATURES.value)
+        epoch.attributes[FeatureFields.USABLE_SAMPLE_COUNT.value] = 1
+        stride = group.get_item_by_name(FeatureFields.STRIDE_FEATURES.value)
+        stride.attributes[FeatureFields.USABLE_SAMPLE_COUNT.value] = 1
+        result = RecordFeatureBuilder().build(group)
+        self.assertEqual(result.epoch_features.usable_sample_count, 1)
+        self.assertEqual(result.stride_features.usable_sample_count, 1)
+
+    def test_rejects_mismatched_usable_sample_count(self):
+        group = _build_feature_group()
+        epoch = group.get_item_by_name(FeatureFields.EPOCH_FEATURES.value)
+        epoch.attributes[FeatureFields.USABLE_SAMPLE_COUNT.value] = 99
+        with self.assertRaises(ValueError):
+            RecordFeatureBuilder().build(group)
+
 
 if __name__ == "__main__":
     unittest.main()

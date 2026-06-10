@@ -47,6 +47,9 @@ class TestRecordFeatureFileBuilder(unittest.TestCase):
         stride = group.get_item_by_name(FeatureFields.STRIDE_FEATURES.value)
         self.assertIsNotNone(epoch.get_item_by_name(FeatureFields.FEATURES.value))
         self.assertIsNotNone(stride.get_item_by_name(FeatureFields.FEATURES.value))
+        self.assertEqual(epoch.attributes[FeatureFields.USABLE_SAMPLE_COUNT.value], 1)
+        self.assertEqual(stride.attributes[FeatureFields.USABLE_SAMPLE_COUNT.value], 1)
+        self.assertEqual(group.attributes[FeatureFields.VERSION.value], "1.2")
 
 
 if __name__ == "__main__":

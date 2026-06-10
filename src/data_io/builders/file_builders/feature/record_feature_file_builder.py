@@ -15,7 +15,7 @@ from src.data_types.sample_basis.sample_basis import SampleBasis
 class RecordFeatureFileBuilder(FileBuilder):
     """Builds HDF5 file format from RecordFeatures model objects."""
 
-    version: str = "1.1"
+    version: str = "1.2"
 
     def build(self, data: RecordFeatures) -> HDF5Group:
         if not isinstance(data, RecordFeatures):
@@ -40,7 +40,11 @@ class RecordFeatureFileBuilder(FileBuilder):
         return HDF5Group(
             name=group_name,
             items=self._build_basis_datasets(basis_features),
-            attributes={},
+            attributes={
+                FeatureFields.USABLE_SAMPLE_COUNT.value: int(
+                    basis_features.usable_sample_count
+                ),
+            },
         )
 
     def _build_basis_datasets(self, basis_features: BoutFeatures) -> List[HDF5Dataset]:

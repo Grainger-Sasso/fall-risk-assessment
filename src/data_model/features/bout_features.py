@@ -3,6 +3,12 @@ from typing import List, Union
 
 import numpy as np
 
+from src.data_model.features.bout_sample_layout import (
+    count_usable_samples,
+    flatten_bout_features,
+    select_usable_samples,
+    usable_sample_mask,
+)
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.feature.mobgap_feature_type import MobgapFeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
@@ -50,6 +56,23 @@ class BoutFeatures:
     @property
     def num_samples(self) -> int:
         return int(self.features.shape[2])
+
+    @property
+    def usable_sample_count(self) -> int:
+        """Sample slots with at least one non-NaN feature (excludes NaN padding)."""
+        return count_usable_samples(self.features)
+
+    def per_sample_matrix(self) -> np.ndarray:
+        """Flatten to ``(num_bouts * num_samples, num_features)``."""
+        return flatten_bout_features(self.features)
+
+    def usable_per_sample_matrix(self) -> np.ndarray:
+        """Per-sample matrix with structurally padded rows removed."""
+        return select_usable_samples(self.per_sample_matrix())
+
+    def usable_sample_mask(self) -> np.ndarray:
+        """Boolean mask over :meth:`per_sample_matrix` rows."""
+        return usable_sample_mask(self.per_sample_matrix())
 
     def _validate_dimensions(self) -> None:
         if self.features.ndim != 3:

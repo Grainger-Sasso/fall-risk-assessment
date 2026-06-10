@@ -12,6 +12,10 @@ from src.classification.data.classification_dataset import (
 from src.classification.data.participant_aggregation import (
     aggregate_samples_to_participants,
 )
+from src.data_model.features.bout_sample_layout import (
+    flatten_bout_features,
+    usable_sample_mask,
+)
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.feature.stride_feature_name import StrideFeatureName
 from src.data_types.sample_basis.sample_basis import SampleBasis
@@ -142,11 +146,7 @@ class ClassificationDatasetBuilder:
             if features.size == 0:
                 continue
 
-            num_bouts, _, num_samples = features.shape
-            per_sample = np.transpose(features, (0, 2, 1)).reshape(
-                num_bouts * num_samples, len(record_types)
-            )
-
+            per_sample = flatten_bout_features(features)
             aligned = np.full((per_sample.shape[0], len(reference_types)), np.nan)
             index_by_type = {ftype: idx for idx, ftype in enumerate(record_types)}
             for col, ftype in enumerate(reference_types):
@@ -160,8 +160,7 @@ class ClassificationDatasetBuilder:
             if label is None:
                 continue
 
-            valid_rows = ~np.all(np.isnan(aligned), axis=1)
-            aligned = aligned[valid_rows]
+            aligned = aligned[usable_sample_mask(aligned)]
             if aligned.shape[0] == 0:
                 continue
 

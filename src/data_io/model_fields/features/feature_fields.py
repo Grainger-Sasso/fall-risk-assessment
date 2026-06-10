@@ -13,6 +13,7 @@ class FeatureFields(Enum):
     FEATURE_NAMES = "feature_names"
     SAMPLE_STARTS = "sample_starts"
     SAMPLE_ENDS = "sample_ends"
+    USABLE_SAMPLE_COUNT = "usable_sample_count"
     UNITS = "units"
     FEATURE_IDENTIFIER = "feature_identifier"
     IMU_DATA_IDENTIFIER = "imu_data_identifier"

@@ -1,13 +1,19 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.features.bout_features import BoutFeatures
+from src.data_model.features.bout_sample_layout import (
+    flatten_bout_features,
+    usable_sample_mask,
+)
 from src.data_model.data.user.user_data import UserData
 from src.data_model.features.record_features import RecordFeatures
 from src.data_model.instrument_specifications.imu_specifications import IMUSpecifications
 from src.data_types.feature.feature_type import FeatureType
+from src.data_types.feature.stride_feature_name import StrideFeatureName
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.database_manager.database_manager import DatabaseManager
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
@@ -18,12 +24,40 @@ from src.identifiers.instrument_specification.instrument_specification_identifie
 
 
 @dataclass
+class PerRecordCoverageMatrix:
+    """
+    Per feature-file valid-sample fractions for a single sampling basis.
+
+    ``matrix[i, j]`` is the fraction of *usable* samples in record *i* that have
+    a finite value for feature type *j*. Usable samples exclude structurally
+    padded NaN slots in the ``(bout, feature, sample)`` tensor. Rows with no
+    usable samples use NaN.
+    """
+
+    feature_types: List[FeatureType]
+    matrix: np.ndarray
+    feature_ids: List[str]
+    participant_ids: List[str]
+    class_labels: List[str]
+    usable_sample_counts: List[int]
+
+    @property
+    def is_empty(self) -> bool:
+        return self.matrix.size == 0 or not self.feature_types
+
+    @property
+    def n_records(self) -> int:
+        return len(self.feature_ids)
+
+
+@dataclass
 class PopulationFeatureMatrix:
     """
     Sample-wise feature matrix aggregated across all feature records for a basis.
 
-    Each row is a single sample (epoch or stride) and each column is a feature
-    type. `row_class_labels` holds the class (faller status) label per row.
+    Each row is a single usable sample (epoch or stride) and each column is a
+    feature type. Structurally padded tensor slots are excluded. `row_class_labels`
+    holds the class (faller status) label per row.
     """
 
     feature_types: List[FeatureType]
@@ -80,9 +114,11 @@ class VisualizationDataService:
         if feature_type not in bout.feature_names:
             return np.array([])
         feature_index = bout.feature_names.index(feature_type)
-        feature_matrix = bout.features[:, feature_index, :]
-        flattened = np.asarray(feature_matrix, dtype=float).reshape(-1)
-        return flattened[~np.isnan(flattened)]
+        per_sample = bout.usable_per_sample_matrix()
+        if per_sample.size == 0:
+            return np.array([])
+        column = per_sample[:, feature_index]
+        return column[np.isfinite(column)]
 
     def load_user_for_feature(self, feature_id: FeatureIdentifier) -> Optional[UserData]:
         feature_record = self.load_features(feature_id)
@@ -117,8 +153,8 @@ class VisualizationDataService:
         Build a sample-wise (rows) by feature-type (columns) matrix across all
         feature records for a basis, aligned to a common feature-type ordering.
 
-        Rows that are entirely NaN (e.g., records with no detected strides) are
-        retained so coverage analytics can reflect them.
+        Only *usable* sample rows are included (padding slots in the dense
+        ``(bout, feature, sample)`` tensor are excluded).
         """
         reference_types: Optional[List[FeatureType]] = (
             list(feature_types) if feature_types else None
@@ -133,31 +169,89 @@ class VisualizationDataService:
             if reference_types is None:
                 reference_types = record_types
 
-            features = np.asarray(bout.features, dtype=float)
-            if features.size == 0:
-                continue
-            num_bouts, _, num_samples = features.shape
-            per_sample = np.transpose(features, (0, 2, 1)).reshape(
-                num_bouts * num_samples, len(record_types)
+            aligned, usable = self._align_bout_per_sample(
+                bout=bout,
+                record_types=record_types,
+                reference_types=reference_types,
             )
-
-            aligned = np.full((per_sample.shape[0], len(reference_types)), np.nan)
-            index_by_type = {ftype: idx for idx, ftype in enumerate(record_types)}
-            for col, ftype in enumerate(reference_types):
-                source_index = index_by_type.get(ftype)
-                if source_index is not None:
-                    aligned[:, col] = per_sample[:, source_index]
+            if usable.size == 0 or not np.any(usable):
+                continue
 
             user = self.db_manager.load_user(record.feature_metadata.user_identifier)
             label = user.clinical_demographic_data.faller_status.value
-            row_blocks.append(aligned)
-            labels.extend([label] * aligned.shape[0])
+            usable_rows = aligned[usable]
+            row_blocks.append(usable_rows)
+            labels.extend([label] * usable_rows.shape[0])
 
         if reference_types is None or not row_blocks:
             return PopulationFeatureMatrix(reference_types or [], np.empty((0, 0)), [])
 
         matrix = np.vstack(row_blocks)
         return PopulationFeatureMatrix(reference_types, matrix, labels)
+
+    def collect_per_record_coverage(self, basis: SampleBasis) -> PerRecordCoverageMatrix:
+        """
+        Build a record-by-feature matrix of valid-sample fractions.
+
+        Each row summarizes one ``features_*.h5`` file; each column is a
+        feature type aligned across the population. Fractions are computed over
+        usable sample rows only (tensor padding excluded).
+        """
+        reference_types: Optional[List[FeatureType]] = None
+        row_fractions: List[np.ndarray] = []
+        feature_ids: List[str] = []
+        participant_ids: List[str] = []
+        class_labels: List[str] = []
+        usable_counts: List[int] = []
+
+        for feature_id in self.list_feature_ids():
+            record = self.load_features(feature_id)
+            bout = record.get_features_by_basis(basis)
+            record_types = list(bout.feature_names)
+            if reference_types is None:
+                reference_types = record_types
+
+            user = self.db_manager.load_user(record.feature_metadata.user_identifier)
+            participant = record.feature_metadata.user_identifier.value
+            class_label = user.clinical_demographic_data.faller_status.value
+
+            aligned, usable = self._align_bout_per_sample(
+                bout=bout,
+                record_types=record_types,
+                reference_types=reference_types or record_types,
+            )
+            usable_count = int(np.sum(usable)) if usable.size else 0
+            usable_counts.append(usable_count)
+
+            if usable_count == 0 or not reference_types:
+                fractions = np.full(len(reference_types or record_types), np.nan)
+            else:
+                populated = aligned[usable]
+                fractions = np.array(
+                    [
+                        float(np.isfinite(populated[:, col]).mean())
+                        for col in range(populated.shape[1])
+                    ],
+                    dtype=float,
+                )
+
+            row_fractions.append(fractions)
+            feature_ids.append(feature_id.value)
+            participant_ids.append(participant)
+            class_labels.append(class_label)
+
+        if reference_types is None:
+            return PerRecordCoverageMatrix([], np.empty((0, 0)), [], [], [], [])
+
+        matrix = np.vstack(row_fractions) if row_fractions else np.empty((0, len(reference_types)))
+        return PerRecordCoverageMatrix(
+            feature_types=reference_types,
+            matrix=matrix,
+            feature_ids=feature_ids,
+            participant_ids=participant_ids,
+            class_labels=class_labels,
+            usable_sample_counts=usable_counts,
+        )
 
     def collect_sample_counts_by_basis_class(
         self,
@@ -185,17 +279,9 @@ class VisualizationDataService:
 
             for basis in (SampleBasis.EPOCH, SampleBasis.STRIDE):
                 bout = record.get_features_by_basis(basis)
-                features = np.asarray(bout.features, dtype=float)
                 # Ensure the participant is registered even with zero usable samples.
                 per_basis_counts[basis].setdefault(participant, 0)
-                if features.size == 0:
-                    continue
-                num_bouts, num_feature_types, num_samples = features.shape
-                per_sample = np.transpose(features, (0, 2, 1)).reshape(
-                    num_bouts * num_samples, num_feature_types
-                )
-                valid = int(np.sum(~np.all(np.isnan(per_sample), axis=1)))
-                per_basis_counts[basis][participant] += valid
+                per_basis_counts[basis][participant] += bout.usable_sample_count
 
         result: Dict[str, Dict[str, np.ndarray]] = {}
         for basis in (SampleBasis.EPOCH, SampleBasis.STRIDE):
@@ -281,3 +367,24 @@ class VisualizationDataService:
         orchestrator = GaitFeatureDatasetOrchestrator(db_manager=self.db_manager)
         deleted_count, _ = orchestrator.rollback_last_run_features()
         return deleted_count
+
+    @staticmethod
+    def _align_bout_per_sample(
+        bout: BoutFeatures,
+        record_types: List[Union[FeatureType, StrideFeatureName]],
+        reference_types: List[Union[FeatureType, StrideFeatureName]],
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        features = np.asarray(bout.features, dtype=float)
+        if features.size == 0:
+            width = len(reference_types)
+            empty = np.empty((0, width), dtype=float)
+            return empty, np.empty(0, dtype=bool)
+
+        per_sample = flatten_bout_features(features)
+        aligned = np.full((per_sample.shape[0], len(reference_types)), np.nan)
+        index_by_type = {ftype: idx for idx, ftype in enumerate(record_types)}
+        for col, ftype in enumerate(reference_types):
+            source_index = index_by_type.get(ftype)
+            if source_index is not None:
+                aligned[:, col] = per_sample[:, source_index]
+        return aligned, usable_sample_mask(aligned)

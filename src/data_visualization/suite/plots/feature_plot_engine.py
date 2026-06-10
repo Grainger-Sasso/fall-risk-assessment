@@ -1,11 +1,14 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from matplotlib.figure import Figure
 
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
+from src.data_visualization.suite.services.visualization_data_service import (
+    PerRecordCoverageMatrix,
+)
 
 
 @dataclass
@@ -169,7 +172,7 @@ class FeaturePlotEngine:
         feature_types: List[FeatureType],
         basis: SampleBasis,
     ) -> Dict[FeatureType, Dict[str, float]]:
-        """Render the fraction of valid (non-NaN) samples per feature."""
+        """Render the fraction of finite values per feature among usable samples."""
         self.figure.clear()
         ax = self.figure.add_subplot(111)
         coverage = self.compute_feature_coverage(
@@ -196,11 +199,118 @@ class FeaturePlotEngine:
         ax.set_yticklabels(names, fontsize=6)
         ax.invert_yaxis()
         ax.set_xlim(0.0, 1.0)
-        ax.set_xlabel("Valid sample fraction")
-        ax.set_title(f"Feature coverage ({basis.value})")
+        ax.set_xlabel("Finite value fraction (usable samples only)")
+        ax.set_title(f"Feature coverage among populated samples ({basis.value})")
         ax.grid(alpha=0.2, axis="x")
         self.figure.tight_layout()
         return coverage
+
+    def render_per_record_missingness_heatmap(
+        self,
+        coverage: PerRecordCoverageMatrix,
+        basis: SampleBasis,
+        sort_by: str = "worst_first",
+        row_label_mode: str = "participant",
+    ) -> Dict[str, Union[int, float, List[str]]]:
+        """
+        Heatmap of valid-sample fraction per feature file (row) and feature type
+        (column). Helps spot which ``features_*.h5`` files carry missing data.
+        """
+        self.figure.clear()
+
+        if coverage.is_empty:
+            ax = self.figure.add_subplot(111)
+            ax.text(0.5, 0.5, "No feature records available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        matrix, row_labels, order = self._order_per_record_coverage(
+            coverage, sort_by=sort_by, row_label_mode=row_label_mode
+        )
+        feature_labels = [feature_type.value for feature_type in coverage.feature_types]
+
+        ax_heat = self.figure.add_subplot(111)
+        image = ax_heat.imshow(
+            np.ma.masked_invalid(matrix),
+            aspect="auto",
+            vmin=0.0,
+            vmax=1.0,
+            cmap="RdYlGn",
+            interpolation="nearest",
+        )
+        ax_heat.set_xticks(range(len(feature_labels)))
+        ax_heat.set_xticklabels(feature_labels, rotation=90, fontsize=6)
+        ax_heat.set_yticks(range(len(row_labels)))
+        ax_heat.set_yticklabels(row_labels, fontsize=7)
+        ax_heat.set_xlabel("Feature type")
+        ax_heat.set_ylabel("Feature record")
+        ax_heat.set_title(
+            f"Per-record feature coverage among populated samples ({basis.value})"
+        )
+        colorbar = self.figure.colorbar(image, ax=ax_heat, fraction=0.02, pad=0.02)
+        colorbar.set_label("Finite value fraction")
+
+        self.figure.tight_layout()
+        return self._summarize_per_record_coverage(coverage, order)
+
+    @staticmethod
+    def _order_per_record_coverage(
+        coverage: PerRecordCoverageMatrix,
+        sort_by: str,
+        row_label_mode: str,
+    ) -> Tuple[np.ndarray, List[str], List[int]]:
+        indices = list(range(coverage.n_records))
+        if sort_by == "worst_first":
+            mean_coverage = np.nanmean(coverage.matrix, axis=1)
+            indices.sort(key=lambda idx: (mean_coverage[idx], coverage.participant_ids[idx]))
+        elif sort_by == "participant":
+            indices.sort(key=lambda idx: coverage.participant_ids[idx].lower())
+        elif sort_by == "feature_id":
+            indices.sort(key=lambda idx: coverage.feature_ids[idx].lower())
+        else:
+            raise ValueError(f"Unsupported sort_by '{sort_by}'")
+
+        matrix = coverage.matrix[indices, :]
+        if row_label_mode == "participant":
+            row_labels = [coverage.participant_ids[idx] for idx in indices]
+        elif row_label_mode == "feature_id":
+            row_labels = [coverage.feature_ids[idx] for idx in indices]
+        else:
+            raise ValueError(f"Unsupported row_label_mode '{row_label_mode}'")
+        return matrix, row_labels, indices
+
+    @staticmethod
+    def _summarize_per_record_coverage(
+        coverage: PerRecordCoverageMatrix,
+        order: List[int],
+    ) -> Dict[str, Union[int, float, List[str]]]:
+        mean_per_record = np.nanmean(coverage.matrix, axis=1)
+        records_with_gaps = int(np.sum(mean_per_record < 1.0))
+        records_with_empty_features = int(
+            np.sum(np.any(coverage.matrix == 0.0, axis=1))
+        )
+        worst_indices = sorted(
+            order,
+            key=lambda idx: (mean_per_record[idx], coverage.participant_ids[idx]),
+        )[:5]
+        worst_records = [
+            (
+                f"{coverage.participant_ids[idx]} "
+                f"(mean={mean_per_record[idx]:.2f}, id={coverage.feature_ids[idx]})"
+            )
+            for idx in worst_indices
+            if mean_per_record[idx] < 1.0
+        ]
+        total_usable = int(np.sum(coverage.usable_sample_counts)) if coverage.usable_sample_counts else 0
+        return {
+            "n_records": coverage.n_records,
+            "n_feature_types": len(coverage.feature_types),
+            "total_usable_samples": total_usable,
+            "records_with_any_missing": records_with_gaps,
+            "records_with_fully_missing_feature": records_with_empty_features,
+            "worst_records": worst_records,
+        }
 
     def render_sample_count_by_basis_class(
         self,
@@ -336,7 +446,7 @@ class FeaturePlotEngine:
         row_class_labels: List[str],
         feature_types: List[FeatureType],
     ) -> Dict[FeatureType, Dict[str, float]]:
-        """Per-feature valid-sample counts and fractions (overall and per class)."""
+        """Per-feature finite-value counts and fractions among usable sample rows."""
         if feature_matrix.ndim != 2 or feature_matrix.shape[1] == 0:
             return {}
         total_rows = feature_matrix.shape[0]
