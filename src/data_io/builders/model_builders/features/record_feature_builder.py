@@ -4,7 +4,7 @@ from src.data_io.model_fields.features.feature_fields import FeatureFields
 from src.data_model.features.bout_features import BoutFeatures
 from src.data_model.features.metadata.feature_metadata import FeatureMetadata
 from src.data_model.features.record_features import RecordFeatures
-from src.data_types.feature.feature_type import FeatureType
+from src.data_types.feature.stride_feature_name import parse_stride_feature_name
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
@@ -13,7 +13,7 @@ from src.identifiers.user.user_identifier import UserIdentifier
 import numpy as np
 
 class RecordFeatureBuilder(ModelBuilder):
-    version: str = "1.0"
+    version: str = "1.1"
 
     def build(self, input_file: HDF5Group) -> RecordFeatures:
         if not isinstance(input_file, HDF5Group):
@@ -61,6 +61,19 @@ class RecordFeatureBuilder(ModelBuilder):
             feature_identifier=feature_id,
             user_identifier=user_id,
             imu_data_identifier=imu_id,
+            extraction_backend=self._optional_attr(
+                attrs, FeatureFields.EXTRACTION_BACKEND, "skdh"
+            ),
+            stride_feature_catalog=self._optional_attr(
+                attrs, FeatureFields.STRIDE_FEATURE_CATALOG, "skdh"
+            ),
+            extraction_profile=self._optional_attr(
+                attrs, FeatureFields.EXTRACTION_PROFILE, "free_living"
+            ),
+            extraction_library_version=self._optional_attr(
+                attrs, FeatureFields.EXTRACTION_LIBRARY_VERSION, ""
+            ),
+            extracted_at_utc=self._optional_attr(attrs, FeatureFields.EXTRACTED_AT_UTC, ""),
         )
 
     def _build_basis_features(
@@ -91,10 +104,10 @@ class RecordFeatureBuilder(ModelBuilder):
         feature_names = []
         for feature_name in self._to_str_list(feature_names_raw):
             try:
-                feature_names.append(FeatureType(feature_name))
+                feature_names.append(parse_stride_feature_name(feature_name))
             except ValueError as exc:
                 raise ValueError(
-                    f"'{feature_name}' is not a valid member of {FeatureType.__name__}."
+                    f"'{feature_name}' is not a recognized stride feature name."
                 ) from exc
 
         return BoutFeatures(
@@ -132,3 +145,8 @@ class RecordFeatureBuilder(ModelBuilder):
         for value in values:
             output.append(self._to_str(value))
         return output
+
+    def _optional_attr(self, attrs: dict, field, default: str) -> str:
+        if field.value not in attrs:
+            return default
+        return self._to_str(attrs[field.value])

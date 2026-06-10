@@ -24,11 +24,16 @@ from src.database_manager.data_access.domain_io_router import DomainIORouter
 from src.database_manager.database_manager import DatabaseManager
 from src.database_manager.metadata.metadata_repository import MetadataRepository
 from src.database_manager.metadata.sqlite_store import SQLiteStore
-from src.gait_features.gait_feature_module import (
-    GaitFeatureExtractor,
-    RecordFeatureGenerationBuilder,
-    StrideFeatureGenerationError,
+from src.gait_features.backends.base import GaitExtractionBackend
+from src.gait_features.build_extraction_pipeline import build_extraction_pipeline
+from src.gait_features.config.extraction_backend import GaitExtractionBackendId
+from src.gait_features.config.extraction_profile import ExtractionProfile
+from src.gait_features.diagnosis.stride_failure import StrideFeatureGenerationError
+from src.gait_features.processing.backend_requirements import (
+    BackendRequirementsError,
+    validate_extraction_requirements,
 )
+from src.gait_features.processing.record_feature_builder import RecordFeatureBuilder
 from src.identifiers.feature.feature_identifier import FeatureIdentifier
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 
@@ -45,6 +50,8 @@ class FeatureGenerationRunSummary:
     stride_failure_imu_ids: List[IMUDataIdentifier] = field(default_factory=list)
     rollback_performed: bool = False
     rolled_back_feature_ids: List[FeatureIdentifier] = field(default_factory=list)
+    extraction_backend: str = GaitExtractionBackendId.SKDH.value
+    extraction_profile: str = ExtractionProfile.FREE_LIVING.value
 
     @property
     def succeeded_count(self) -> int:
@@ -60,27 +67,50 @@ class GaitFeatureDatasetOrchestrator:
     Orchestrates feature extraction for IMU datasets indexed in DatabaseManager.
 
     Flow per IMU:
-      load IMU/user/spec -> SKDH extraction -> RecordFeatures build -> save_features
+      load IMU/user/spec -> backend extraction -> RecordFeatures build -> save_features
     """
 
     def __init__(
         self,
         db_manager: DatabaseManager,
         treadmill_profile: bool = False,
-        extractor: Optional[GaitFeatureExtractor] = None,
-        record_feature_builder: Optional[RecordFeatureGenerationBuilder] = None,
+        extraction_backend: GaitExtractionBackendId = GaitExtractionBackendId.SKDH,
+        extraction_profile: Optional[ExtractionProfile] = None,
+        extractor: Optional[GaitExtractionBackend] = None,
+        record_feature_builder: Optional[RecordFeatureBuilder] = None,
         epoch_window_seconds: float = 8.0,
         epoch_overlap_seconds: float = 2.0,
     ):
         self.db_manager = db_manager
         self.treadmill_profile = treadmill_profile
-        self.extractor = extractor or GaitFeatureExtractor(
-            treadmill_profile=treadmill_profile
+        self.extraction_backend = extraction_backend
+        self.extraction_profile = extraction_profile or self._resolve_profile(
+            extraction_backend=extraction_backend,
+            treadmill_profile=treadmill_profile,
         )
-        self.record_feature_builder = record_feature_builder or RecordFeatureGenerationBuilder(
-            window_seconds=epoch_window_seconds,
-            overlap_seconds=epoch_overlap_seconds,
-        )
+        if extractor is not None and record_feature_builder is not None:
+            self.extractor = extractor
+            self.record_feature_builder = record_feature_builder
+        else:
+            self.extractor, self.record_feature_builder = build_extraction_pipeline(
+                backend=self.extraction_backend,
+                profile=self.extraction_profile,
+                epoch_window_seconds=epoch_window_seconds,
+                epoch_overlap_seconds=epoch_overlap_seconds,
+            )
+            if extractor is not None:
+                self.extractor = extractor
+            if record_feature_builder is not None:
+                self.record_feature_builder = record_feature_builder
+
+    @staticmethod
+    def _resolve_profile(
+        extraction_backend: GaitExtractionBackendId,
+        treadmill_profile: bool,
+    ) -> ExtractionProfile:
+        if extraction_backend == GaitExtractionBackendId.MOBGAP:
+            return ExtractionProfile.MOBGAP_HEALTHY
+        return ExtractionProfile.from_treadmill_flag(treadmill_profile)
 
     def generate_for_all_imu(
         self,
@@ -102,6 +132,8 @@ class GaitFeatureDatasetOrchestrator:
         summary = FeatureGenerationRunSummary(
             status="running",
             attempted_imu_ids=list(imu_ids),
+            extraction_backend=self.extraction_backend.value,
+            extraction_profile=self.extraction_profile.value,
         )
         total = len(imu_ids)
         for index, imu_id in enumerate(imu_ids, start=1):
@@ -115,6 +147,19 @@ class GaitFeatureDatasetOrchestrator:
                     f"[{index}/{total}] Completed IMU '{imu_id.value}' -> "
                     f"feature '{feature_id.value}'."
                 )
+            except BackendRequirementsError as exc:
+                print(
+                    f"[{index}/{total}] [BACKEND-REQUIREMENTS] IMU '{imu_id.value}': {exc}"
+                )
+                summary.failed_imu_ids.append(imu_id)
+                summary.errors_by_imu_id[imu_id.value] = str(exc)
+                if not continue_on_error:
+                    summary.status = "failed"
+                    self._persist_last_run_summary(summary)
+                    raise RuntimeError(
+                        f"Feature generation failed for IMU '{imu_id.value}': {exc}"
+                    ) from exc
+                continue
             except StrideFeatureGenerationError as exc:
                 diagnosis = getattr(exc, "diagnosis", {})
                 print(
@@ -216,6 +261,8 @@ class GaitFeatureDatasetOrchestrator:
             "rolled_back_feature_ids": [
                 item.value for item in summary.rolled_back_feature_ids
             ],
+            "extraction_backend": summary.extraction_backend,
+            "extraction_profile": summary.extraction_profile,
         }
         self._write_last_run_summary(payload)
 
@@ -246,16 +293,21 @@ class GaitFeatureDatasetOrchestrator:
         if spec_id is not None:
             spec = self.db_manager.load_instrument_spec(spec_id)
 
-        gait_results = self.extractor.extract_gait_features(
+        validate_extraction_requirements(
+            imu_data=imu_data,
+            backend=self.extraction_backend,
+        )
+
+        extraction_result = self.extractor.extract(
             imu_data=imu_data,
             user_data=user_data,
             instrument_specifications=spec,
+            profile=self.extraction_profile,
         )
-        record_features = self.record_feature_builder.build(
-            gait_results=gait_results,
+        record_features = self.record_feature_builder.build_from_extraction(
+            extraction_result=extraction_result,
             imu_data=imu_data,
             user_data=user_data,
-            treadmill_profile=self.treadmill_profile,
         )
         self.db_manager.save_features(record_features)
         return record_features.feature_metadata.feature_identifier
@@ -288,6 +340,24 @@ def _parse_imu_ids(raw_value: str) -> List[IMUDataIdentifier]:
     return [IMUDataIdentifier(value) for value in entries]
 
 
+def _parse_extraction_backend(raw_value: str) -> GaitExtractionBackendId:
+    normalized = raw_value.strip().lower()
+    for backend in GaitExtractionBackendId:
+        if backend.value == normalized:
+            return backend
+    valid = ", ".join(item.value for item in GaitExtractionBackendId)
+    raise ValueError(f"Unsupported extraction backend '{raw_value}'. Expected one of: {valid}.")
+
+
+def _parse_extraction_profile(raw_value: str) -> ExtractionProfile:
+    normalized = raw_value.strip().lower()
+    for profile in ExtractionProfile:
+        if profile.value == normalized:
+            return profile
+    valid = ", ".join(item.value for item in ExtractionProfile)
+    raise ValueError(f"Unsupported extraction profile '{raw_value}'. Expected one of: {valid}.")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate gait RecordFeatures from IMU/User data indexed in SQLite."
@@ -300,9 +370,24 @@ def parse_args() -> argparse.Namespace:
         help="Optional comma-separated IMU IDs to process. Empty means all indexed IMUs.",
     )
     parser.add_argument(
+        "--extraction-backend",
+        type=str,
+        default=GaitExtractionBackendId.SKDH.value,
+        help="Gait extraction backend: skdh or mobgap.",
+    )
+    parser.add_argument(
+        "--extraction-profile",
+        type=str,
+        default="",
+        help=(
+            "Extraction profile (free_living, treadmill, mobgap_healthy). "
+            "Defaults from backend/treadmill flags when omitted."
+        ),
+    )
+    parser.add_argument(
         "--treadmill-profile",
         action="store_true",
-        help="Use treadmill SKDH profile for extraction.",
+        help="Use treadmill SKDH profile for extraction (alias for --extraction-profile treadmill).",
     )
     parser.add_argument(
         "--epoch-window-seconds",
@@ -348,9 +433,19 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     db_manager = build_database_manager_from_sqlite(args.sqlite_db_path)
+    extraction_backend = _parse_extraction_backend(args.extraction_backend)
+    if args.extraction_profile.strip():
+        extraction_profile = _parse_extraction_profile(args.extraction_profile)
+    elif args.treadmill_profile:
+        extraction_profile = ExtractionProfile.TREADMILL
+    else:
+        extraction_profile = None
+
     orchestrator = GaitFeatureDatasetOrchestrator(
         db_manager=db_manager,
         treadmill_profile=args.treadmill_profile,
+        extraction_backend=extraction_backend,
+        extraction_profile=extraction_profile,
         epoch_window_seconds=args.epoch_window_seconds,
         epoch_overlap_seconds=args.epoch_overlap_seconds,
     )
@@ -384,6 +479,8 @@ def main() -> None:
         )
 
     print(f"Run status: {summary.status}")
+    print(f"Extraction backend: {summary.extraction_backend}")
+    print(f"Extraction profile: {summary.extraction_profile}")
     print(f"Generated features: {len(summary.generated_feature_ids)}")
     if summary.generated_feature_ids:
         print("Generated feature IDs:")

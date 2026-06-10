@@ -12,3 +12,8 @@ class FeatureMetadata:
     feature_identifier: FeatureIdentifier
     user_identifier: UserIdentifier
     imu_data_identifier: IMUDataIdentifier
+    extraction_backend: str = "skdh"
+    stride_feature_catalog: str = "skdh"
+    extraction_profile: str = "free_living"
+    extraction_library_version: str = ""
+    extracted_at_utc: str = ""

@@ -15,7 +15,7 @@ from src.data_types.sample_basis.sample_basis import SampleBasis
 class RecordFeatureFileBuilder(FileBuilder):
     """Builds HDF5 file format from RecordFeatures model objects."""
 
-    version: str = "1.0"
+    version: str = "1.1"
 
     def build(self, data: RecordFeatures) -> HDF5Group:
         if not isinstance(data, RecordFeatures):
@@ -88,6 +88,11 @@ class RecordFeatureFileBuilder(FileBuilder):
             FeatureFields.USER_DATA_IDENTIFIER.value: metadata.user_identifier.value,
             FeatureFields.IMU_DATA_IDENTIFIER.value: metadata.imu_data_identifier.value,
             FeatureFields.VERSION.value: self.version,
+            FeatureFields.EXTRACTION_BACKEND.value: metadata.extraction_backend,
+            FeatureFields.STRIDE_FEATURE_CATALOG.value: metadata.stride_feature_catalog,
+            FeatureFields.EXTRACTION_PROFILE.value: metadata.extraction_profile,
+            FeatureFields.EXTRACTION_LIBRARY_VERSION.value: metadata.extraction_library_version,
+            FeatureFields.EXTRACTED_AT_UTC.value: metadata.extracted_at_utc,
         }
 
     def _serialize_ndarray(self, value: np.ndarray) -> Any:

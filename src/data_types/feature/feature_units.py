@@ -1,6 +1,9 @@
 from typing import Dict
 
 from src.data_types.feature.feature_type import FeatureType
+from src.data_types.feature.mobgap_feature_type import MobgapFeatureType
+from src.data_types.feature.mobgap_feature_units import get_mobgap_feature_unit
+from src.data_types.feature.stride_feature_name import StrideFeatureName
 
 
 STRIDE_DEFAULT_UNIT_MAP: Dict[FeatureType, str] = {
@@ -71,3 +74,9 @@ def get_feature_unit(feature_type: FeatureType) -> str:
     if feature_type in EPOCH_DEFAULT_UNIT_MAP:
         return EPOCH_DEFAULT_UNIT_MAP[feature_type]
     return "a.u."
+
+
+def get_stride_feature_unit(feature_name: StrideFeatureName) -> str:
+    if isinstance(feature_name, MobgapFeatureType):
+        return get_mobgap_feature_unit(feature_name)
+    return get_feature_unit(feature_name)

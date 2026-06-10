@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
 from src.data_types.feature.feature_type import FeatureType
+from src.data_types.feature.mobgap_feature_type import MobgapFeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
 
 
@@ -22,7 +23,7 @@ class BoutFeatures:
     features: np.ndarray
     bout_starts: np.ndarray
     bout_ends: np.ndarray
-    feature_names: List[FeatureType]
+    feature_names: List[Union[FeatureType, MobgapFeatureType]]
     sample_starts: np.ndarray
     sample_ends: np.ndarray
     units: List[str]

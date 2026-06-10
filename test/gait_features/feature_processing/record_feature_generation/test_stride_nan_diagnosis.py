@@ -126,7 +126,7 @@ class TestStrideNaNDiagnosis(unittest.TestCase):
             stride_features=stride_features,
             stride_feature_types=mapper.feature_types,
         )
-        self.assertEqual(report["stage"], "skdh_missing_all_stride_keys")
+        self.assertEqual(report["stage"], "missing_stride_features")
         self.assertEqual(len(report["present_stride_keys"]), 0)
         self.assertTrue(report["tensor_all_nan"])
 
@@ -174,7 +174,7 @@ class TestStrideNaNDiagnosis(unittest.TestCase):
                 user_data=_make_user_data(),
                 treadmill_profile=True,
             )
-        self.assertEqual(ctx.exception.diagnosis["stage"], "skdh_missing_all_stride_keys")
+        self.assertEqual(ctx.exception.diagnosis["stage"], "missing_stride_features")
 
 
 if __name__ == "__main__":

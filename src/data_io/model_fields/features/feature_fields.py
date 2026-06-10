@@ -18,3 +18,8 @@ class FeatureFields(Enum):
     IMU_DATA_IDENTIFIER = "imu_data_identifier"
     USER_DATA_IDENTIFIER = "user_data_identifier"
     VERSION = "version"
+    EXTRACTION_BACKEND = "extraction_backend"
+    STRIDE_FEATURE_CATALOG = "stride_feature_catalog"
+    EXTRACTION_PROFILE = "extraction_profile"
+    EXTRACTION_LIBRARY_VERSION = "extraction_library_version"
+    EXTRACTED_AT_UTC = "extracted_at_utc"

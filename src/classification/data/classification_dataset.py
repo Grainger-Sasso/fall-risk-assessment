@@ -4,6 +4,7 @@ from typing import Dict, List
 import numpy as np
 
 from src.data_types.feature.feature_type import FeatureType
+from src.data_types.feature.stride_feature_name import StrideFeatureName
 from src.data_types.sample_basis.sample_basis import SampleBasis
 
 
@@ -22,7 +23,7 @@ class BasisSampleDataset:
     X: np.ndarray
     y: np.ndarray
     groups: np.ndarray
-    feature_names: List[FeatureType] = field(default_factory=list)
+    feature_names: List[StrideFeatureName] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.X = np.asarray(self.X, dtype=float)
@@ -67,7 +68,7 @@ class BasisParticipantDataset:
     X: np.ndarray
     y: np.ndarray
     participant_ids: List[str]
-    feature_names: List[FeatureType] = field(default_factory=list)
+    feature_names: List[StrideFeatureName] = field(default_factory=list)
     aggregation: str = "mean"
 
     def __post_init__(self) -> None:
@@ -100,7 +101,7 @@ class EarlyFusionParticipantDataset:
     X: np.ndarray
     y: np.ndarray
     participant_ids: List[str]
-    stride_feature_names: List[FeatureType] = field(default_factory=list)
+    stride_feature_names: List[StrideFeatureName] = field(default_factory=list)
     epoch_feature_names: List[FeatureType] = field(default_factory=list)
     aggregation: str = "mean"
 

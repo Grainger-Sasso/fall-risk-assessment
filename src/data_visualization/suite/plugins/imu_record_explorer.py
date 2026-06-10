@@ -79,6 +79,9 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         self.end_spin.setMinimum(1)
         self.end_spin.valueChanged.connect(self._on_window_changed)
 
+        self.load_render_button = QPushButton("Load & Render", panel)
+        self.load_render_button.clicked.connect(self._load_and_render)
+
         apply_button = QPushButton("Apply Window", panel)
         apply_button.clicked.connect(self._render_current)
 
@@ -106,6 +109,7 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         layout.addWidget(self.search_box)
         layout.addLayout(form)
         layout.addLayout(axis_row)
+        layout.addWidget(self.load_render_button)
         layout.addWidget(apply_button)
         layout.addSpacing(12)
         layout.addWidget(QLabel("Metadata", panel))
@@ -117,10 +121,14 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         if self._context is None:
             return
         self._imu_ids = sorted(self._context.data_service.list_imu_ids(), key=lambda item: item.value)
+        self.imu_selector.blockSignals(True)
         self.imu_selector.clear()
         self.imu_selector.addItems([item.value for item in self._imu_ids])
-        if self._imu_ids:
-            self._select_imu(self._imu_ids[0])
+        self.imu_selector.blockSignals(False)
+        self._loaded_sensor_data = None
+        self._loaded_imu_id = None
+        self._clear_metadata()
+        self._render_empty("Select an IMU record and click Load & Render")
 
     def _filter_imu_ids(self, text: str) -> None:
         filtered = [
@@ -130,18 +138,39 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         self.imu_selector.clear()
         self.imu_selector.addItems([item.value for item in filtered])
         self.imu_selector.blockSignals(False)
-        if filtered:
-            self._select_imu(filtered[0])
-        else:
+        if not filtered:
             self._loaded_sensor_data = None
             self._loaded_imu_id = None
+            self._clear_metadata()
             self._render_empty("No records match filter")
+            return
+        if self._loaded_imu_id is not None:
+            selected_text = self.imu_selector.currentText().strip()
+            if selected_text and IMUDataIdentifier(selected_text) != self._loaded_imu_id:
+                self._loaded_sensor_data = None
+                self._loaded_imu_id = None
+                self._clear_metadata()
+                self._render_empty(
+                    "Selection changed. Click Load & Render to load this record."
+                )
 
     def _on_imu_selection_changed(self, index: int) -> None:
         if index < 0:
             return
         selected_text = self.imu_selector.currentText().strip()
         if not selected_text:
+            return
+        selected_id = IMUDataIdentifier(selected_text)
+        if self._loaded_imu_id is not None and selected_id != self._loaded_imu_id:
+            self._loaded_sensor_data = None
+            self._loaded_imu_id = None
+            self._clear_metadata()
+            self._render_empty("Selection changed. Click Load & Render to load this record.")
+
+    def _load_and_render(self) -> None:
+        selected_text = self.imu_selector.currentText().strip()
+        if not selected_text:
+            self._render_empty("Select an IMU record first")
             return
         self._select_imu(IMUDataIdentifier(selected_text))
 
@@ -171,7 +200,8 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
     def _on_window_changed(self) -> None:
         if self.end_spin.value() <= self.start_spin.value():
             self.end_spin.setValue(self.start_spin.value() + 1)
-        self._render_current()
+        if self._loaded_sensor_data is not None:
+            self._render_current()
 
     def _render_current(self) -> None:
         if self._context is None or self._loaded_sensor_data is None:
@@ -200,6 +230,12 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         axis.set_axis_off()
         self._figure.tight_layout()
         self._canvas.draw_idle()
+
+    def _clear_metadata(self) -> None:
+        self.meta_imu.setText("-")
+        self.meta_user.setText("-")
+        self.meta_instrument.setText("-")
+        self.meta_spec.setText("-")
 
     def _update_metadata(self, imu_id: IMUDataIdentifier, instrument_name: str) -> None:
         if self._context is None:
