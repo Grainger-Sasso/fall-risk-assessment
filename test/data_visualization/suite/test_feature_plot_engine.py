@@ -6,6 +6,12 @@ from matplotlib.figure import Figure
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.data_visualization.suite.plots.feature_plot_engine import FeaturePlotEngine
+from src.data_visualization.suite.services.feature_quality_report import (
+    FeatureLevelMetric,
+    FeatureLevelQualityReport,
+    ParticipantLevelMetric,
+    ParticipantLevelQualityReport,
+)
 from src.data_visualization.suite.services.visualization_data_service import (
     PerRecordCoverageMatrix,
 )
@@ -155,6 +161,110 @@ class TestFeaturePlotEngine(unittest.TestCase):
         self.assertEqual(summary["records_with_any_missing"], 2)
         self.assertEqual(summary["records_with_fully_missing_feature"], 1)
         self.assertTrue(figure.axes)
+
+
+    def test_render_feature_missingness_from_report(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        report = FeatureLevelQualityReport(
+            basis=SampleBasis.EPOCH,
+            feature_types=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+            metrics=[
+                FeatureLevelMetric(
+                    feature_type=FeatureType.GAIT_SPEED,
+                    valid_count=8,
+                    total_usable_samples=10,
+                    valid_fraction=0.8,
+                    missing_fraction=0.2,
+                ),
+                FeatureLevelMetric(
+                    feature_type=FeatureType.CADENCE,
+                    valid_count=10,
+                    total_usable_samples=10,
+                    valid_fraction=1.0,
+                    missing_fraction=0.0,
+                ),
+            ],
+            correlation_matrix=np.eye(2),
+            separation={FeatureType.GAIT_SPEED: -1.2},
+            classes=["faller", "non-faller"],
+            total_usable_samples=10,
+            num_participants=2,
+            num_feature_records=2,
+        )
+
+        missingness = engine.render_feature_missingness(report)
+        self.assertAlmostEqual(missingness[FeatureType.GAIT_SPEED], 0.2)
+        self.assertTrue(figure.axes)
+
+    def test_render_participant_sample_counts(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        report = ParticipantLevelQualityReport(
+            basis=SampleBasis.STRIDE,
+            feature_types=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+            participants=[
+                ParticipantLevelMetric(
+                    participant_id="u1",
+                    class_label="faller",
+                    feature_id="f1",
+                    usable_sample_count=80,
+                    tensor_slot_count=100,
+                    padded_slot_count=20,
+                    mean_coverage=0.9,
+                    per_feature_fractions=np.array([1.0, 0.8]),
+                    count_consistent=True,
+                ),
+                ParticipantLevelMetric(
+                    participant_id="u2",
+                    class_label="non-faller",
+                    feature_id="f2",
+                    usable_sample_count=120,
+                    tensor_slot_count=120,
+                    padded_slot_count=0,
+                    mean_coverage=1.0,
+                    per_feature_fractions=np.array([1.0, 1.0]),
+                    count_consistent=True,
+                ),
+            ],
+            counts_by_class={"faller": np.array([80.0]), "non-faller": np.array([120.0])},
+            inconsistent_count_records=[],
+            num_feature_records=2,
+        )
+
+        counts = engine.render_participant_sample_counts(report, sort_by="count_asc")
+        self.assertEqual(counts["u1"], 80)
+        self.assertEqual(counts["u2"], 120)
+        self.assertTrue(figure.axes)
+
+    def test_render_participant_coverage_heatmap(self):
+        figure = Figure(figsize=(8, 6))
+        engine = FeaturePlotEngine(figure)
+        report = ParticipantLevelQualityReport(
+            basis=SampleBasis.EPOCH,
+            feature_types=[FeatureType.GAIT_SPEED, FeatureType.CADENCE],
+            participants=[
+                ParticipantLevelMetric(
+                    participant_id="u1",
+                    class_label="faller",
+                    feature_id="f1",
+                    usable_sample_count=10,
+                    tensor_slot_count=10,
+                    padded_slot_count=0,
+                    mean_coverage=0.5,
+                    per_feature_fractions=np.array([1.0, 0.0]),
+                    count_consistent=True,
+                )
+            ],
+            counts_by_class={"faller": np.array([10.0])},
+            inconsistent_count_records=[],
+            num_feature_records=1,
+        )
+
+        summary = engine.render_participant_coverage_heatmap(report)
+        self.assertEqual(summary["n_participants"], 1)
+        self.assertEqual(summary["total_usable_samples"], 10)
+        self.assertEqual(summary["participants_with_any_missing"], 1)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,11 @@ from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.data_visualization.suite.app.bootstrap import build_visualization_data_service
 from src.data_visualization.suite.plots.feature_plot_engine import FeaturePlotEngine
+from src.data_visualization.suite.services.feature_quality_report import (
+    FeatureQualityReportBuilder,
+    feature_level_summary_text,
+    participant_level_summary_text,
+)
 
 matplotlib.use("Agg")
 
@@ -37,58 +42,70 @@ def _timestamped_path(
     return base_path.with_name(f"{base_path.stem}_{basis.value}_{timestamp}{suffix}")
 
 
-def _render_cover_page(
-    pdf: PdfPages,
-    basis: SampleBasis,
-    generated_at: datetime,
-    num_feature_records: int,
-    num_feature_types: int,
-) -> None:
+def _render_text_page(pdf: PdfPages, title: str, body: str) -> None:
     figure = Figure(figsize=(11, 8.5))
     axis = figure.add_subplot(111)
     axis.set_axis_off()
-    lines = [
-        "Feature Population Report",
-        "",
-        f"Sample basis: {basis.value}",
-        f"Generated: {generated_at.strftime('%Y-%m-%d %H:%M:%S')}",
-        f"Feature records: {num_feature_records}",
-        f"Feature types: {num_feature_types}",
-    ]
     axis.text(
-        0.5,
-        0.6,
-        "\n".join(lines),
-        ha="center",
-        va="center",
-        fontsize=16,
-        linespacing=1.8,
+        0.05,
+        0.95,
+        f"{title}\n\n{body}",
+        ha="left",
+        va="top",
+        fontsize=11,
+        linespacing=1.5,
+        family="monospace",
     )
     figure.tight_layout()
     pdf.savefig(figure)
 
 
-def _write_summary_csv(
+def _write_feature_level_csv(
     summary_path: Path,
-    summary_rows: List[Dict[str, str]],
+    rows: List[Dict[str, str]],
 ) -> None:
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     with summary_path.open("w", newline="", encoding="utf-8") as file:
         writer = csv.DictWriter(
             file,
             fieldnames=[
+                "report_level",
                 "feature_type",
                 "basis",
-                "class_label",
-                "count",
-                "mean",
-                "median",
-                "std",
-                "iqr",
+                "valid_count",
+                "total_usable_samples",
+                "valid_fraction",
+                "missing_fraction",
+                "cohens_d",
             ],
         )
         writer.writeheader()
-        writer.writerows(summary_rows)
+        writer.writerows(rows)
+
+
+def _write_participant_level_csv(
+    summary_path: Path,
+    rows: List[Dict[str, str]],
+) -> None:
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    with summary_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "report_level",
+                "participant_id",
+                "class_label",
+                "feature_id",
+                "basis",
+                "usable_sample_count",
+                "tensor_slot_count",
+                "padded_slot_count",
+                "mean_coverage",
+                "count_consistent",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def generate_feature_report(
@@ -98,6 +115,7 @@ def generate_feature_report(
     feature_type_filter: str = "",
     max_features: int = 0,
     summary_csv: Optional[Path] = None,
+    include_participant_level: bool = True,
 ) -> Tuple[Path, Path]:
     data_service = build_visualization_data_service(sqlite_db_path)
     feature_ids = data_service.list_feature_ids()
@@ -108,8 +126,6 @@ def generate_feature_report(
     target_feature_types = _resolve_feature_types(feature_type_filter, available_feature_types)
     if max_features > 0:
         target_feature_types = target_feature_types[:max_features]
-    if not target_feature_types:
-        raise ValueError("No matching feature types found for report generation.")
 
     generated_at = datetime.now()
     resolved_pdf = _timestamped_path(output_pdf, basis, generated_at, ".pdf")
@@ -120,78 +136,119 @@ def generate_feature_report(
     )
     resolved_pdf.parent.mkdir(parents=True, exist_ok=True)
 
-    population = data_service.collect_population_feature_matrix(basis, target_feature_types)
+    builder = FeatureQualityReportBuilder(data_service)
+    feature_report = builder.build_feature_level(basis)
+    if target_feature_types:
+        allowed = {item for item in target_feature_types}
+        feature_report.metrics = [
+            metric for metric in feature_report.metrics if metric.feature_type in allowed
+        ]
+        feature_report.feature_types = [
+            item for item in feature_report.feature_types if item in allowed
+        ]
 
-    summary_rows: List[Dict[str, str]] = []
+    participant_report = (
+        builder.build_participant_level(basis) if include_participant_level else None
+    )
+
+    feature_rows: List[Dict[str, str]] = []
+    participant_rows: List[Dict[str, str]] = []
+
     with PdfPages(resolved_pdf) as pdf:
-        _render_cover_page(
+        _render_text_page(
             pdf,
-            basis=basis,
-            generated_at=generated_at,
-            num_feature_records=len(feature_ids),
-            num_feature_types=len(target_feature_types),
+            title="Feature Quality Report",
+            body=(
+                f"Sample basis: {basis.value}\n"
+                f"Generated: {generated_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"Feature records: {len(feature_ids)}\n"
+                f"Includes participant-level section: {include_participant_level}"
+            ),
         )
 
-        if not population.is_empty:
-            correlation_figure = Figure(figsize=(11, 8.5))
-            FeaturePlotEngine(correlation_figure).render_feature_correlation_heatmap(
-                feature_types=population.feature_types,
-                feature_matrix=population.matrix,
-                basis=basis,
-            )
-            pdf.savefig(correlation_figure)
+        _render_text_page(
+            pdf,
+            title="Feature level summary",
+            body=feature_level_summary_text(feature_report),
+        )
 
-            separation_figure = Figure(figsize=(11, 8.5))
-            FeaturePlotEngine(separation_figure).render_class_separation(
-                feature_matrix=population.matrix,
-                row_class_labels=population.row_class_labels,
-                feature_types=population.feature_types,
-                basis=basis,
-            )
-            pdf.savefig(separation_figure)
+        if not feature_report.is_empty:
+            for render_call in (
+                lambda fig: FeaturePlotEngine(fig).render_feature_missingness(feature_report),
+                lambda fig: FeaturePlotEngine(fig).render_feature_correlation_from_report(
+                    feature_report
+                ),
+                lambda fig: FeaturePlotEngine(fig).render_feature_separability(feature_report),
+            ):
+                figure = Figure(figsize=(11, 8.5))
+                render_call(figure)
+                pdf.savefig(figure)
 
-            coverage_figure = Figure(figsize=(11, 8.5))
-            FeaturePlotEngine(coverage_figure).render_feature_coverage(
-                feature_matrix=population.matrix,
-                row_class_labels=population.row_class_labels,
-                feature_types=population.feature_types,
-                basis=basis,
+        for metric in feature_report.metrics:
+            feature_rows.append(
+                {
+                    "report_level": "feature",
+                    "feature_type": metric.feature_type.value,
+                    "basis": basis.value,
+                    "valid_count": str(metric.valid_count),
+                    "total_usable_samples": str(metric.total_usable_samples),
+                    "valid_fraction": f"{metric.valid_fraction:.6f}",
+                    "missing_fraction": f"{metric.missing_fraction:.6f}",
+                    "cohens_d": (
+                        f"{metric.cohens_d:.6f}" if metric.cohens_d is not None else ""
+                    ),
+                }
             )
-            pdf.savefig(coverage_figure)
 
-        for feature_type in target_feature_types:
-            grouped_values = data_service.collect_feature_values_by_class(
-                basis=basis,
-                feature_type=feature_type,
+        if participant_report is not None:
+            _render_text_page(
+                pdf,
+                title="Participant level summary",
+                body=participant_level_summary_text(participant_report),
             )
-            figure = Figure(figsize=(11, 8.5))
-            plot_engine = FeaturePlotEngine(figure)
-            summary = plot_engine.render_class_violin(
-                grouped_values=grouped_values,
-                feature_type=feature_type,
-                basis=basis,
-            )
-            pdf.savefig(figure)
-            for class_label, stats in summary.items():
-                summary_rows.append(
+            if not participant_report.is_empty:
+                for render_call in (
+                    lambda fig: FeaturePlotEngine(fig).render_participant_sample_counts(
+                        participant_report
+                    ),
+                    lambda fig: FeaturePlotEngine(fig).render_participant_coverage_heatmap(
+                        participant_report
+                    ),
+                ):
+                    figure = Figure(figsize=(11, 8.5))
+                    render_call(figure)
+                    pdf.savefig(figure)
+
+            for metric in participant_report.participants:
+                participant_rows.append(
                     {
-                        "feature_type": feature_type.value,
+                        "report_level": "participant",
+                        "participant_id": metric.participant_id,
+                        "class_label": metric.class_label,
+                        "feature_id": metric.feature_id,
                         "basis": basis.value,
-                        "class_label": class_label,
-                        "count": str(int(stats["count"])),
-                        "mean": f"{stats['mean']:.6f}",
-                        "median": f"{stats['median']:.6f}",
-                        "std": f"{stats['std']:.6f}",
-                        "iqr": f"{stats['iqr']:.6f}",
+                        "usable_sample_count": str(metric.usable_sample_count),
+                        "tensor_slot_count": str(metric.tensor_slot_count),
+                        "padded_slot_count": str(metric.padded_slot_count),
+                        "mean_coverage": f"{metric.mean_coverage:.6f}",
+                        "count_consistent": str(metric.count_consistent),
                     }
                 )
 
-    _write_summary_csv(resolved_csv, summary_rows)
+    _write_feature_level_csv(resolved_csv, feature_rows)
+    if participant_rows:
+        participant_csv = resolved_csv.with_name(
+            f"{resolved_csv.stem}_participants{resolved_csv.suffix}"
+        )
+        _write_participant_level_csv(participant_csv, participant_rows)
+
     return resolved_pdf, resolved_csv
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate class-based feature report PDF")
+    parser = argparse.ArgumentParser(
+        description="Generate feature- and participant-level quality report PDF"
+    )
     parser.add_argument("--sqlite-db-path", type=Path, required=True)
     parser.add_argument("--output-pdf", type=Path, required=True)
     parser.add_argument("--basis", choices=["epoch", "stride"], default="epoch")
@@ -212,9 +269,14 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help=(
-            "Optional path for summary statistics CSV. If omitted, the CSV is "
-            "written to the PDF's parent directory with a matching basis/timestamp name."
+            "Optional path for feature-level summary CSV. Participant rows are "
+            "written alongside with a _participants suffix when enabled."
         ),
+    )
+    parser.add_argument(
+        "--skip-participant-level",
+        action="store_true",
+        help="Omit participant-level pages and CSV from the report.",
     )
     return parser.parse_args()
 
@@ -228,9 +290,10 @@ def main() -> None:
         feature_type_filter=args.feature_types,
         max_features=args.max_features,
         summary_csv=args.summary_csv,
+        include_participant_level=not args.skip_participant_level,
     )
     print(f"Report PDF: {resolved_pdf}")
-    print(f"Summary CSV: {resolved_csv}")
+    print(f"Feature summary CSV: {resolved_csv}")
 
 
 if __name__ == "__main__":

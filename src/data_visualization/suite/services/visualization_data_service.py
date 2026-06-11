@@ -358,6 +358,20 @@ class VisualizationDataService:
         deleted = self.db_manager.cleanup_all_features(delete_payloads=True)
         return len(deleted)
 
+    def build_feature_level_quality_report(self, basis: SampleBasis):
+        from src.data_visualization.suite.services.feature_quality_report import (
+            FeatureQualityReportBuilder,
+        )
+
+        return FeatureQualityReportBuilder(self).build_feature_level(basis)
+
+    def build_participant_level_quality_report(self, basis: SampleBasis):
+        from src.data_visualization.suite.services.feature_quality_report import (
+            FeatureQualityReportBuilder,
+        )
+
+        return FeatureQualityReportBuilder(self).build_participant_level(basis)
+
     def rollback_last_feature_generation_run(self) -> int:
         # Imported lazily to avoid introducing orchestrator imports across the suite.
         from src.gait_features.gait_feature_dataset_orchestrator import (

@@ -6,6 +6,10 @@ from matplotlib.figure import Figure
 
 from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
+from src.data_visualization.suite.services.feature_quality_report import (
+    FeatureLevelQualityReport,
+    ParticipantLevelQualityReport,
+)
 from src.data_visualization.suite.services.visualization_data_service import (
     PerRecordCoverageMatrix,
 )
@@ -164,6 +168,293 @@ class FeaturePlotEngine:
         ax.grid(alpha=0.2, axis="x")
         self.figure.tight_layout()
         return dict(ordered)
+
+    def render_feature_missingness(
+        self,
+        report: FeatureLevelQualityReport,
+        top_n: Optional[int] = None,
+    ) -> Dict[FeatureType, float]:
+        """Bar chart of per-feature missing fraction among usable samples."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        if report.is_empty:
+            ax.text(0.5, 0.5, "No feature values available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        ordered = sorted(report.metrics, key=lambda m: m.missing_fraction, reverse=True)
+        if top_n is not None and top_n > 0:
+            ordered = ordered[:top_n]
+        names = [metric.feature_type.value for metric in ordered]
+        fractions = [metric.missing_fraction for metric in ordered]
+        positions = range(len(ordered))
+        colors = [
+            "#d62728" if fraction >= 0.5 else ("#ff7f0e" if fraction > 0.0 else "#2ca02c")
+            for fraction in fractions
+        ]
+
+        ax.barh(list(positions), fractions, color=colors)
+        ax.set_yticks(list(positions))
+        ax.set_yticklabels(names, fontsize=6)
+        ax.invert_yaxis()
+        ax.set_xlim(0.0, 1.0)
+        ax.set_xlabel("Missing fraction (usable samples only)")
+        ax.set_title(f"Feature missingness ({report.basis.value})")
+        ax.grid(alpha=0.2, axis="x")
+        self.figure.tight_layout()
+        return {metric.feature_type: metric.missing_fraction for metric in ordered}
+
+    def render_feature_separability(
+        self,
+        report: FeatureLevelQualityReport,
+        top_n: Optional[int] = None,
+    ) -> Dict[FeatureType, float]:
+        """Cohen's d bar chart from a feature-level quality report."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        if not report.separation or len(report.classes) != 2:
+            ax.text(
+                0.5,
+                0.5,
+                "Class separability requires exactly two populated classes",
+                ha="center",
+                va="center",
+            )
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        ordered = sorted(report.separation.items(), key=lambda kv: abs(kv[1]), reverse=True)
+        if top_n is not None and top_n > 0:
+            ordered = ordered[:top_n]
+        names = [feature_type.value for feature_type, _ in ordered]
+        values = [value for _, value in ordered]
+        positions = range(len(ordered))
+
+        ax.barh(list(positions), values, color="#4c72b0")
+        ax.set_yticks(list(positions))
+        ax.set_yticklabels(names, fontsize=6)
+        ax.invert_yaxis()
+        ax.axvline(0.0, color="black", linewidth=0.8)
+        ax.set_xlabel(f"Cohen's d  ({report.classes[0]} minus {report.classes[1]})")
+        ax.set_title(f"Class separability by feature ({report.basis.value})")
+        ax.grid(alpha=0.2, axis="x")
+        self.figure.tight_layout()
+        return dict(ordered)
+
+    def render_feature_correlation_from_report(
+        self,
+        report: FeatureLevelQualityReport,
+    ) -> np.ndarray:
+        """Correlation heatmap from a pre-built feature-level report."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+        correlation = np.asarray(report.correlation_matrix, dtype=float)
+
+        if correlation.size == 0 or not report.feature_types:
+            ax.text(0.5, 0.5, "No feature values available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return correlation
+
+        image = ax.imshow(
+            np.ma.masked_invalid(correlation),
+            vmin=-1.0,
+            vmax=1.0,
+            cmap="coolwarm",
+            aspect="auto",
+        )
+        labels = [feature_type.value for feature_type in report.feature_types]
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels, rotation=90, fontsize=6)
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=6)
+        ax.set_title(f"Feature correlation ({report.basis.value})")
+        self.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04, label="Pearson r")
+        self.figure.tight_layout()
+        return correlation
+
+    def render_participant_sample_counts(
+        self,
+        report: ParticipantLevelQualityReport,
+        sort_by: str = "count_asc",
+    ) -> Dict[str, int]:
+        """Per-participant usable sample counts, colored by class."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(111)
+
+        if report.is_empty:
+            ax.text(0.5, 0.5, "No participants available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        participants = list(report.participants)
+        if sort_by == "count_asc":
+            participants.sort(key=lambda m: (m.usable_sample_count, m.participant_id))
+        elif sort_by == "count_desc":
+            participants.sort(
+                key=lambda m: (-m.usable_sample_count, m.participant_id)
+            )
+        elif sort_by == "participant":
+            participants.sort(key=lambda m: m.participant_id.lower())
+        elif sort_by == "coverage":
+            participants.sort(key=lambda m: (m.mean_coverage, m.participant_id))
+        else:
+            raise ValueError(f"Unsupported sort_by '{sort_by}'")
+
+        labels = [
+            f"{metric.participant_id} ({metric.usable_sample_count})"
+            for metric in participants
+        ]
+        counts = [metric.usable_sample_count for metric in participants]
+        class_colors = {
+            "faller": "#d62728",
+            "non-faller": "#2ca02c",
+        }
+        colors = [
+            class_colors.get(metric.class_label, "#4c72b0") for metric in participants
+        ]
+
+        ax.barh(range(len(participants)), counts, color=colors)
+        ax.set_yticks(range(len(participants)))
+        ax.set_yticklabels(labels, fontsize=6)
+        ax.invert_yaxis()
+        ax.set_xlabel("Usable samples (padding excluded)")
+        ax.set_title(f"Per-participant sample counts ({report.basis.value})")
+        ax.grid(alpha=0.2, axis="x")
+        self.figure.tight_layout()
+        return {metric.participant_id: metric.usable_sample_count for metric in participants}
+
+    def render_participant_coverage_heatmap(
+        self,
+        report: ParticipantLevelQualityReport,
+        sort_by: str = "worst_first",
+    ) -> Dict[str, Union[int, float, List[str]]]:
+        """Heatmap of per-participant, per-feature finite-value fractions."""
+        self.figure.clear()
+
+        if report.is_empty:
+            ax = self.figure.add_subplot(111)
+            ax.text(0.5, 0.5, "No participants available", ha="center", va="center")
+            ax.set_axis_off()
+            self.figure.tight_layout()
+            return {}
+
+        matrix, row_labels, order = self._order_participant_coverage(report, sort_by)
+        feature_labels = [feature_type.value for feature_type in report.feature_types]
+
+        ax_heat = self.figure.add_subplot(111)
+        image = ax_heat.imshow(
+            np.ma.masked_invalid(matrix),
+            aspect="auto",
+            vmin=0.0,
+            vmax=1.0,
+            cmap="RdYlGn",
+            interpolation="nearest",
+        )
+        ax_heat.set_xticks(range(len(feature_labels)))
+        ax_heat.set_xticklabels(feature_labels, rotation=90, fontsize=6)
+        ax_heat.set_yticks(range(len(row_labels)))
+        ax_heat.set_yticklabels(row_labels, fontsize=7)
+        ax_heat.set_xlabel("Feature type")
+        ax_heat.set_ylabel("Participant (usable samples)")
+        ax_heat.set_title(
+            f"Per-participant feature coverage ({report.basis.value})"
+        )
+        colorbar = self.figure.colorbar(image, ax=ax_heat, fraction=0.02, pad=0.02)
+        colorbar.set_label("Finite value fraction")
+
+        self.figure.tight_layout()
+        return self._summarize_participant_coverage(report, order)
+
+    @staticmethod
+    def _order_participant_coverage(
+        report: ParticipantLevelQualityReport,
+        sort_by: str,
+    ) -> Tuple[np.ndarray, List[str], List[int]]:
+        indices = list(range(len(report.participants)))
+        if sort_by == "worst_first":
+            indices.sort(
+                key=lambda idx: (
+                    report.participants[idx].mean_coverage,
+                    report.participants[idx].participant_id,
+                )
+            )
+        elif sort_by == "participant":
+            indices.sort(
+                key=lambda idx: report.participants[idx].participant_id.lower()
+            )
+        elif sort_by == "count_asc":
+            indices.sort(
+                key=lambda idx: (
+                    report.participants[idx].usable_sample_count,
+                    report.participants[idx].participant_id,
+                )
+            )
+        elif sort_by == "count_desc":
+            indices.sort(
+                key=lambda idx: (
+                    -report.participants[idx].usable_sample_count,
+                    report.participants[idx].participant_id,
+                )
+            )
+        else:
+            raise ValueError(f"Unsupported sort_by '{sort_by}'")
+
+        matrix = np.vstack(
+            [report.participants[idx].per_feature_fractions for idx in indices]
+        )
+        row_labels = [
+            (
+                f"{report.participants[idx].participant_id} "
+                f"(n={report.participants[idx].usable_sample_count})"
+            )
+            for idx in indices
+        ]
+        return matrix, row_labels, indices
+
+    @staticmethod
+    def _summarize_participant_coverage(
+        report: ParticipantLevelQualityReport,
+        order: List[int],
+    ) -> Dict[str, Union[int, float, List[str]]]:
+        mean_per_participant = [
+            report.participants[idx].mean_coverage for idx in order
+        ]
+        participants_with_gaps = int(
+            sum(1 for value in mean_per_participant if value < 1.0)
+        )
+        worst_indices = sorted(
+            order,
+            key=lambda idx: (
+                report.participants[idx].mean_coverage,
+                report.participants[idx].participant_id,
+            ),
+        )[:5]
+        worst_participants = [
+            (
+                f"{report.participants[idx].participant_id} "
+                f"(mean={report.participants[idx].mean_coverage:.2f}, "
+                f"usable={report.participants[idx].usable_sample_count})"
+            )
+            for idx in worst_indices
+            if report.participants[idx].mean_coverage < 1.0
+        ]
+        total_usable = sum(metric.usable_sample_count for metric in report.participants)
+        total_padded = sum(metric.padded_slot_count for metric in report.participants)
+        return {
+            "n_participants": len(report.participants),
+            "n_feature_types": len(report.feature_types),
+            "total_usable_samples": total_usable,
+            "total_padded_slots": total_padded,
+            "participants_with_any_missing": participants_with_gaps,
+            "inconsistent_count_records": len(report.inconsistent_count_records),
+            "worst_participants": worst_participants,
+        }
 
     def render_feature_coverage(
         self,

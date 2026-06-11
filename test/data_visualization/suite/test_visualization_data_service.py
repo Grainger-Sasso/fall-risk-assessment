@@ -269,6 +269,18 @@ class TestVisualizationDataService(unittest.TestCase):
         self.db_manager.feature_records = original_records
         self.db_manager.feature_ids = original_ids
 
+    def test_build_feature_level_quality_report(self):
+        report = self.service.build_feature_level_quality_report(SampleBasis.EPOCH)
+        self.assertEqual(report.total_usable_samples, 3)
+        self.assertEqual(report.num_feature_records, 1)
+        self.assertFalse(report.is_empty)
+
+    def test_build_participant_level_quality_report(self):
+        report = self.service.build_participant_level_quality_report(SampleBasis.STRIDE)
+        self.assertEqual(len(report.participants), 1)
+        self.assertEqual(report.participants[0].usable_sample_count, 2)
+        self.assertEqual(report.inconsistent_count_records, [])
+
 
 if __name__ == "__main__":
     unittest.main()

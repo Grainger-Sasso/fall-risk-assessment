@@ -8,7 +8,8 @@ from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.data_visualization.reporting.feature_report_generator import (
     _resolve_feature_types,
     _timestamped_path,
-    _write_summary_csv,
+    _write_feature_level_csv,
+    _write_participant_level_csv,
 )
 
 
@@ -30,27 +31,51 @@ class TestFeatureReportGeneratorHelpers(unittest.TestCase):
         self.assertEqual(pdf_path.parent, base.parent)
         self.assertEqual(csv_path.parent, base.parent)
 
-    def test_write_summary_csv(self):
+    def test_write_feature_level_csv(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            output = Path(tmp_dir) / "report_summary.csv"
-            _write_summary_csv(
+            output = Path(tmp_dir) / "feature_summary.csv"
+            _write_feature_level_csv(
                 output,
                 [
                     {
+                        "report_level": "feature",
                         "feature_type": "gait speed",
                         "basis": "epoch",
-                        "class_label": "faller",
-                        "count": "10",
-                        "mean": "1.2",
-                        "median": "1.1",
-                        "std": "0.3",
-                        "iqr": "0.2",
+                        "valid_count": "10",
+                        "total_usable_samples": "12",
+                        "valid_fraction": "0.833333",
+                        "missing_fraction": "0.166667",
+                        "cohens_d": "1.200000",
                     }
                 ],
             )
             contents = output.read_text(encoding="utf-8")
-            self.assertIn("feature_type,basis,class_label,count,mean,median,std,iqr", contents)
-            self.assertIn("gait speed,epoch,faller,10,1.2,1.1,0.3,0.2", contents)
+            self.assertIn("report_level,feature_type,basis,valid_count", contents)
+            self.assertIn("feature,gait speed,epoch,10,12", contents)
+
+    def test_write_participant_level_csv(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            output = Path(tmp_dir) / "participant_summary.csv"
+            _write_participant_level_csv(
+                output,
+                [
+                    {
+                        "report_level": "participant",
+                        "participant_id": "user_1",
+                        "class_label": "faller",
+                        "feature_id": "feature_1",
+                        "basis": "stride",
+                        "usable_sample_count": "80",
+                        "tensor_slot_count": "100",
+                        "padded_slot_count": "20",
+                        "mean_coverage": "0.950000",
+                        "count_consistent": "True",
+                    }
+                ],
+            )
+            contents = output.read_text(encoding="utf-8")
+            self.assertIn("participant_id,class_label,feature_id", contents)
+            self.assertIn("participant,user_1,faller,feature_1,stride,80,100,20", contents)
 
 
 if __name__ == "__main__":
