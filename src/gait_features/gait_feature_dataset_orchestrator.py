@@ -313,12 +313,17 @@ class GaitFeatureDatasetOrchestrator:
         return record_features.feature_metadata.feature_identifier
 
 
-def build_database_manager_from_sqlite(sqlite_db_path: Path) -> DatabaseManager:
+def build_database_manager_from_sqlite(
+    sqlite_db_path: Path,
+    imu_output_dir: Optional[Path] = None,
+    feature_output_dir: Optional[Path] = None,
+    instrument_spec_output_dir: Optional[Path] = None,
+) -> DatabaseManager:
     """
     Build a DatabaseManager against an existing SQLite index for gait generation jobs.
     """
     sqlite_db_path = sqlite_db_path.resolve()
-    scratch_dir = sqlite_db_path.parent
+    default_output_dir = sqlite_db_path.parent
     repository = MetadataRepository(SQLiteStore(sqlite_db_path))
     io_router = DomainIORouter(
         imu_importer=IMUDataImporter(),
@@ -328,9 +333,11 @@ def build_database_manager_from_sqlite(sqlite_db_path: Path) -> DatabaseManager:
         imu_exporter=IMUDataFileExporter(),
         feature_exporter=FeatureFileExporter(),
         instrument_spec_exporter=InstrumentSpecificationFileExporter(),
-        imu_output_dir=scratch_dir,
-        feature_output_dir=scratch_dir,
-        instrument_spec_output_dir=scratch_dir,
+        imu_output_dir=(imu_output_dir or default_output_dir).resolve(),
+        feature_output_dir=(feature_output_dir or default_output_dir).resolve(),
+        instrument_spec_output_dir=(
+            instrument_spec_output_dir or default_output_dir
+        ).resolve(),
     )
     return DatabaseManager(metadata_repository=repository, io_router=io_router)
 
@@ -363,6 +370,27 @@ def parse_args() -> argparse.Namespace:
         description="Generate gait RecordFeatures from IMU/User data indexed in SQLite."
     )
     parser.add_argument("--sqlite-db-path", type=Path, required=True)
+    parser.add_argument(
+        "--imu-output-dir",
+        type=Path,
+        default=None,
+        help="Directory for IMU payload exports. Defaults to the SQLite DB parent directory.",
+    )
+    parser.add_argument(
+        "--feature-output-dir",
+        type=Path,
+        default=None,
+        help="Directory for feature payload exports. Defaults to the SQLite DB parent directory.",
+    )
+    parser.add_argument(
+        "--instrument-spec-output-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory for instrument-specification payload exports. "
+            "Defaults to the SQLite DB parent directory."
+        ),
+    )
     parser.add_argument(
         "--imu-ids",
         type=str,
@@ -432,7 +460,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    db_manager = build_database_manager_from_sqlite(args.sqlite_db_path)
+    db_manager = build_database_manager_from_sqlite(
+        args.sqlite_db_path,
+        imu_output_dir=args.imu_output_dir,
+        feature_output_dir=args.feature_output_dir,
+        instrument_spec_output_dir=args.instrument_spec_output_dir,
+    )
     extraction_backend = _parse_extraction_backend(args.extraction_backend)
     if args.extraction_profile.strip():
         extraction_profile = _parse_extraction_profile(args.extraction_profile)
