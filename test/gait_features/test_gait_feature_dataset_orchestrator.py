@@ -8,6 +8,7 @@ from src.gait_features.gait_feature_dataset_orchestrator import (
 from src.gait_features.diagnosis.stride_failure import StrideFeatureGenerationError
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
+from test.gait_features.fixtures.minimal_imu_fixtures import minimal_skdh_imu_data
 
 
 class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
@@ -19,7 +20,10 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
             UserIdentifier("user_1"),
             UserIdentifier("user_2"),
         ]
-        db_manager.load_imu.side_effect = ["imu_data_1", "imu_data_2"]
+        db_manager.load_imu.side_effect = [
+            minimal_skdh_imu_data("imu_1"),
+            minimal_skdh_imu_data("imu_2"),
+        ]
         db_manager.load_user.side_effect = ["user_data_1", "user_data_2"]
         db_manager.get_instrument_spec_for_imu.return_value = None
 
@@ -54,7 +58,10 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
         db_manager = MagicMock()
         imu_ids = [IMUDataIdentifier("imu_1"), IMUDataIdentifier("imu_2")]
         db_manager.list_imu_ids.return_value = imu_ids
-        db_manager.load_imu.side_effect = ["imu_data_1", RuntimeError("cannot load")]
+        db_manager.load_imu.side_effect = [
+            minimal_skdh_imu_data("imu_1"),
+            RuntimeError("cannot load"),
+        ]
         db_manager.get_user_for_imu.return_value = UserIdentifier("user_1")
         db_manager.load_user.return_value = "user_data_1"
         db_manager.get_instrument_spec_for_imu.return_value = None
@@ -83,7 +90,10 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
         db_manager = MagicMock()
         imu_ids = [IMUDataIdentifier("imu_1"), IMUDataIdentifier("imu_2")]
         db_manager.list_imu_ids.return_value = imu_ids
-        db_manager.load_imu.side_effect = ["imu_data_1", RuntimeError("cannot load")]
+        db_manager.load_imu.side_effect = [
+            minimal_skdh_imu_data("imu_1"),
+            RuntimeError("cannot load"),
+        ]
         db_manager.get_user_for_imu.return_value = UserIdentifier("user_1")
         db_manager.load_user.return_value = "user_data_1"
         db_manager.get_instrument_spec_for_imu.return_value = None
@@ -116,7 +126,10 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
         imu_ids = [IMUDataIdentifier("imu_good"), IMUDataIdentifier("imu_nan_stride")]
         db_manager.list_imu_ids.return_value = imu_ids
         db_manager.get_user_for_imu.return_value = UserIdentifier("user_1")
-        db_manager.load_imu.side_effect = ["imu_good_data", "imu_nan_data"]
+        db_manager.load_imu.side_effect = [
+            minimal_skdh_imu_data("imu_good"),
+            minimal_skdh_imu_data("imu_nan_stride"),
+        ]
         db_manager.load_user.return_value = "user_data_1"
         db_manager.get_instrument_spec_for_imu.return_value = None
 

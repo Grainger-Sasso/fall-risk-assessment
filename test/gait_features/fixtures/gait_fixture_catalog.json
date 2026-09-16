@@ -1,0 +1,48 @@
+{
+  "assessment_database_root": "/Volumes/Backup Plus/fafra_data/assessment_database",
+  "ltmm": {
+    "index_db": "sql_db_indexes/ltmm/index.db",
+    "instrument_spec_dir": "instrument_specs/ltmm",
+    "instrument_spec_id": "ltmm_labwalks_imu_spec_v1",
+    "participants": {
+      "CO001": {
+        "imu_id": "imu_ade1acfd-427b-4e96-9987-62fbb9b1b0f9",
+        "expects_walking_bouts": true,
+        "tier": "primary"
+      },
+      "CO002": {
+        "imu_id": "imu_50292249-391b-44a8-a864-41ea2a7964cd",
+        "expects_walking_bouts": true,
+        "tier": "primary"
+      },
+      "CO003": {
+        "imu_id": "imu_6fb17bc5-943c-48a4-a663-daae060a0a5f",
+        "expects_walking_bouts": true,
+        "tier": "secondary"
+      }
+    }
+  },
+  "lab_walks": {
+    "index_db": "sql_db_indexes/lab_walks/index.db",
+    "instrument_spec_dir": "instrument_specs/lab_walks",
+    "instrument_spec_id": "ltmm_labwalks_imu_spec_v1",
+    "participants": {
+      "CO001": {
+        "imu_id": "imu_13ca5d68-ef47-499f-86ac-0e9acbb5ed17",
+        "tier": "primary"
+      },
+      "CO002": {
+        "imu_id": "imu_e11de666-c5cb-4374-b0f5-18d265116f90",
+        "tier": "primary"
+      },
+      "CO003": {
+        "imu_id": "imu_3409167e-fb27-4f5b-a3be-a255967388ae",
+        "tier": "secondary"
+      },
+      "FL001": {
+        "imu_id": "imu_1484c76e-62ee-4a66-86e2-8ee411e42177",
+        "tier": "secondary"
+      }
+    }
+  }
+}

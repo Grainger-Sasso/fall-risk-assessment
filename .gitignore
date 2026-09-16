@@ -3,3 +3,5 @@
 .env
 .DS_Store
 .cursor/
+/scratch/
+test/gait_features/integration/artifacts/

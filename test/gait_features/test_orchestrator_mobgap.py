@@ -9,6 +9,7 @@ from src.gait_features.contracts.provenance import ExtractionProvenance
 from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
+from test.gait_features.fixtures.minimal_imu_fixtures import minimal_mobgap_imu_data
 
 
 class TestOrchestratorMobgap(unittest.TestCase):
@@ -16,7 +17,7 @@ class TestOrchestratorMobgap(unittest.TestCase):
         db_manager = MagicMock()
         db_manager.list_imu_ids.return_value = [IMUDataIdentifier("imu_1")]
         db_manager.get_user_for_imu.return_value = UserIdentifier("user_1")
-        db_manager.load_imu.return_value = "imu_data"
+        db_manager.load_imu.return_value = minimal_mobgap_imu_data("imu_1")
         db_manager.load_user.return_value = "user_data"
         db_manager.get_instrument_spec_for_imu.return_value = None
 

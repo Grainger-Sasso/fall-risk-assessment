@@ -174,7 +174,7 @@ class TestStrideNaNDiagnosis(unittest.TestCase):
                 user_data=_make_user_data(),
                 treadmill_profile=True,
             )
-        self.assertEqual(ctx.exception.diagnosis["stage"], "missing_stride_features")
+        self.assertEqual(ctx.exception.diagnosis["stage"], "no_stride_events")
 
 
 if __name__ == "__main__":
