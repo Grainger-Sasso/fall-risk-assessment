@@ -14,7 +14,6 @@ from src.data_types.feature.feature_type import FeatureType
 from src.data_types.sample_basis.sample_basis import SampleBasis
 from src.gait_features.contracts.extraction_result import BoutSegment, GaitExtractionResult
 from src.gait_features.diagnosis.stride_failure import diagnose_stride_nan_source
-from src.gait_features.processing.record_feature_builder import RecordFeatureBuilder
 
 
 def assert_bout_segments_valid(
@@ -188,22 +187,3 @@ def assert_io_fidelity(before: RecordFeatures, after: RecordFeatures) -> None:
 
         if source.usable_sample_count != target.usable_sample_count:
             raise AssertionError(f"{basis.value} usable_sample_count changed across I/O")
-
-
-def extract_record_features(
-    extraction_result: GaitExtractionResult,
-    imu_data,
-    user_data,
-    *,
-    window_seconds: float = 8.0,
-    overlap_seconds: float = 2.0,
-) -> RecordFeatures:
-    builder = RecordFeatureBuilder(
-        window_seconds=window_seconds,
-        overlap_seconds=overlap_seconds,
-    )
-    return builder.build_from_extraction(
-        extraction_result=extraction_result,
-        imu_data=imu_data,
-        user_data=user_data,
-    )

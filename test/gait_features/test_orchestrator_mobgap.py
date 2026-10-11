@@ -9,7 +9,7 @@ from src.gait_features.contracts.provenance import ExtractionProvenance
 from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
-from test.gait_features.fixtures.minimal_imu_fixtures import minimal_mobgap_imu_data
+from test.fixtures.synthetic_imu import minimal_mobgap_imu_data
 
 
 class TestOrchestratorMobgap(unittest.TestCase):

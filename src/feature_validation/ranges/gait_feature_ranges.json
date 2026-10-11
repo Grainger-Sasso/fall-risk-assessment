@@ -1,0 +1,424 @@
+{
+  "schema_version": "1.1",
+  "description": "Physiological range definitions for post-hoc gait feature validation. Two tiers per feature: 'implausible' bounds mark values that cannot be produced by real walking and therefore indicate an extraction defect; 'atypical' bounds mark values that are physiologically possible but fall outside normative walking data. A value inside 'implausible' but outside 'atypical' is reported as atypical, not broken -- slow faller gait must not be treated as an extraction bug. Either tier may be omitted, and a null bound means unbounded on that side.",
+  "conventions": {
+    "bounds": "[minimum, maximum], inclusive. null means unbounded on that side.",
+    "provenance": "Every defined tier carries a provenance label stating what its numbers actually rest on. No bound value in this file is quoted verbatim from a source; every bound was chosen by the catalog author. The label records how strongly that choice is anchored. When a tier's two bounds rest on different grounds, the weaker label is recorded.",
+    "provenance_values": {
+      "literature_direct": "Centred on published summary statistics for the same measure, in the same unit, with no conversion. The band width is author-chosen.",
+      "literature_derived": "Computed from published values through a unit conversion or modelling assumption stated in the note (e.g. converting %gait-cycle to seconds via an assumed stride time).",
+      "physical_limit": "Follows from a mathematical definition or physical constraint and holds for any population.",
+      "empirical": "Set from the observed distribution of this project's own extracted features. Circular: detects drift from current pipeline behaviour, not correctness or clinical relevance.",
+      "judgment": "Author's judgment with no quantitative source."
+    },
+    "reference_scope": "The 'reference' key identifies the source behind the atypical tier where that tier is literature-based. Implausible tiers are almost all judgment and are not supported by the cited reference.",
+    "asymmetry_features": "SKDH emits asymmetry as a SIGNED DIFFERENCE in the parent feature's unit (e.g. seconds for stride time asymmetry), not as a dimensionless ratio or percentage. Published asymmetry norms are usually percentages and are NOT directly comparable, so no asymmetry tier is literature-based.",
+    "epoch_features": "Epoch features are sliding-window accelerometry statistics, not clinical gait measures. No clinical normative literature exists for them."
+  },
+  "references": {
+    "bohannon_williams_andrews_2011": {
+      "citation": "Bohannon RW, Williams Andrews A. Normal walking speed: a descriptive meta-analysis. Physiotherapy. 2011;97(3):182-189.",
+      "doi": "10.1016/j.physio.2010.12.004",
+      "basis": "Meta-analysis of 41 studies, n=23,111 healthy adults. Comfortable gait speed strata means 0.943 m/s (women 80-99) to 1.434 m/s (men 40-49); per-strata observed ranges span 0.557 to 1.599 m/s."
+    },
+    "hollman_2011": {
+      "citation": "Hollman JH, McDade EM, Petersen RC. Normative spatiotemporal gait parameters in older adults. Gait & Posture. 2011;34(1):111-118.",
+      "doi": "10.1016/j.gaitpost.2011.03.024",
+      "basis": "n=294 healthy adults aged 70+, GAITRite walkway. Reference values for 23 spatiotemporal parameters. Listed as a candidate source only: its tables were not consulted and no bound in this file uses it."
+    },
+    "oberg_1993": {
+      "citation": "Oberg T, Karsznia A, Oberg K. Basic gait parameters: reference data for normal subjects, 10-79 years of age. Journal of Rehabilitation Research and Development. 1993;30(2):210-223.",
+      "pmid": "8035350",
+      "basis": "n=233 healthy subjects aged 10-79. Abstract states step frequency does not vary significantly with age. Its reference tables were not consulted and no bound in this file uses its numbers."
+    },
+    "gait_smoothness_italian_elderly_2020": {
+      "citation": "Smoothness of Gait in Healthy and Cognitively Impaired Individuals: A Study on Italian Elderly Using Wearable Inertial Sensor. Sensors. 2020;20(12):3577.",
+      "doi": "10.3390/s20123577",
+      "basis": "Healthy elderly controls, lumbar IMU: gait speed 0.92 +/- 0.23 m/s, stride length 1.03 +/- 0.23 m, cadence 107.3 +/- 8.5 steps/min, stance 61.3 +/- 2.0 %GC, swing 38.8 +/- 1.9 %GC, double support 22.3 +/- 2.0 %GC, harmonic ratio V 3.70 +/- 0.93, AP 3.37 +/- 0.69."
+    },
+    "menz_lord_fitzpatrick_2003": {
+      "citation": "Menz HB, Lord SR, Fitzpatrick RC. Acceleration patterns of the head and pelvis when walking are associated with risk of falling in community-dwelling older people. Journal of Gerontology A. 2003;58(5):M446-M452.",
+      "doi": "10.1093/gerona/58.5.m446",
+      "basis": "Pelvis harmonic ratios in low-fall-risk older adults: vertical 3.02, anteroposterior 3.35 on level ground. High-risk fallers showed significantly smaller vertical ratios."
+    },
+    "harmonic_ratio_falls_prospective_2013": {
+      "citation": "The harmonic ratio of trunk acceleration predicts falling among older people: results of a 1-year prospective study. Journal of NeuroEngineering and Rehabilitation. 2013;10:7.",
+      "doi": "10.1186/1743-0003-10-7",
+      "basis": "Fallers vs non-fallers: walking speed 0.63 +/- 0.27 vs 0.98 +/- 0.34 m/s; upper-trunk harmonic ratio vertical 1.84 +/- 0.63 vs 2.71 +/- 0.87. Youden cutoff for HR-vertical 1.89."
+    },
+    "antonelli_2024": {
+      "citation": "Antonelli et al. Comparison of Gait Smoothness Metrics in Healthy Elderly and Young People. Applied Sciences. 2024;14(2):911.",
+      "doi": "10.3390/app14020911",
+      "basis": "SPARC is dimensionless and negative, bounded above by -1 (smoothest). Trunk accelerometry at normal speed: vertical axis approximately -2.6 to -2.8 in older adults; mediolateral and anteroposterior axes far more negative (-7.9 to -13.3). Strongly implementation- and axis-dependent."
+    },
+    "complete_cohort_2024": {
+      "citation": "Rossler R, Wagner J, Knaier R, Rommers N, Kressig RW, Schmidt-Trucksass A, Hinrichs T. Spatiotemporal gait characteristics across the adult lifespan: Reference values from a healthy population - Analysis of the COmPLETE cohort study. Gait & Posture. 2024;109:101-108.",
+      "doi": "10.1016/j.gaitpost.2024.01.005",
+      "pmid": "38290395",
+      "basis": "n=545 healthy adults aged 20-90+, IMU-based. Swing-time asymmetry means 1.42% to 3.48% across age and sex strata. Reported as a PERCENTAGE, so not directly comparable to the signed-difference convention used by this pipeline. Context only: no bound in this file uses it."
+    },
+    "gait_asymmetry_semmelweis_2025": {
+      "citation": "Age-related and dual task-induced gait alterations and asymmetry: optimizing the Semmelweis Study gait assessment protocol. GeroScience. 2025.",
+      "doi": "10.1007/s11357-025-01722-6",
+      "basis": "Qualitative support only: extreme asymmetry values occur primarily when one limb's value is near zero or exceeds the contralateral by several magnitudes, 'usually due to improperly captured steps rather than true physiological asymmetry'. Supports treating large asymmetry as a defect signal; provides no numeric bound."
+    },
+    "sensor_physics": {
+      "citation": "Internal: sensor and signal-processing limits, not literature.",
+      "basis": "Mathematical domain constraints (non-negative power, normalized covariance in [-1, 1]) and gravity magnitude (9.81 m/s2)."
+    },
+    "empirical_lab_walks": {
+      "citation": "Internal: observed distribution across this project's own extracted features.",
+      "basis": "41 loadable lab_walks feature records, 3122 usable stride samples and 273 usable epoch samples, SKDH treadmill profile. Circular by construction: these bounds detect drift from current behaviour, not correctness."
+    }
+  },
+  "groups": {
+    "asymmetry_time_short": {
+      "unit": "s",
+      "implausible": [-0.4, 0.4],
+      "atypical": [-0.12, 0.12],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Signed left-right difference of a sub-phase duration. Implausible: sub-phases are ~0.12-0.17 s, so a difference beyond 0.4 s exceeds the phase itself (judgment; qualitatively supported by gait_asymmetry_semmelweis_2025). Atypical: set around the observed p01/p99 of about +/-0.09 s."
+    },
+    "asymmetry_time_long": {
+      "unit": "s",
+      "implausible": [-1.0, 1.0],
+      "atypical": [-0.3, 0.3],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Signed left-right difference of a full- or half-cycle duration. Implausible: a difference near the parent duration implies mis-captured steps (judgment; qualitatively supported by gait_asymmetry_semmelweis_2025). Atypical: set around observed p01/p99 of about +/-0.13 to +/-0.19 s."
+    },
+    "asymmetry_length": {
+      "unit": "m",
+      "implausible": [-1.0, 1.0],
+      "atypical": [-0.35, 0.35],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Signed left-right difference in step or stride length. Atypical set around observed p01/p99 of about +/-0.26 to +/-0.33 m."
+    },
+    "asymmetry_speed": {
+      "unit": "m/s",
+      "implausible": [-1.5, 1.5],
+      "atypical": [-0.4, 0.4],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Signed left-right difference in derived walking speed. Atypical set around observed p01/p99 of about +/-0.14 to +/-0.32 m/s."
+    },
+    "normalized_covariance": {
+      "unit": "ratio",
+      "implausible": [-1.05, 1.05],
+      "atypical": [0.3, 1.0],
+      "provenance": { "implausible": "physical_limit", "atypical": "judgment" },
+      "reference": "sensor_physics",
+      "note": "Normalized autocovariance is mathematically bounded to [-1, 1] (1.05 allows floating-point slack). The atypical lower bound of 0.3 is a judgment that regular walking should correlate well stride to stride; it is not from literature. NOTE: test/gait_features/validation/physiological_ranges.py declares [0, 500] for these features, which is wrong on both bounds."
+    },
+    "epoch_accel_axis": {
+      "unit": "m/s2",
+      "implausible": [-20.0, 20.0],
+      "atypical": null,
+      "provenance": { "implausible": "judgment" },
+      "reference": "sensor_physics",
+      "note": "Per-axis acceleration in the sensor frame. Implausible bound is an assumed accelerometer full-scale range of about +/-2 g; the instrument specification's range field is empty, so this is not verified against the device. No atypical tier: the value depends on sensor orientation relative to gravity."
+    },
+    "epoch_dispersion": {
+      "unit": "m/s2",
+      "implausible": [0.0, 25.0],
+      "atypical": null,
+      "provenance": { "implausible": "judgment" },
+      "reference": "sensor_physics",
+      "note": "Acceleration dispersion (std / rms / sma). The lower bound of 0 is a physical limit; the upper bound is judgment, so the tier is labelled judgment. No atypical tier: some axes retain the gravity component and others do not."
+    },
+    "epoch_jerk_rms": {
+      "unit": "m/s3",
+      "implausible": [0.0, 5000.0],
+      "atypical": [15.0, 250.0],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Finite-difference jerk RMS; scales with sampling rate, so bounds are sampling-rate dependent. Observed 19-141 m/s3 at this project's rate."
+    },
+    "epoch_zcr": {
+      "unit": "1/s",
+      "implausible": [0.0, 100.0],
+      "atypical": [0.01, 0.6],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Zero-crossing rate of detrended acceleration. Observed 0.02-0.17 /s in this project's data."
+    },
+    "epoch_dominant_frequency": {
+      "unit": "Hz",
+      "implausible": [0.0, 25.0],
+      "atypical": [0.6, 3.5],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from published cadence (107.3 steps/min = 1.79 Hz step frequency, 0.89 Hz stride frequency) and widened to allow harmonics. The mapping from cadence to the dominant spectral peak of each axis is an assumption."
+    },
+    "epoch_spectral_entropy": {
+      "unit": "a.u.",
+      "implausible": [0.0, 30.0],
+      "atypical": [1.0, 6.0],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Non-negative by definition; the upper implausible bound scales with the number of spectral bins and is judgment. Atypical set around the observed 1.28-5.80."
+    },
+    "epoch_bandpower": {
+      "unit": "m2/s4",
+      "implausible": [0.0, null],
+      "atypical": null,
+      "provenance": { "implausible": "physical_limit" },
+      "reference": "sensor_physics",
+      "note": "Integrated spectral power, non-negative by definition. No upper bound or atypical tier: magnitude depends on window length, sampling rate and band edges."
+    }
+  },
+  "features": [
+    {
+      "feature_type": "stride time",
+      "unit": "s",
+      "implausible": [0.4, 3.0],
+      "atypical": [0.8, 1.6],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from published cadence 107.3 +/- 8.5 steps/min: stride time = 120 / cadence, about 1.12 s (1.04-1.21 s at +/-1 SD), then widened."
+    },
+    {
+      "feature_type": "stance time",
+      "unit": "s",
+      "implausible": [0.2, 2.2],
+      "atypical": [0.5, 1.1],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from stance 61.3 +/- 2.0 %GC multiplied by an assumed 1.12 s stride time (about 0.69 s), then widened."
+    },
+    {
+      "feature_type": "swing time",
+      "unit": "s",
+      "implausible": [0.15, 0.9],
+      "atypical": [0.3, 0.65],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from swing 38.8 +/- 1.9 %GC multiplied by an assumed 1.12 s stride time (about 0.43 s), then widened. Implausible: swing cannot approach a full stride; values near 1.4 s indicate mis-detected gait events."
+    },
+    {
+      "feature_type": "step time",
+      "unit": "s",
+      "implausible": [0.2, 1.5],
+      "atypical": [0.4, 0.8],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from published cadence: step time = 60 / cadence, about 0.56 s, then widened."
+    },
+    {
+      "feature_type": "initial double support",
+      "unit": "s",
+      "implausible": [0.02, 0.6],
+      "atypical": [0.08, 0.3],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived by assuming initial double support is half of the published total (22.3 %GC of an assumed 1.12 s stride, about 0.12 s). The half split is an assumption."
+    },
+    {
+      "feature_type": "terminal double support",
+      "unit": "s",
+      "implausible": [0.02, 0.6],
+      "atypical": [0.08, 0.3],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived by assuming terminal double support is half of the published total (22.3 %GC of an assumed 1.12 s stride, about 0.12 s). The half split is an assumption."
+    },
+    {
+      "feature_type": "double support",
+      "unit": "s",
+      "implausible": [0.05, 1.0],
+      "atypical": [0.15, 0.5],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived from 22.3 +/- 2.0 %GC multiplied by an assumed 1.12 s stride time (about 0.25 s), widened generously because prolonged double support is a cautious-gait marker."
+    },
+    {
+      "feature_type": "single support",
+      "unit": "s",
+      "implausible": [0.15, 0.9],
+      "atypical": [0.3, 0.65],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived by assuming single support equals contralateral swing (38.8 %GC of an assumed 1.12 s stride)."
+    },
+    {
+      "feature_type": "step length",
+      "unit": "m",
+      "implausible": [0.05, 1.3],
+      "atypical": [0.3, 0.9],
+      "provenance": { "implausible": "judgment", "atypical": "literature_derived" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical derived by halving published stride length 1.03 +/- 0.23 m (about 0.52 m), then widened."
+    },
+    {
+      "feature_type": "stride length",
+      "unit": "m",
+      "implausible": [0.1, 2.5],
+      "atypical": [0.6, 1.6],
+      "provenance": { "implausible": "judgment", "atypical": "literature_direct" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical centred on published healthy-elderly stride length 1.03 +/- 0.23 m (about -1.9 to +2.5 SD); declines with cognitive impairment to 0.73-0.81 m."
+    },
+    {
+      "feature_type": "gait speed",
+      "unit": "m/s",
+      "implausible": [0.1, 3.0],
+      "atypical": [0.5, 1.7],
+      "provenance": { "implausible": "judgment", "atypical": "literature_direct" },
+      "reference": "bohannon_williams_andrews_2011",
+      "note": "Atypical anchored on strata means 0.943-1.434 m/s and per-strata ranges down to 0.557 m/s. The lower bound is deliberately below the slowest healthy stratum because fallers average 0.63 +/- 0.27 m/s (harmonic_ratio_falls_prospective_2013)."
+    },
+    {
+      "feature_type": "cadence",
+      "unit": "steps/min",
+      "implausible": [20.0, 220.0],
+      "atypical": [80.0, 135.0],
+      "provenance": { "implausible": "judgment", "atypical": "literature_direct" },
+      "reference": "gait_smoothness_italian_elderly_2020",
+      "note": "Atypical centred on published healthy-elderly cadence 107.3 +/- 8.5 steps/min (about -3.2 to +3.3 SD)."
+    },
+    {
+      "feature_type": "m1 delta h",
+      "unit": "m",
+      "implausible": [0.001, 0.3],
+      "atypical": [0.01, 0.12],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Vertical pelvis displacement, method 1. Observed median 9.9 cm, about four times the method-2 estimate and above the commonly quoted 2-5 cm COM excursion (uncited), so at least one method is likely biased."
+    },
+    {
+      "feature_type": "m2 delta h",
+      "unit": "m",
+      "implausible": [0.001, 0.3],
+      "atypical": [0.005, 0.07],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Vertical pelvis displacement, method 2. Observed median 2.7 cm."
+    },
+    {
+      "feature_type": "m2 delta h prime",
+      "unit": "m",
+      "implausible": [0.001, 0.3],
+      "atypical": [0.003, 0.05],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Normalized vertical pelvis displacement, method 2."
+    },
+    {
+      "feature_type": "harmonic ratio - V",
+      "unit": "ratio",
+      "implausible": [0.1, 15.0],
+      "atypical": [1.5, 5.0],
+      "provenance": { "implausible": "judgment", "atypical": "literature_direct" },
+      "reference": "menz_lord_fitzpatrick_2003",
+      "note": "Atypical anchored on published vertical values of about 3-4 in healthy older adults and 1.84-2.07 in fallers (harmonic_ratio_falls_prospective_2013); the lower bound stays below the faller range on purpose. Caveat: published values use the Menz algorithm on specific sensor placements; SKDH's implementation has not been checked for equivalence."
+    },
+    {
+      "feature_type": "stride SPARC",
+      "unit": "a.u.",
+      "implausible": [-15.0, -1.0],
+      "atypical": [-3.2, -2.0],
+      "provenance": { "implausible": "judgment", "atypical": "literature_direct" },
+      "reference": "antonelli_2024",
+      "note": "Implausible upper bound -1 is a physical limit by definition; the lower bound -15 is judgment, so the tier is labelled judgment. Atypical anchored on published older-adult vertical-axis values of about -2.6 to -2.8. Highly axis- and implementation-dependent."
+    },
+    { "feature_type": "intra-step covariance - V", "group": "normalized_covariance" },
+    { "feature_type": "intra-stride covariance - V", "group": "normalized_covariance" },
+
+    { "feature_type": "stride time asymmetry", "group": "asymmetry_time_long" },
+    { "feature_type": "stance time asymmetry", "group": "asymmetry_time_long" },
+    { "feature_type": "swing time asymmetry", "group": "asymmetry_time_long" },
+    { "feature_type": "step time asymmetry", "group": "asymmetry_time_long" },
+    { "feature_type": "single support asymmetry", "group": "asymmetry_time_long" },
+    { "feature_type": "double support asymmetry", "group": "asymmetry_time_short" },
+    { "feature_type": "initial double support asymmetry", "group": "asymmetry_time_short" },
+    { "feature_type": "terminal double support asymmetry", "group": "asymmetry_time_short" },
+    { "feature_type": "step length asymmetry", "group": "asymmetry_length" },
+    { "feature_type": "stride length asymmetry", "group": "asymmetry_length" },
+    { "feature_type": "gait speed asymmetry", "group": "asymmetry_speed" },
+
+    {
+      "feature_type": "step length m1",
+      "unit": "m",
+      "implausible": [0.05, 1.5],
+      "atypical": [0.3, 1.1],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Method-1 step length. Observed median 0.80 m versus 0.64 m for the default method; the two estimates are offset and should not share a normative band."
+    },
+    {
+      "feature_type": "stride length m1",
+      "unit": "m",
+      "implausible": [0.1, 3.0],
+      "atypical": [0.7, 2.0],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Method-1 stride length. Observed median 1.61 m versus 1.27 m for the default method."
+    },
+    {
+      "feature_type": "gait speed m1",
+      "unit": "m/s",
+      "implausible": [0.1, 3.5],
+      "atypical": [0.6, 2.1],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Method-1 gait speed. Observed median 1.44 m/s versus 1.15 m/s for the default method, so method 1 reads systematically faster and does not reuse the Bohannon norms."
+    },
+    { "feature_type": "step length m1 asymmetry", "group": "asymmetry_length" },
+    { "feature_type": "stride length m1 asymmetry", "group": "asymmetry_length" },
+    { "feature_type": "gait speed m1 asymmetry", "group": "asymmetry_speed" },
+
+    { "feature_type": "epoch:vertical mean", "group": "epoch_accel_axis" },
+    { "feature_type": "epoch:vertical std", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:vertical rms", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:vertical sma", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:vertical jerk rms", "group": "epoch_jerk_rms" },
+    { "feature_type": "epoch:vertical zcr", "group": "epoch_zcr" },
+    { "feature_type": "epoch:vertical dominant frequency", "group": "epoch_dominant_frequency" },
+    { "feature_type": "epoch:vertical spectral entropy", "group": "epoch_spectral_entropy" },
+    { "feature_type": "epoch:vertical bandpower low", "group": "epoch_bandpower" },
+    { "feature_type": "epoch:vertical bandpower high", "group": "epoch_bandpower" },
+
+    { "feature_type": "epoch:mediolateral mean", "group": "epoch_accel_axis" },
+    { "feature_type": "epoch:mediolateral std", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:mediolateral rms", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:mediolateral sma", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:mediolateral jerk rms", "group": "epoch_jerk_rms" },
+    { "feature_type": "epoch:mediolateral zcr", "group": "epoch_zcr" },
+    { "feature_type": "epoch:mediolateral dominant frequency", "group": "epoch_dominant_frequency" },
+    { "feature_type": "epoch:mediolateral spectral entropy", "group": "epoch_spectral_entropy" },
+    { "feature_type": "epoch:mediolateral bandpower low", "group": "epoch_bandpower" },
+    { "feature_type": "epoch:mediolateral bandpower high", "group": "epoch_bandpower" },
+
+    { "feature_type": "epoch:anteroposterior mean", "group": "epoch_accel_axis" },
+    { "feature_type": "epoch:anteroposterior std", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:anteroposterior rms", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:anteroposterior sma", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:anteroposterior jerk rms", "group": "epoch_jerk_rms" },
+    { "feature_type": "epoch:anteroposterior zcr", "group": "epoch_zcr" },
+    { "feature_type": "epoch:anteroposterior dominant frequency", "group": "epoch_dominant_frequency" },
+    { "feature_type": "epoch:anteroposterior spectral entropy", "group": "epoch_spectral_entropy" },
+    { "feature_type": "epoch:anteroposterior bandpower low", "group": "epoch_bandpower" },
+    { "feature_type": "epoch:anteroposterior bandpower high", "group": "epoch_bandpower" },
+
+    {
+      "feature_type": "epoch:magnitude mean",
+      "unit": "m/s2",
+      "implausible": [5.0, 15.0],
+      "atypical": [9.0, 11.5],
+      "provenance": { "implausible": "judgment", "atypical": "empirical" },
+      "reference": "empirical_lab_walks",
+      "note": "Acceleration vector magnitude is gravity-anchored and should sit near 9.81 m/s2 during walking, so it is comparable across mountings. The atypical band is centred on gravity but its width comes from the observed 9.16-11.10 m/s2."
+    },
+    { "feature_type": "epoch:magnitude std", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:magnitude rms", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:magnitude sma", "group": "epoch_dispersion" },
+    { "feature_type": "epoch:magnitude jerk rms", "group": "epoch_jerk_rms" },
+    { "feature_type": "epoch:magnitude zcr", "group": "epoch_zcr" },
+    { "feature_type": "epoch:magnitude dominant frequency", "group": "epoch_dominant_frequency" },
+    { "feature_type": "epoch:magnitude spectral entropy", "group": "epoch_spectral_entropy" },
+    { "feature_type": "epoch:magnitude bandpower low", "group": "epoch_bandpower" },
+    { "feature_type": "epoch:magnitude bandpower high", "group": "epoch_bandpower" }
+  ]
+}

@@ -9,20 +9,20 @@ from src.data_visualization.suite.services.visualization_data_service import Vis
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
 from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
-from test.gait_features.integration.base import GaitIntegrationTestCase
+from test.fixtures.assessment_database import (
+    imu_identifier,
+    participant_fixtures,
+    temp_database_manager,
+)
+from test.fixtures.integration_cases import SkdhIntegrationTestCase
 from test.gait_features.integration.unified_validation_report import (
     DEFAULT_ARTIFACT_PATH,
     build_unified_validation_report,
     write_unified_validation_artifact,
 )
-from test.gait_features.fixtures.fixture_loader import (
-    imu_identifier,
-    participant_fixtures,
-    temp_database_manager,
-)
 
 
-class TestUnifiedValidationReportIntegration(GaitIntegrationTestCase):
+class TestUnifiedValidationReportIntegration(SkdhIntegrationTestCase):
     """Generate a unified HTML artifact covering quality reports and validation audits."""
 
     def test_unified_validation_report_for_lab_walks(self):

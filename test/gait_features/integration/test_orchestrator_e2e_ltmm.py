@@ -3,8 +3,8 @@ import unittest
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
 from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
-from test.gait_features.integration.base import LtmmIntegrationTestCase
-from test.gait_features.fixtures.fixture_loader import (
+from test.fixtures.integration_cases import LtmmIntegrationTestCase
+from test.fixtures.assessment_database import (
     imu_identifier,
     participant_fixtures,
     temp_database_manager,

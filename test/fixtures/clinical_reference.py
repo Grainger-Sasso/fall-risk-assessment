@@ -1,3 +1,5 @@
+"""Clinical reference measurements (e.g. lab base-walk speeds) for real-data fixtures."""
+
 from __future__ import annotations
 
 import json

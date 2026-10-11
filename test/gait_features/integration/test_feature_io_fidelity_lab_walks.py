@@ -2,39 +2,25 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.data_io.import_export.exporters.feature.feature_file_exporter import FeatureFileExporter
-from src.data_io.import_export.importers.features.feature_importer import FeatureImporter
-from src.gait_features.backends.skdh.backend import SkdhBackend
-from src.gait_features.config.extraction_profile import ExtractionProfile
-from test.gait_features.integration.base import GaitIntegrationTestCase
-from test.gait_features.fixtures.fixture_loader import (
-    load_participant_bundle,
-    participant_fixtures,
-)
 import h5py
 
+from src.data_io.import_export.exporters.feature.feature_file_exporter import FeatureFileExporter
+from src.data_io.import_export.importers.features.feature_importer import FeatureImporter
 from src.data_io.model_fields.features.feature_fields import FeatureFields
 from src.data_model.features.record_features import RecordFeatures
 from src.data_types.sample_basis.sample_basis import SampleBasis
-from test.gait_features.validation.extraction_validators import (
-    assert_io_fidelity,
-    extract_record_features,
-)
+from test.fixtures.assessment_database import participant_fixtures
+from test.fixtures.integration_cases import SkdhIntegrationTestCase
+from test.fixtures.real_features import extract_participant
+from test.gait_features.validation.extraction_validators import assert_io_fidelity
 
 
-class TestFeatureIoFidelityLabWalks(GaitIntegrationTestCase):
+class TestFeatureIoFidelityLabWalks(SkdhIntegrationTestCase):
     """Extracted Lab Walks features survive export/import without value changes."""
 
     def test_hdf5_roundtrip_preserves_usable_samples(self):
         fixture = participant_fixtures("lab_walks", tier="primary")[0]
-        imu_data, user_data, spec = load_participant_bundle(fixture)
-        backend = SkdhBackend(profile=ExtractionProfile.TREADMILL)
-        extraction = backend.extract(
-            imu_data=imu_data,
-            user_data=user_data,
-            instrument_specifications=spec,
-        )
-        record = extract_record_features(extraction, imu_data, user_data)
+        record = extract_participant(fixture).record
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

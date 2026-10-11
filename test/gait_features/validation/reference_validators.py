@@ -8,7 +8,7 @@ import numpy as np
 from src.data_model.features.bout_sample_layout import flatten_bout_features, usable_sample_mask
 from src.data_model.features.record_features import RecordFeatures
 from src.data_types.feature.feature_type import FeatureType
-from test.gait_features.fixtures.clinical_reference_loader import (
+from test.fixtures.clinical_reference import (
     default_gait_speed_tolerance_relative,
     lab_walks_base_velocity,
 )

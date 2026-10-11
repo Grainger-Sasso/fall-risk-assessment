@@ -7,15 +7,15 @@ from src.data_visualization.suite.services.visualization_data_service import Vis
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
 from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
-from test.gait_features.integration.base import GaitIntegrationTestCase
-from test.gait_features.fixtures.fixture_loader import (
+from test.fixtures.assessment_database import (
     imu_identifier,
     participant_fixtures,
     temp_database_manager,
 )
+from test.fixtures.integration_cases import SkdhIntegrationTestCase
 
 
-class TestFeatureQualityReportIntegration(GaitIntegrationTestCase):
+class TestFeatureQualityReportIntegration(SkdhIntegrationTestCase):
     """Structured quality reports over real extracted Lab Walks features."""
 
     def test_quality_reports_summarize_extracted_lab_walks_features(self):

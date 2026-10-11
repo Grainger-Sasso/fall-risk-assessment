@@ -1,4 +1,4 @@
-"""Minimal IMU fixtures for orchestrator unit tests."""
+"""Synthetic minimal IMU records for unit tests that must not depend on real data."""
 
 from __future__ import annotations
 

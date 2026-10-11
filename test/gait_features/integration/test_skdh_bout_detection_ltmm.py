@@ -2,8 +2,8 @@ import unittest
 
 from src.gait_features.backends.skdh.backend import SkdhBackend
 from src.gait_features.config.extraction_profile import ExtractionProfile
-from test.gait_features.integration.base import LtmmIntegrationTestCase
-from test.gait_features.fixtures.fixture_loader import (
+from test.fixtures.integration_cases import LtmmIntegrationTestCase
+from test.fixtures.assessment_database import (
     load_participant_bundle,
     participant_fixtures,
 )
