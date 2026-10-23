@@ -19,6 +19,7 @@ from src.data_io.import_export.importers.features.feature_importer import (
     FeatureImporter,
 )
 from src.data_io.read_write.readers.json.json_dict_file_reader import JSONDictFileReader
+from src.database_manager.database_errors import MetadataIndexError
 from src.database_manager.metadata.metadata_repository import MetadataRepository
 from src.database_manager.metadata.relation_types import (
     FEATURE_TO_IMU,
@@ -111,14 +112,70 @@ def _add_relation(
     target_type: type,
     target_id: str,
     relation_type: str,
+    missing_targets: list[str],
 ) -> None:
+    """Add a relation, or record the target in ``missing_targets`` if it isn't indexed."""
+    source_type_name = IdentifierTypeRegistry.get_type_name(source_type)
+    target_type_name = IdentifierTypeRegistry.get_type_name(target_type)
+    if not repository.record_exists(target_type_name, target_id):
+        missing_targets.append(
+            f"{source_type_name}:{source_id} -> {target_type_name}:{target_id}"
+        )
+        return
     repository.add_relation(
-        source_type=IdentifierTypeRegistry.get_type_name(source_type),
+        source_type=source_type_name,
         source_id=source_id,
-        target_type=IdentifierTypeRegistry.get_type_name(target_type),
+        target_type=target_type_name,
         target_id=target_id,
         relation_type=relation_type,
     )
+
+
+def _index_instrument_specs(
+    repository: MetadataRepository,
+    spec_files: list[Path],
+    json_reader: JSONDictFileReader,
+    spec_builder: IMUSpecificationBuilder,
+) -> tuple[list[InstrumentSpecificationIdentifier], dict[str, InstrumentSpecificationIdentifier]]:
+    spec_ids: list[InstrumentSpecificationIdentifier] = []
+    spec_name_to_id: dict[str, InstrumentSpecificationIdentifier] = {}
+    for spec_file in spec_files:
+        spec_json = json_reader.read(spec_file)
+        specification = spec_builder.build(spec_json)
+        spec_id = specification.specification_id
+        spec_ids.append(spec_id)
+        spec_name_to_id[specification.imu_name.strip().lower()] = spec_id
+        _upsert_record(repository, InstrumentSpecificationIdentifier, spec_id.value, spec_file.parent)
+    return spec_ids, spec_name_to_id
+
+
+def _link_instrument_specs(
+    repository: MetadataRepository,
+    imu_to_instrument_name: dict[str, str],
+    spec_ids: list[InstrumentSpecificationIdentifier],
+    spec_name_to_id: dict[str, InstrumentSpecificationIdentifier],
+    missing_targets: list[str],
+) -> list[str]:
+    """Relate each IMU to its instrument spec; return IMU IDs with no matching spec."""
+    unresolved_imu_ids: list[str] = []
+    for imu_id_value, instrument_name in imu_to_instrument_name.items():
+        if len(spec_ids) == 1:
+            spec_id = spec_ids[0]
+        else:
+            spec_id = spec_name_to_id.get(instrument_name.strip().lower())
+        if spec_id is None:
+            unresolved_imu_ids.append(imu_id_value)
+            continue
+        _add_relation(
+            repository,
+            IMUDataIdentifier,
+            imu_id_value,
+            InstrumentSpecificationIdentifier,
+            spec_id.value,
+            IMU_TO_INSTRUMENT_SPEC,
+            missing_targets,
+        )
+    return unresolved_imu_ids
 
 
 def build_sql_index(
@@ -152,79 +209,60 @@ def build_sql_index(
         feature_dirs = _get_subdirs_with_required_files(feature_parent_dir, [FEATURE_DATA_FILE])
     spec_files = _normalize_instrument_spec_files(instrument_spec_inputs)
 
-    spec_ids: list[InstrumentSpecificationIdentifier] = []
-    spec_name_to_id: dict[str, InstrumentSpecificationIdentifier] = {}
-    for spec_file in spec_files:
-        spec_json = json_reader.read(spec_file)
-        specification = spec_builder.build(spec_json)
-        spec_id = specification.specification_id
-        spec_ids.append(spec_id)
-        spec_name_to_id[specification.imu_name.strip().lower()] = spec_id
-        _upsert_record(repository, InstrumentSpecificationIdentifier, spec_id.value, spec_file.parent)
-
-    imu_to_instrument_name: dict[str, str] = {}
-    for imu_dir in imu_dirs:
-        imu_data = imu_importer.import_data(imu_dir)
-        imu_id = imu_data.get_data_id()
-        user_id = imu_data.get_associated_data_id()
-        instrument_name = imu_data.metadata.instrument_identifier.name
-
-        _upsert_record(repository, IMUDataIdentifier, imu_id.value, imu_dir)
-        _add_relation(
-            repository,
-            IMUDataIdentifier,
-            imu_id.value,
-            UserIdentifier,
-            user_id.value,
-            IMU_TO_USER,
-        )
-        imu_to_instrument_name[imu_id.value] = instrument_name
-
-    for user_dir in user_dirs:
-        user_data = user_importer.import_data(user_dir)
-        user_id = user_data.get_data_id()
-        _upsert_record(repository, UserIdentifier, user_id.value, user_dir)
-
-    for feature_dir in feature_dirs:
-        feature_data = feature_importer.import_data(feature_dir)
-        feature_id = feature_data.get_data_id()
-        imu_id = feature_data.get_associated_data_id()
-        _upsert_record(repository, FeatureIdentifier, feature_id.value, feature_dir)
-        _add_relation(
-            repository,
-            FeatureIdentifier,
-            feature_id.value,
-            IMUDataIdentifier,
-            imu_id.value,
-            FEATURE_TO_IMU,
+    with repository.transaction():
+        spec_ids, spec_name_to_id = _index_instrument_specs(
+            repository, spec_files, json_reader, spec_builder
         )
 
-    unresolved_imu_ids: list[str] = []
-    if len(spec_ids) == 1:
-        singleton_spec = spec_ids[0]
-        for imu_id_value in imu_to_instrument_name:
+        for user_dir in user_dirs:
+            user_data = user_importer.import_data(user_dir)
+            user_id = user_data.get_data_id()
+            _upsert_record(repository, UserIdentifier, user_id.value, user_dir)
+
+        missing_targets: list[str] = []
+        imu_to_instrument_name: dict[str, str] = {}
+        for imu_dir in imu_dirs:
+            imu_data = imu_importer.import_data(imu_dir)
+            imu_id = imu_data.get_data_id()
+            user_id = imu_data.get_associated_data_id()
+            instrument_name = imu_data.metadata.instrument_identifier.name
+
+            _upsert_record(repository, IMUDataIdentifier, imu_id.value, imu_dir)
             _add_relation(
                 repository,
                 IMUDataIdentifier,
-                imu_id_value,
-                InstrumentSpecificationIdentifier,
-                singleton_spec.value,
-                IMU_TO_INSTRUMENT_SPEC,
+                imu_id.value,
+                UserIdentifier,
+                user_id.value,
+                IMU_TO_USER,
+                missing_targets,
             )
-    else:
-        for imu_id_value, instrument_name in imu_to_instrument_name.items():
-            lookup_key = instrument_name.strip().lower()
-            if lookup_key in spec_name_to_id:
-                _add_relation(
-                    repository,
-                    IMUDataIdentifier,
-                    imu_id_value,
-                    InstrumentSpecificationIdentifier,
-                    spec_name_to_id[lookup_key].value,
-                    IMU_TO_INSTRUMENT_SPEC,
-                )
-            else:
-                unresolved_imu_ids.append(imu_id_value)
+            imu_to_instrument_name[imu_id.value] = instrument_name
+
+        for feature_dir in feature_dirs:
+            feature_data = feature_importer.import_data(feature_dir)
+            feature_id = feature_data.get_data_id()
+            imu_id = feature_data.get_associated_data_id()
+            _upsert_record(repository, FeatureIdentifier, feature_id.value, feature_dir)
+            _add_relation(
+                repository,
+                FeatureIdentifier,
+                feature_id.value,
+                IMUDataIdentifier,
+                imu_id.value,
+                FEATURE_TO_IMU,
+                missing_targets,
+            )
+
+        unresolved_imu_ids = _link_instrument_specs(
+            repository, imu_to_instrument_name, spec_ids, spec_name_to_id, missing_targets
+        )
+
+        if missing_targets:
+            raise MetadataIndexError(
+                "Index build aborted; relations reference records that are not indexed: "
+                + "; ".join(sorted(missing_targets))
+            )
 
     if unresolved_imu_ids:
         unresolved_text = ", ".join(sorted(unresolved_imu_ids))

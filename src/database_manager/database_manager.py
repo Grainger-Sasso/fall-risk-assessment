@@ -39,48 +39,15 @@ class DatabaseManager:
         self.repository = metadata_repository
         self.io = io_router
 
-    def save_imu(
-        self,
-        imu_data: IMUData,
-        instrument_spec_id: Optional[InstrumentSpecificationIdentifier] = None,
-    ) -> Path:
-        source_id = imu_data.metadata.imu_data_identifier
-        user_id = imu_data.metadata.user_identifier
-        output_path: Optional[Path] = None
-        try:
-            output_path = self.io.export_imu(imu_data)
-            self._upsert_record(source_id, output_path)
-            self._add_relation(source_id, user_id, IMU_TO_USER)
-            if instrument_spec_id is not None:
-                self._add_relation(source_id, instrument_spec_id, IMU_TO_INSTRUMENT_SPEC)
-            return output_path
-        except Exception as exc:
-            self._rollback_output(output_path)
-            raise DatabaseWriteError(
-                f"Failed to save IMU data {source_id.value}: {exc}"
-            ) from exc
-
-    def save_instrument_spec(self, specifications: IMUSpecifications) -> Path:
-        spec_id = specifications.specification_id
-        output_path: Optional[Path] = None
-        try:
-            output_path = self.io.export_instrument_spec(specifications)
-            self._upsert_record(spec_id, output_path)
-            return output_path
-        except Exception as exc:
-            self._rollback_output(output_path)
-            raise DatabaseWriteError(
-                f"Failed to save instrument specification {spec_id.value}: {exc}"
-            ) from exc
-
     def save_features(self, record_features: RecordFeatures) -> Path:
         source_id = record_features.feature_metadata.feature_identifier
         imu_id = record_features.feature_metadata.imu_data_identifier
         output_path: Optional[Path] = None
         try:
             output_path = self.io.export_features(record_features)
-            self._upsert_record(source_id, output_path)
-            self._add_relation(source_id, imu_id, FEATURE_TO_IMU)
+            with self.repository.transaction():
+                self._upsert_record(source_id, output_path)
+                self._add_relation(source_id, imu_id, FEATURE_TO_IMU)
             return output_path
         except Exception as exc:
             self._rollback_output(output_path)
@@ -168,11 +135,6 @@ class DatabaseManager:
             )
         return target
 
-    def link_imu_to_instrument_spec(
-        self, imu_id: IMUDataIdentifier, spec_id: InstrumentSpecificationIdentifier
-    ) -> None:
-        self._add_relation(imu_id, spec_id, IMU_TO_INSTRUMENT_SPEC)
-
     def get_instrument_spec_for_imu(
         self, imu_id: IMUDataIdentifier
     ) -> Optional[InstrumentSpecificationIdentifier]:
@@ -249,14 +211,6 @@ class DatabaseManager:
         except Exception:
             payload_path = None
 
-        self.repository.delete_relations_by_source(
-            source_type=id_type,
-            source_id=feature_id.value,
-        )
-        self.repository.delete_relations_by_target(
-            target_type=id_type,
-            target_id=feature_id.value,
-        )
         self.repository.delete_record(id_type=id_type, identifier=feature_id.value)
 
         if delete_payloads and payload_path is not None:

@@ -1,4 +1,4 @@
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 CREATE_SCHEMA_VERSION_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS relations (
     target_type TEXT NOT NULL,
     relation_type TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    PRIMARY KEY (source_type, source_id, relation_type, target_type, target_id)
+    PRIMARY KEY (source_type, source_id, relation_type, target_type, target_id),
+    FOREIGN KEY (source_type, source_id) REFERENCES records(id_type, id) ON DELETE CASCADE,
+    FOREIGN KEY (target_type, target_id) REFERENCES records(id_type, id) ON DELETE CASCADE
 );
 """
 

@@ -12,3 +12,7 @@ class DatabaseReadError(DatabaseManagerError):
 
 class MetadataIndexError(DatabaseManagerError):
     """Raised when SQLite metadata index operations fail."""
+
+
+class SchemaVersionError(MetadataIndexError):
+    """Raised when an existing SQLite index was built with a different schema version."""
