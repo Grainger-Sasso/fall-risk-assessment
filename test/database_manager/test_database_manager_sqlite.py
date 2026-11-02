@@ -84,6 +84,43 @@ class TestDatabaseManagerSQLite(unittest.TestCase):
         self.io_router.import_imu.assert_called_once_with(imu_id, imu_path)
         self.assertEqual(result, "imported")
 
+    def test_load_imu_metadata_reads_header_from_indexed_path(self):
+        imu_id = IMUDataIdentifier("imu_1")
+        imu_path = self._index("imu_data", imu_id.value)
+        metadata = SimpleNamespace(imu_data_identifier=IMUDataIdentifier("imu_1"))
+        self.io_router.import_imu_header.return_value = metadata
+
+        result = self.db_manager.load_imu_metadata(imu_id)
+
+        self.io_router.import_imu_header.assert_called_once_with(imu_path)
+        self.io_router.import_imu.assert_not_called()
+        self.assertIs(result, metadata)
+
+    def test_load_imu_metadata_rejects_payload_with_different_identifier(self):
+        imu_id = IMUDataIdentifier("imu_expected")
+        self._index("imu_data", imu_id.value)
+        self.io_router.import_imu_header.return_value = SimpleNamespace(
+            imu_data_identifier=IMUDataIdentifier("imu_other")
+        )
+
+        with self.assertRaises(DatabaseReadError) as ctx:
+            self.db_manager.load_imu_metadata(imu_id)
+
+        self.assertIn("imu_other", str(ctx.exception))
+
+    def test_load_imu_metadata_raises_read_error_for_missing_record_or_file(self):
+        with self.subTest(case="not indexed"):
+            with self.assertRaises(DatabaseReadError):
+                self.db_manager.load_imu_metadata(IMUDataIdentifier("missing"))
+            self.io_router.import_imu_header.assert_not_called()
+
+        with self.subTest(case="file missing"):
+            self._index("imu_data", "imu_no_file")
+            self.io_router.import_imu_header.side_effect = FileNotFoundError("imu_data")
+            with self.assertRaises(DatabaseReadError) as ctx:
+                self.db_manager.load_imu_metadata(IMUDataIdentifier("imu_no_file"))
+            self.assertIsInstance(ctx.exception.__cause__, FileNotFoundError)
+
     def test_load_instrument_spec_uses_indexed_path(self):
         spec_id = InstrumentSpecificationIdentifier("ltmm_spec_v1")
         spec_path = self._index("instrument_specification", spec_id.value)

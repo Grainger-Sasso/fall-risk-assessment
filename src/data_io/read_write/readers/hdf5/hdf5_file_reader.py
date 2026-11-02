@@ -1,6 +1,6 @@
 import heapq
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Any, Dict, Tuple, Union
 
 import h5py
 
@@ -23,13 +23,7 @@ class HDF5FileReader(FileReader):
         Returns:
             Group: A Group containing datasets, groups, and their attributes.
         """
-        if path.suffix not in [".h5", ".hdf5"]:
-            raise ValueError(
-                f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}."
-            )
-
-        if not path.exists():
-            raise FileNotFoundError(f"The file at {path} does not exist.")
+        self._validate_path(path)
 
         with h5py.File(path, "r") as file:
             parent_name_and_group = [i for i in file.items()][0]
@@ -71,6 +65,33 @@ class HDF5FileReader(FileReader):
             output_group = recursively_load_hdf5(parent_name_and_group)
 
         return output_group
+
+    def read_top_group_attributes(self, path: Path) -> Dict[str, Any]:
+        """Read the attributes of the file's top-level group without loading any datasets.
+
+        Args:
+            path (Path): The path to the HDF5 file.
+
+        Returns:
+            Dict[str, Any]: Attributes of the first top-level group, as ``read`` would report them.
+        """
+        self._validate_path(path)
+
+        with h5py.File(path, "r") as file:
+            top_groups = list(file.values())
+            if not top_groups:
+                raise ValueError(f"The HDF5 file at {path} has no top-level group.")
+            return {key: val for key, val in top_groups[0].attrs.items()}
+
+    @staticmethod
+    def _validate_path(path: Path) -> None:
+        if path.suffix not in [".h5", ".hdf5"]:
+            raise ValueError(
+                f"Expected an HDF5 file (.h5 or .hdf5), but got {path.suffix}."
+            )
+
+        if not path.exists():
+            raise FileNotFoundError(f"The file at {path} does not exist.")
 
     def __convert_data(self, data):
         """Convert numpy array data to appropriate Python types.

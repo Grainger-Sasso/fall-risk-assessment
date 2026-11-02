@@ -1,7 +1,9 @@
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
+import h5py
 import numpy as np
 
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
@@ -11,7 +13,9 @@ from src.data_io.import_export.importers.data.imu.imu_data_importer import (
     IMUDataFileNames,
     IMUDataImporter,
 )
+from src.data_io.model_fields.data.imu.imu_data_fields import IMUDataFields
 from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.imu.uniaxial_sensor_data import UniaxialSensorData
 from src.data_model.data.user.clinical.clinical_demographic_data import (
     ClinicalDemographicData,
@@ -124,6 +128,44 @@ class TestIMUDataImporter(BaseTest):
         # Verify import raises error
         with self.assertRaises(FileNotFoundError):
             self.importer.import_data(self.temp_path)
+
+    def test_import_header_matches_full_import_metadata(self):
+        header = self.importer.import_header(self.temp_path)
+        full = self.importer.import_data(self.temp_path)
+
+        self.assertIsInstance(header, IMUMetadata)
+        self.assertEqual(header.imu_data_identifier.value, TestConstants.IMU_DATA_ID.value)
+        self.assertEqual(header.user_identifier.value, TestConstants.USER_DATA_ID.value)
+        self.assertEqual(
+            header.instrument_identifier.name, full.metadata.instrument_identifier.name
+        )
+        self.assertEqual(
+            header.instrument_identifier.serial_number,
+            full.metadata.instrument_identifier.serial_number,
+        )
+
+    def test_import_header_does_not_load_sensor_data(self):
+        with patch.object(
+            self.importer.reader, "read", side_effect=AssertionError("full read")
+        ), patch.object(h5py.Dataset, "__getitem__", side_effect=AssertionError("dataset read")):
+            header = self.importer.import_header(self.temp_path)
+
+        self.assertEqual(header.imu_data_identifier.value, TestConstants.IMU_DATA_ID.value)
+
+    def test_import_header_missing_file(self):
+        self.temp_file.unlink()
+
+        with self.assertRaises(FileNotFoundError):
+            self.importer.import_header(self.temp_path)
+
+    def test_import_header_missing_required_attribute(self):
+        with h5py.File(self.temp_file, "a") as file:
+            del list(file.values())[0].attrs[IMUDataFields.USER_IDENTIFIER.value]
+
+        with self.assertRaises(ValueError) as ctx:
+            self.importer.import_header(self.temp_path)
+
+        self.assertIn("user identifier", str(ctx.exception))
 
 
 if __name__ == "__main__":

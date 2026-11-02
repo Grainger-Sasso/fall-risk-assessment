@@ -18,6 +18,7 @@ from src.data_io.import_export.importers.instrument_specifications.instrument_sp
     InstrumentSpecificationImporter,
 )
 from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.user.user_data import UserData
 from src.data_model.features.record_features import RecordFeatures
 from src.data_model.instrument_specifications.imu_specifications import IMUSpecifications
@@ -64,6 +65,9 @@ class DomainIORouter:
                 f"{identifier.value}"
             )
         return data
+
+    def import_imu_header(self, directory: Path) -> IMUMetadata:
+        return self.imu_importer.import_header(directory)
 
     def import_user(self, directory: Path) -> UserData:
         return self.user_importer.import_data(directory)

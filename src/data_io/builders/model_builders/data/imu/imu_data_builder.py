@@ -233,10 +233,13 @@ class IMUDataBuilder(ModelBuilder):
         return uniaxial_sensor_data_list
 
     def __build_imu_metadata(self, input_file: HDF5Group) -> IMUMetadata:
-        """Build IMU metadata from HDF5 file attributes.
+        return self.build_metadata(input_file.attributes)
+
+    def build_metadata(self, attributes: Dict[str, object]) -> IMUMetadata:
+        """Build IMU metadata from the top-level IMU group attributes.
 
         Args:
-            input_file (HDF5Group): Input file containing metadata
+            attributes (Dict[str, object]): Attributes of the top-level IMU group
 
         Returns:
             IMUMetadata: Constructed metadata object
@@ -244,29 +247,25 @@ class IMUDataBuilder(ModelBuilder):
         Raises:
             ValueError: If required metadata fields are missing
         """
-        if IMUDataFields.IMU_DATA_IDENTIFIER.value not in input_file.attributes:
+        if IMUDataFields.IMU_DATA_IDENTIFIER.value not in attributes:
             raise ValueError("Missing IMU data identifier from IMU metadata")
-        if IMUDataFields.USER_IDENTIFIER.value not in input_file.attributes:
+        if IMUDataFields.USER_IDENTIFIER.value not in attributes:
             raise ValueError("Missing user identifier from IMU metadata")
-        if IMUDataFields.INSTRUMENT_NAME.value not in input_file.attributes:
+        if IMUDataFields.INSTRUMENT_NAME.value not in attributes:
             raise ValueError("Missing instrument name from IMU metadata")
-        if IMUDataFields.SERIAL_NUMBER.value not in input_file.attributes:
+        if IMUDataFields.SERIAL_NUMBER.value not in attributes:
             raise ValueError("Missing instrument serial number from IMU metadata")
 
         imu_data_identifier: IMUDataIdentifier = IMUDataIdentifier(
-            input_file.attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value]
+            attributes[IMUDataFields.IMU_DATA_IDENTIFIER.value]
         )
 
         user_identifier: UserIdentifier = UserIdentifier(
-            input_file.attributes[IMUDataFields.USER_IDENTIFIER.value]
+            attributes[IMUDataFields.USER_IDENTIFIER.value]
         )
 
-        instrument_name: str = input_file.attributes[
-            IMUDataFields.INSTRUMENT_NAME.value
-        ]
-        instrument_serial_number: str = input_file.attributes[
-            IMUDataFields.SERIAL_NUMBER.value
-        ]
+        instrument_name: str = attributes[IMUDataFields.INSTRUMENT_NAME.value]
+        instrument_serial_number: str = attributes[IMUDataFields.SERIAL_NUMBER.value]
         model_instrument_id: InstrumentIdentifier = InstrumentIdentifier(
             instrument_name, instrument_serial_number
         )

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Type, TypeVar
 
 from src.data_model.data.imu.imu_data import IMUData
+from src.data_model.data.imu.metadata.imu_metadata import IMUMetadata
 from src.data_model.data.user.user_data import UserData
 from src.data_model.features.record_features import RecordFeatures
 from src.data_model.instrument_specifications.imu_specifications import IMUSpecifications
@@ -62,6 +63,22 @@ class DatabaseManager:
         except Exception as exc:
             raise DatabaseReadError(
                 f"Failed to load IMU data for {imu_id.value}: {exc}"
+            ) from exc
+
+    def load_imu_metadata(self, imu_id: IMUDataIdentifier) -> IMUMetadata:
+        """Read an IMU record's metadata without loading its sensor arrays."""
+        try:
+            directory = self._get_record_path(imu_id)
+            metadata = self.io.import_imu_header(directory)
+            if metadata.imu_data_identifier.value != imu_id.value:
+                raise ValueError(
+                    "IMU payload identifier does not match requested identifier: "
+                    f"{metadata.imu_data_identifier.value} != {imu_id.value}"
+                )
+            return metadata
+        except Exception as exc:
+            raise DatabaseReadError(
+                f"Failed to load IMU metadata for {imu_id.value}: {exc}"
             ) from exc
 
     def load_user(self, user_id: UserIdentifier) -> UserData:
