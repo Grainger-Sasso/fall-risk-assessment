@@ -5,7 +5,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from src.database_manager.data_access.domain_io_router import DomainIORouter
-from src.database_manager.database_errors import DatabaseWriteError
+from src.database_manager.database_errors import (
+    DatabaseReadError,
+    DatabaseWriteError,
+    MetadataIndexError,
+)
 from src.database_manager.database_manager import DatabaseManager
 from src.database_manager.metadata.metadata_repository import MetadataRepository
 from src.database_manager.metadata.relation_types import (
@@ -50,6 +54,21 @@ class TestDatabaseManagerSQLite(unittest.TestCase):
         path.mkdir(parents=True, exist_ok=True)
         self.repository.upsert_record(id_type, identifier, path)
         return path
+
+    def _relate(
+        self, source: tuple[str, str], target: tuple[str, str], relation_type: str
+    ) -> None:
+        """Index both endpoints, then add the relation."""
+        for id_type, identifier in (source, target):
+            if not self.repository.record_exists(id_type, identifier):
+                self._index(id_type, identifier)
+        self.repository.add_relation(
+            source_type=source[0],
+            source_id=source[1],
+            target_type=target[0],
+            target_id=target[1],
+            relation_type=relation_type,
+        )
 
     def test_load_imu_uses_sqlite_registry_path(self):
         imu_id = IMUDataIdentifier("imu_1")
@@ -235,6 +254,206 @@ class TestDatabaseManagerSQLite(unittest.TestCase):
         self.assertTrue(self.repository.record_exists("user_data", user_id.value))
         self.assertEqual(self.repository.list_record_ids("feature"), [])
         self.assertEqual(self.repository.get_sources("imu_data", imu_id.value), [])
+
+    def test_load_user_uses_indexed_path(self):
+        user_id = UserIdentifier("user_1")
+        user_path = self._index("user_data", user_id.value)
+        user_data = SimpleNamespace(user_identifier=UserIdentifier("user_1"))
+        self.io_router.import_user.return_value = user_data
+
+        result = self.db_manager.load_user(user_id)
+
+        self.io_router.import_user.assert_called_once_with(user_path)
+        self.assertIs(result, user_data)
+
+    def test_load_user_rejects_payload_with_different_identifier(self):
+        user_id = UserIdentifier("user_expected")
+        self._index("user_data", user_id.value)
+        self.io_router.import_user.return_value = SimpleNamespace(
+            user_identifier=UserIdentifier("user_other")
+        )
+
+        with self.assertRaises(DatabaseReadError) as ctx:
+            self.db_manager.load_user(user_id)
+
+        self.assertIn("does not match", str(ctx.exception))
+
+    def test_load_features_uses_indexed_path(self):
+        feature_id = FeatureIdentifier("feature_1")
+        feature_path = self._index("feature", feature_id.value)
+        self.io_router.import_features.return_value = "features_loaded"
+
+        result = self.db_manager.load_features(feature_id)
+
+        self.io_router.import_features.assert_called_once_with(feature_id, feature_path)
+        self.assertEqual(result, "features_loaded")
+
+    def test_load_methods_raise_read_error_for_unindexed_records(self):
+        cases = {
+            "load_imu": (self.db_manager.load_imu, IMUDataIdentifier("missing"), "import_imu"),
+            "load_user": (self.db_manager.load_user, UserIdentifier("missing"), "import_user"),
+            "load_features": (
+                self.db_manager.load_features,
+                FeatureIdentifier("missing"),
+                "import_features",
+            ),
+            "load_instrument_spec": (
+                self.db_manager.load_instrument_spec,
+                InstrumentSpecificationIdentifier("missing"),
+                "import_instrument_spec",
+            ),
+        }
+        for name, (load, identifier, importer) in cases.items():
+            with self.subTest(method=name):
+                with self.assertRaises(DatabaseReadError) as ctx:
+                    load(identifier)
+                self.assertIsInstance(ctx.exception.__cause__, MetadataIndexError)
+                getattr(self.io_router, importer).assert_not_called()
+
+    def test_load_methods_wrap_importer_failures_in_read_error(self):
+        cases = {
+            "load_imu": (
+                self.db_manager.load_imu, IMUDataIdentifier("i1"), "imu_data", "import_imu"
+            ),
+            "load_user": (
+                self.db_manager.load_user, UserIdentifier("u1"), "user_data", "import_user"
+            ),
+            "load_features": (
+                self.db_manager.load_features,
+                FeatureIdentifier("f1"),
+                "feature",
+                "import_features",
+            ),
+            "load_instrument_spec": (
+                self.db_manager.load_instrument_spec,
+                InstrumentSpecificationIdentifier("s1"),
+                "instrument_specification",
+                "import_instrument_spec",
+            ),
+        }
+        for name, (load, identifier, id_type, importer) in cases.items():
+            with self.subTest(method=name):
+                self._index(id_type, identifier.value)
+                getattr(self.io_router, importer).side_effect = OSError("unreadable payload")
+                with self.assertRaises(DatabaseReadError) as ctx:
+                    load(identifier)
+                self.assertIn("unreadable payload", str(ctx.exception))
+
+    def test_list_ids_return_sorted_typed_identifiers_per_type(self):
+        for identifier in ["imu_b", "imu_a"]:
+            self._index("imu_data", identifier)
+        self._index("user_data", "user_1")
+        self._index("instrument_specification", "spec_1")
+        self._index("feature", "feature_1")
+        cases = {
+            "list_imu_ids": (IMUDataIdentifier, ["imu_a", "imu_b"]),
+            "list_user_ids": (UserIdentifier, ["user_1"]),
+            "list_instrument_spec_ids": (InstrumentSpecificationIdentifier, ["spec_1"]),
+            "list_feature_ids": (FeatureIdentifier, ["feature_1"]),
+        }
+        for method, (id_class, expected) in cases.items():
+            with self.subTest(method=method):
+                ids = getattr(self.db_manager, method)()
+                self.assertEqual([item.value for item in ids], expected)
+                for item in ids:
+                    self.assertIs(type(item), id_class)
+
+    def test_list_ids_are_empty_for_empty_index(self):
+        for method in [
+            "list_imu_ids",
+            "list_user_ids",
+            "list_instrument_spec_ids",
+            "list_feature_ids",
+        ]:
+            with self.subTest(method=method):
+                self.assertEqual(getattr(self.db_manager, method)(), [])
+
+    def test_get_imu_for_feature_resolves_indexed_relation(self):
+        self._relate(("feature", "f1"), ("imu_data", "i1"), FEATURE_TO_IMU)
+
+        self.assertEqual(
+            self.db_manager.get_imu_for_feature(FeatureIdentifier("f1")),
+            IMUDataIdentifier("i1"),
+        )
+        self.assertIsNone(self.db_manager.get_imu_for_feature(FeatureIdentifier("f_unlinked")))
+
+    def test_get_features_for_imu_ignores_non_feature_sources(self):
+        self._relate(("feature", "f1"), ("imu_data", "i1"), FEATURE_TO_IMU)
+        self._relate(("user_data", "u1"), ("imu_data", "i1"), FEATURE_TO_IMU)
+
+        features = self.db_manager.get_features_for_imu(IMUDataIdentifier("i1"))
+
+        self.assertEqual(features, [FeatureIdentifier("f1")])
+
+    def test_delete_features_by_ids_skips_unknown_ids(self):
+        known = FeatureIdentifier("feature_known")
+        unknown = FeatureIdentifier("feature_unknown")
+        self._relate(("feature", known.value), ("imu_data", "i1"), FEATURE_TO_IMU)
+
+        deleted = self.db_manager.delete_features_by_ids([unknown, known])
+
+        self.assertEqual(deleted, [known])
+        self.assertFalse(self.repository.record_exists("feature", known.value))
+        self.assertEqual(self.db_manager.delete_features_by_ids([unknown]), [])
+
+    def test_delete_features_without_payloads_keeps_files_on_disk(self):
+        feature_id = FeatureIdentifier("feature_keep_payload")
+        self._relate(("feature", feature_id.value), ("imu_data", "i1"), FEATURE_TO_IMU)
+        payload_path = self.repository.get_record_path("feature", feature_id.value)
+        (payload_path / "features.h5").write_text("dummy")
+
+        deleted = self.db_manager.delete_features_by_ids([feature_id], delete_payloads=False)
+
+        self.assertEqual(deleted, [feature_id])
+        self.assertFalse(self.repository.record_exists("feature", feature_id.value))
+        self.assertEqual(self.db_manager.get_features_for_imu(IMUDataIdentifier("i1")), [])
+        self.assertTrue((payload_path / "features.h5").exists())
+
+    def test_cleanup_all_features_without_payloads_keeps_files_on_disk(self):
+        self._relate(("feature", "f1"), ("imu_data", "i1"), FEATURE_TO_IMU)
+        payload_path = self.repository.get_record_path("feature", "f1")
+
+        deleted = self.db_manager.cleanup_all_features(delete_payloads=False)
+
+        self.assertEqual(deleted, [FeatureIdentifier("f1")])
+        self.assertEqual(self.db_manager.list_feature_ids(), [])
+        self.assertTrue(payload_path.exists())
+
+    def test_lookups_reject_relations_pointing_at_wrong_record_type(self):
+        cases = {
+            "get_user_for_imu": (
+                ("imu_data", "i1"),
+                ("feature", "wrong"),
+                IMU_TO_USER,
+                lambda: self.db_manager.get_user_for_imu(IMUDataIdentifier("i1")),
+            ),
+            "get_imu_for_feature": (
+                ("feature", "f1"),
+                ("user_data", "wrong"),
+                FEATURE_TO_IMU,
+                lambda: self.db_manager.get_imu_for_feature(FeatureIdentifier("f1")),
+            ),
+            "get_instrument_spec_for_imu": (
+                ("imu_data", "i2"),
+                ("user_data", "wrong"),
+                IMU_TO_INSTRUMENT_SPEC,
+                lambda: self.db_manager.get_instrument_spec_for_imu(IMUDataIdentifier("i2")),
+            ),
+        }
+        for name, (source, target, relation_type, lookup) in cases.items():
+            with self.subTest(method=name):
+                self._relate(source, target, relation_type)
+                with self.assertRaises(MetadataIndexError) as ctx:
+                    lookup()
+                self.assertIn("Expected", str(ctx.exception))
+
+    def test_lookup_rejects_relation_to_unknown_record_type(self):
+        self._relate(("imu_data", "i1"), ("mystery_type", "m1"), IMU_TO_USER)
+
+        with self.assertRaises(MetadataIndexError) as ctx:
+            self.db_manager.get_user_for_imu(IMUDataIdentifier("i1"))
+
+        self.assertIn("mystery_type", str(ctx.exception))
 
 
 if __name__ == "__main__":
