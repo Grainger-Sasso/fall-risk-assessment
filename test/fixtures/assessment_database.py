@@ -20,8 +20,8 @@ from src.data_io.import_export.importers.instrument_specifications.instrument_sp
 from src.data_model.data.imu.imu_data import IMUData
 from src.data_model.data.user.user_data import UserData
 from src.data_model.instrument_specifications.imu_specifications import IMUSpecifications
+from src.database_manager.database_generator import DatabaseGenerator
 from src.database_manager.database_manager import DatabaseManager
-from src.gait_features.gait_feature_dataset_orchestrator import build_database_manager_from_sqlite
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 
@@ -187,9 +187,11 @@ def build_database_manager(
         sqlite_db_path = source_index
         default_output = source_index.parent
 
-    return build_database_manager_from_sqlite(
-        sqlite_db_path=sqlite_db_path,
+    # Production feature rows may be stale; temp_database_manager clears them after opening.
+    return DatabaseGenerator().generate_database(
+        sqlite_db_path,
         feature_output_dir=feature_output_dir or default_output,
+        validate=False,
     )
 
 

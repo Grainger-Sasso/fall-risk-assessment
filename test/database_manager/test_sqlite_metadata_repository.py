@@ -450,5 +450,43 @@ class TestSQLiteMetadataRepositoryPersistence(_RepositoryTestCase):
         self.assertEqual(self._count_rows("schema_version"), 1)
 
 
+class TestSQLiteMetadataRepositorySummaries(_RepositoryTestCase):
+    def test_summaries_are_empty_for_empty_index(self) -> None:
+        self.assertEqual(self.repo.count_records_by_type(), {})
+        self.assertEqual(self.repo.count_relations_by_kind(), [])
+        self.assertEqual(self.repo.find_sources_with_multiple_targets(), [])
+
+    def test_count_records_by_type(self) -> None:
+        self._index(("imu_data", "i1"), ("imu_data", "i2"), ("user_data", "u1"))
+
+        self.assertEqual(self.repo.count_records_by_type(), {"imu_data": 2, "user_data": 1})
+
+    def test_count_relations_by_kind(self) -> None:
+        self._relate_indexed(("imu_data", "i1"), ("user_data", "u1"), "imu_to_user")
+        self._relate_indexed(("imu_data", "i2"), ("user_data", "u1"), "imu_to_user")
+        self._relate_indexed(("feature", "f1"), ("imu_data", "i1"), "feature_to_imu")
+
+        self.assertEqual(
+            self.repo.count_relations_by_kind(),
+            [
+                ("feature", "imu_data", "feature_to_imu", 1),
+                ("imu_data", "user_data", "imu_to_user", 2),
+            ],
+        )
+
+    def test_find_sources_with_multiple_targets_per_relation_type(self) -> None:
+        self._relate_indexed(("imu_data", "i1"), ("user_data", "u1"), "imu_to_user")
+        self._relate_indexed(("imu_data", "i1"), ("user_data", "u2"), "imu_to_user")
+        self._relate_indexed(
+            ("imu_data", "i1"), ("instrument_specification", "s1"), "imu_to_instrument_spec"
+        )
+        self._relate_indexed(("imu_data", "i2"), ("user_data", "u1"), "imu_to_user")
+
+        self.assertEqual(
+            self.repo.find_sources_with_multiple_targets(),
+            [("imu_data", "i1", "imu_to_user", 2)],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

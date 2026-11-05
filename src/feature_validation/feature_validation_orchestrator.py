@@ -82,7 +82,8 @@ def run_validation(
         load_range_catalog(catalog_path) if catalog_path is not None else default_range_catalog()
     )
     resolved_bases = bases or list(SampleBasis)
-    data_service = build_visualization_data_service(sqlite_db_path)
+    # Index drift (dangling feature rows) is reported by audit_index_integrity, not rejected.
+    data_service = build_visualization_data_service(sqlite_db_path, validate=False)
     generated_at = datetime.now()
 
     print("Range catalog: {} feature types (schema {})".format(

@@ -183,6 +183,43 @@ class MetadataRepository:
         row = self.store.fetch_one(sql + " LIMIT 1;", params)
         return row is not None
 
+    def count_records_by_type(self) -> dict[str, int]:
+        rows = self.store.fetch_all(
+            "SELECT id_type, COUNT(*) AS n FROM records GROUP BY id_type ORDER BY id_type;"
+        )
+        return {row["id_type"]: row["n"] for row in rows}
+
+    def count_relations_by_kind(self) -> list[tuple[str, str, str, int]]:
+        """Return ``(source_type, target_type, relation_type, count)`` per distinct kind."""
+        rows = self.store.fetch_all(
+            """
+            SELECT source_type, target_type, relation_type, COUNT(*) AS n
+            FROM relations
+            GROUP BY source_type, target_type, relation_type
+            ORDER BY source_type, target_type, relation_type;
+            """
+        )
+        return [
+            (row["source_type"], row["target_type"], row["relation_type"], row["n"])
+            for row in rows
+        ]
+
+    def find_sources_with_multiple_targets(self) -> list[tuple[str, str, str, int]]:
+        """Return ``(source_type, source_id, relation_type, count)`` where count > 1."""
+        rows = self.store.fetch_all(
+            """
+            SELECT source_type, source_id, relation_type, COUNT(*) AS n
+            FROM relations
+            GROUP BY source_type, source_id, relation_type
+            HAVING COUNT(*) > 1
+            ORDER BY source_type, source_id, relation_type;
+            """
+        )
+        return [
+            (row["source_type"], row["source_id"], row["relation_type"], row["n"])
+            for row in rows
+        ]
+
     def delete_record(self, id_type: str, identifier: str) -> None:
         self._require_non_empty(id_type=id_type, identifier=identifier)
         with self.store.transaction() as conn:
