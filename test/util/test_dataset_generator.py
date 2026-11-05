@@ -26,6 +26,7 @@ from src.util.dataset_generator.dataset_generator import (
     IMU_DATA_FILE,
     USER_DATA_FILE,
     build_sql_index,
+    build_sql_index_from_dirs,
 )
 
 INSTRUMENT_NAME = "lower_back_sensor"
@@ -34,14 +35,12 @@ INSTRUMENT_NAME = "lower_back_sensor"
 class _FakeIMUImporter:
     """Reads ``<imu_dir>/user.txt`` for the linked user ID; the dir name is the IMU ID."""
 
-    def import_data(self, imu_dir: Path) -> SimpleNamespace:
+    def import_header(self, imu_dir: Path) -> SimpleNamespace:
         user_value = (imu_dir / "user.txt").read_text()
         return SimpleNamespace(
-            get_data_id=lambda: IMUDataIdentifier(imu_dir.name),
-            get_associated_data_id=lambda: UserIdentifier(user_value),
-            metadata=SimpleNamespace(
-                instrument_identifier=SimpleNamespace(name=INSTRUMENT_NAME)
-            ),
+            imu_data_identifier=IMUDataIdentifier(imu_dir.name),
+            user_identifier=UserIdentifier(user_value),
+            instrument_identifier=SimpleNamespace(name=INSTRUMENT_NAME),
         )
 
 
@@ -209,6 +208,26 @@ class TestBuildSqlIndex(unittest.TestCase):
         self.assertEqual(repo.list_record_ids("imu_data"), ["imu_1"])
         self.assertEqual(
             repo.get_sources("imu_data", "imu_1", FEATURE_TO_IMU), [("feature", "feature_1")]
+        )
+
+    def test_from_dirs_indexes_only_the_given_records(self) -> None:
+        user_dir = self._add_user("user_1")
+        self._add_user("user_2")
+        imu_dir = self._add_imu("imu_1", "user_1")
+        self._add_imu("imu_2", "user_2")
+
+        build_sql_index_from_dirs(
+            imu_dirs=[imu_dir],
+            user_dirs=[user_dir],
+            instrument_spec_inputs=self.spec_file,
+            sqlite_db_path=self.db_path,
+        )
+
+        repo = MetadataRepository(SQLiteStore(self.db_path))
+        self.assertEqual(repo.list_record_ids("imu_data"), ["imu_1"])
+        self.assertEqual(repo.list_record_ids("user_data"), ["user_1"])
+        self.assertEqual(
+            repo.get_targets("imu_data", "imu_1", IMU_TO_USER), [("user_data", "user_1")]
         )
 
 

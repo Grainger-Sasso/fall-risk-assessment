@@ -185,12 +185,34 @@ def build_sql_index(
     sqlite_db_path: Path,
     feature_parent_dir: Optional[Path] = None,
 ) -> Path:
-    """Build SQLite records/relations indexes from filesystem data payloads."""
+    """Build SQLite records/relations indexes from every payload under the parent dirs."""
     _validate_parent_dir(imu_parent_dir, "IMU")
     _validate_parent_dir(user_parent_dir, "User")
     if feature_parent_dir is not None:
         _validate_parent_dir(feature_parent_dir, "Feature")
 
+    feature_dirs: list[Path] = []
+    if feature_parent_dir is not None:
+        feature_dirs = _get_subdirs_with_required_files(feature_parent_dir, [FEATURE_DATA_FILE])
+    return build_sql_index_from_dirs(
+        imu_dirs=_get_subdirs_with_required_files(imu_parent_dir, [IMU_DATA_FILE]),
+        user_dirs=_get_subdirs_with_required_files(
+            user_parent_dir, [USER_DATA_FILE, CLINICAL_DEMO_FILE]
+        ),
+        instrument_spec_inputs=instrument_spec_inputs,
+        sqlite_db_path=sqlite_db_path,
+        feature_dirs=feature_dirs,
+    )
+
+
+def build_sql_index_from_dirs(
+    imu_dirs: Sequence[Path],
+    user_dirs: Sequence[Path],
+    instrument_spec_inputs: Union[Path, Sequence[Path]],
+    sqlite_db_path: Path,
+    feature_dirs: Sequence[Path] = (),
+) -> Path:
+    """Build SQLite records/relations indexes from explicit payload record directories."""
     sqlite_store = SQLiteStore(sqlite_db_path.resolve())
     repository = MetadataRepository(sqlite_store)
 
@@ -200,13 +222,6 @@ def build_sql_index(
     json_reader = JSONDictFileReader()
     spec_builder = IMUSpecificationBuilder()
 
-    imu_dirs = _get_subdirs_with_required_files(imu_parent_dir, [IMU_DATA_FILE])
-    user_dirs = _get_subdirs_with_required_files(
-        user_parent_dir, [USER_DATA_FILE, CLINICAL_DEMO_FILE]
-    )
-    feature_dirs = []
-    if feature_parent_dir is not None:
-        feature_dirs = _get_subdirs_with_required_files(feature_parent_dir, [FEATURE_DATA_FILE])
     spec_files = _normalize_instrument_spec_files(instrument_spec_inputs)
 
     with repository.transaction():
@@ -222,10 +237,10 @@ def build_sql_index(
         missing_targets: list[str] = []
         imu_to_instrument_name: dict[str, str] = {}
         for imu_dir in imu_dirs:
-            imu_data = imu_importer.import_data(imu_dir)
-            imu_id = imu_data.get_data_id()
-            user_id = imu_data.get_associated_data_id()
-            instrument_name = imu_data.metadata.instrument_identifier.name
+            imu_metadata = imu_importer.import_header(imu_dir)
+            imu_id = imu_metadata.imu_data_identifier
+            user_id = imu_metadata.user_identifier
+            instrument_name = imu_metadata.instrument_identifier.name
 
             _upsert_record(repository, IMUDataIdentifier, imu_id.value, imu_dir)
             _add_relation(

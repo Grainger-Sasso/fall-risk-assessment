@@ -1,7 +1,6 @@
 {
   "assessment_database_root": "/Volumes/Backup Plus/fafra_data/assessment_database",
   "ltmm": {
-    "index_db": "sql_db_indexes/ltmm/index.db",
     "instrument_spec_dir": "instrument_specs/ltmm",
     "instrument_spec_id": "ltmm_labwalks_imu_spec_v1",
     "participants": {
@@ -23,7 +22,6 @@
     }
   },
   "lab_walks": {
-    "index_db": "sql_db_indexes/lab_walks/index.db",
     "instrument_spec_dir": "instrument_specs/lab_walks",
     "instrument_spec_id": "ltmm_labwalks_imu_spec_v1",
     "participants": {

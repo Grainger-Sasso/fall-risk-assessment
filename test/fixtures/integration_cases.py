@@ -26,7 +26,7 @@ def _raise_if_unavailable(errors: List[str], what: str) -> None:
 
 
 class AssessmentDataTestCase(unittest.TestCase):
-    """Requires the assessment database (indexes, IMU/user records) for ``fixture_datasets``."""
+    """Requires the assessment database (IMU/user records, instrument specs) for ``fixture_datasets``."""
 
     fixture_datasets: Tuple[str, ...] = DATASETS
 

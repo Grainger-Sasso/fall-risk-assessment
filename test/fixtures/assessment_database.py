@@ -24,6 +24,7 @@ from src.database_manager.database_generator import DatabaseGenerator
 from src.database_manager.database_manager import DatabaseManager
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
+from src.util.dataset_generator.dataset_generator import build_sql_index_from_dirs
 
 CATALOG_PATH = Path(__file__).with_name("assessment_fixture_catalog.json")
 ENV_ROOT = "FRA_ASSESSMENT_DATABASE_ROOT"
@@ -88,10 +89,6 @@ def participant_fixtures(dataset: str, tier: Optional[str] = None) -> List[Parti
     return fixtures
 
 
-def index_db_path(dataset: str) -> Path:
-    return assessment_database_root() / _dataset_config(dataset)["index_db"]
-
-
 def instrument_spec_dir(dataset: str) -> Path:
     return assessment_database_root() / _dataset_config(dataset)["instrument_spec_dir"]
 
@@ -117,12 +114,7 @@ def assessment_database_errors(datasets: Tuple[str, ...] = DATASETS) -> List[str
 
     errors: List[str] = []
     for dataset in datasets:
-        config = _dataset_config(dataset)
-        index_path = root / config["index_db"]
-        if not _path_is_readable_file(index_path):
-            errors.append(f"Missing or unreadable SQLite index: {index_path}")
-
-        spec_file = root / config["instrument_spec_dir"] / "instrument_spec.json"
+        spec_file = instrument_spec_dir(dataset) / "instrument_spec.json"
         if not _path_is_readable_file(spec_file):
             errors.append(f"Missing or unreadable instrument spec: {spec_file}")
 
@@ -170,28 +162,14 @@ def load_participant_bundle(
     )
 
 
-def build_database_manager(
-    dataset: str,
-    *,
-    feature_output_dir: Optional[Path] = None,
-    sqlite_copy_dir: Optional[Path] = None,
-) -> DatabaseManager:
-    source_index = index_db_path(dataset)
-    if sqlite_copy_dir is not None:
-        sqlite_copy_dir.mkdir(parents=True, exist_ok=True)
-        target_index = sqlite_copy_dir / "index.db"
-        shutil.copy2(source_index, target_index)
-        sqlite_db_path = target_index
-        default_output = sqlite_copy_dir
-    else:
-        sqlite_db_path = source_index
-        default_output = source_index.parent
-
-    # Production feature rows may be stale; temp_database_manager clears them after opening.
-    return DatabaseGenerator().generate_database(
-        sqlite_db_path,
-        feature_output_dir=feature_output_dir or default_output,
-        validate=False,
+def build_fixture_index(dataset: str, sqlite_db_path: Path) -> Path:
+    """Index only the catalog's participants for ``dataset``, at the current schema version."""
+    participants = participant_fixtures(dataset)
+    return build_sql_index_from_dirs(
+        imu_dirs=[imu_record_dir(dataset, item.imu_id) for item in participants],
+        user_dirs=[user_record_dir(dataset, item.participant_id) for item in participants],
+        instrument_spec_inputs=instrument_spec_dir(dataset) / "instrument_spec.json",
+        sqlite_db_path=sqlite_db_path,
     )
 
 
@@ -207,17 +185,19 @@ class TempDatabaseContext:
 
 @contextmanager
 def temp_database_manager(dataset: str) -> Iterator[TempDatabaseContext]:
-    """Isolated copy of a dataset index with no feature rows; payloads write to a temp dir."""
+    """Fresh index of the catalog's participants, with no feature rows, in a temp dir."""
     root = Path(tempfile.mkdtemp(prefix=f"fra_test_{dataset}_"))
-    feature_dir = root / "features"
-    feature_dir.mkdir(parents=True, exist_ok=True)
-    db_manager = build_database_manager(
-        dataset,
-        feature_output_dir=feature_dir,
-        sqlite_copy_dir=root,
-    )
-    # Copied production indexes may reference pre-existing feature payloads.
-    db_manager.cleanup_all_features(delete_payloads=False)
+    try:
+        feature_dir = root / "features"
+        feature_dir.mkdir()
+        sqlite_db_path = build_fixture_index(dataset, root / "index.db")
+        db_manager = DatabaseGenerator().generate_database(
+            sqlite_db_path,
+            feature_output_dir=feature_dir,
+        )
+    except BaseException:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
     context = TempDatabaseContext(root=root, db_manager=db_manager)
     try:
         yield context
