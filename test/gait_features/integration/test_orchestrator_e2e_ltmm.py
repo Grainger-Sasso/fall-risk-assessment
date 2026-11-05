@@ -2,7 +2,10 @@ import unittest
 
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
-from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
+from src.gait_features.orchestration.gait_feature_dataset_orchestrator import (
+    GaitFeatureDatasetOrchestrator,
+)
+from src.gait_features.pipeline.gait_extraction_pipeline import GaitExtractionPipeline
 from test.fixtures.integration_cases import LtmmIntegrationTestCase
 from test.fixtures.assessment_database import (
     imu_identifier,
@@ -29,10 +32,11 @@ class TestOrchestratorE2eLtmm(LtmmIntegrationTestCase):
         with temp_database_manager("ltmm") as context:
             orchestrator = GaitFeatureDatasetOrchestrator(
                 db_manager=context.db_manager,
-                extraction_backend=GaitExtractionBackendId.SKDH,
-                extraction_profile=ExtractionProfile.FREE_LIVING,
+                pipeline=GaitExtractionPipeline.create(
+                    backend=GaitExtractionBackendId.SKDH,
+                    profile=ExtractionProfile.FREE_LIVING,
+                ),
             )
-            orchestrator._write_last_run_summary = lambda summary: None  # noqa: SLF001
             summary = orchestrator.generate_for_imu_ids(imu_ids=[imu_id])
 
             self.assertEqual(summary.status, "success")

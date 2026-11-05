@@ -2,13 +2,33 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from src.gait_features.gait_feature_dataset_orchestrator import (
+from src.gait_features.config.extraction_backend import GaitExtractionBackendId
+from src.gait_features.config.extraction_profile import ExtractionProfile
+from src.gait_features.diagnosis.stride_failure import StrideFeatureGenerationError
+from src.gait_features.orchestration.gait_feature_dataset_orchestrator import (
     GaitFeatureDatasetOrchestrator,
 )
-from src.gait_features.diagnosis.stride_failure import StrideFeatureGenerationError
+from src.gait_features.pipeline.gait_extraction_pipeline import GaitExtractionPipeline
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from test.fixtures.synthetic_imu import minimal_skdh_imu_data
+
+
+def _orchestrator(
+    db_manager: MagicMock,
+    extractor: MagicMock,
+    builder: MagicMock,
+) -> GaitFeatureDatasetOrchestrator:
+    return GaitFeatureDatasetOrchestrator(
+        db_manager=db_manager,
+        pipeline=GaitExtractionPipeline(
+            backend=GaitExtractionBackendId.SKDH,
+            profile=ExtractionProfile.FREE_LIVING,
+            extractor=extractor,
+            record_feature_builder=builder,
+        ),
+        run_log=MagicMock(),
+    )
 
 
 class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
@@ -39,13 +59,7 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
             ),
         ]
 
-        orchestrator = GaitFeatureDatasetOrchestrator(
-            db_manager=db_manager,
-            treadmill_profile=True,
-            extractor=extractor,
-            record_feature_builder=builder,
-        )
-        orchestrator._write_last_run_summary = MagicMock()
+        orchestrator = _orchestrator(db_manager, extractor, builder)
         summary = orchestrator.generate_for_all_imu()
 
         self.assertEqual([item.value for item in summary.generated_feature_ids], ["feature_1", "feature_2"])
@@ -73,12 +87,7 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
             feature_metadata=SimpleNamespace(feature_identifier=SimpleNamespace(value="feature_1"))
         )
 
-        orchestrator = GaitFeatureDatasetOrchestrator(
-            db_manager=db_manager,
-            extractor=extractor,
-            record_feature_builder=builder,
-        )
-        orchestrator._write_last_run_summary = MagicMock()
+        orchestrator = _orchestrator(db_manager, extractor, builder)
         summary = orchestrator.generate_for_all_imu(continue_on_error=True)
 
         self.assertEqual([item.value for item in summary.generated_feature_ids], ["feature_1"])
@@ -106,12 +115,7 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
             feature_metadata=SimpleNamespace(feature_identifier=SimpleNamespace(value="feature_1"))
         )
 
-        orchestrator = GaitFeatureDatasetOrchestrator(
-            db_manager=db_manager,
-            extractor=extractor,
-            record_feature_builder=builder,
-        )
-        orchestrator._write_last_run_summary = MagicMock()  # avoid filesystem writes
+        orchestrator = _orchestrator(db_manager, extractor, builder)
         summary = orchestrator.generate_for_all_imu(
             continue_on_error=True,
             rollback_on_partial_failure=True,
@@ -156,12 +160,7 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
             stride_error,
         ]
 
-        orchestrator = GaitFeatureDatasetOrchestrator(
-            db_manager=db_manager,
-            extractor=extractor,
-            record_feature_builder=builder,
-        )
-        orchestrator._write_last_run_summary = MagicMock()
+        orchestrator = _orchestrator(db_manager, extractor, builder)
         summary = orchestrator.generate_for_all_imu(continue_on_error=True)
 
         self.assertEqual(
@@ -175,6 +174,26 @@ class TestGaitFeatureDatasetOrchestrator(unittest.TestCase):
         )
         self.assertEqual(summary.status, "partial_success")
         self.assertIn("imu_nan_stride", summary.errors_by_imu_id)
+
+    def test_fail_fast_records_failed_run_and_raises(self):
+        db_manager = MagicMock()
+        imu_ids = [IMUDataIdentifier("imu_1"), IMUDataIdentifier("imu_2")]
+        db_manager.list_imu_ids.return_value = imu_ids
+        db_manager.load_imu.side_effect = RuntimeError("cannot load")
+
+        extractor = MagicMock()
+        builder = MagicMock()
+        orchestrator = _orchestrator(db_manager, extractor, builder)
+
+        with self.assertRaises(RuntimeError):
+            orchestrator.generate_for_all_imu()
+
+        orchestrator.run_log.record.assert_called_once()
+        recorded = orchestrator.run_log.record.call_args.args[0]
+        self.assertEqual(recorded.status, "failed")
+        self.assertEqual([item.value for item in recorded.failed_imu_ids], ["imu_1"])
+        self.assertEqual(db_manager.load_imu.call_count, 1)
+        extractor.extract.assert_not_called()
 
 
 if __name__ == "__main__":

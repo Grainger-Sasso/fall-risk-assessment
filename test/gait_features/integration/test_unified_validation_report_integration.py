@@ -8,7 +8,10 @@ from src.data_visualization.suite.services.feature_quality_report import Feature
 from src.data_visualization.suite.services.visualization_data_service import VisualizationDataService
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
-from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
+from src.gait_features.orchestration.gait_feature_dataset_orchestrator import (
+    GaitFeatureDatasetOrchestrator,
+)
+from src.gait_features.pipeline.gait_extraction_pipeline import GaitExtractionPipeline
 from test.fixtures.assessment_database import (
     imu_identifier,
     participant_fixtures,
@@ -33,11 +36,11 @@ class TestUnifiedValidationReportIntegration(SkdhIntegrationTestCase):
         with temp_database_manager("lab_walks") as context:
             orchestrator = GaitFeatureDatasetOrchestrator(
                 db_manager=context.db_manager,
-                treadmill_profile=True,
-                extraction_backend=GaitExtractionBackendId.SKDH,
-                extraction_profile=ExtractionProfile.TREADMILL,
+                pipeline=GaitExtractionPipeline.create(
+                    backend=GaitExtractionBackendId.SKDH,
+                    profile=ExtractionProfile.TREADMILL,
+                ),
             )
-            orchestrator._write_last_run_summary = lambda summary: None  # noqa: SLF001
             summary = orchestrator.generate_for_imu_ids(imu_ids=imu_ids)
             self.assertEqual(summary.status, "success")
             self.assertEqual(len(summary.generated_feature_ids), len(imu_ids))

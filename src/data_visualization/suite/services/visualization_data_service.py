@@ -373,13 +373,12 @@ class VisualizationDataService:
         return FeatureQualityReportBuilder(self).build_participant_level(basis)
 
     def rollback_last_feature_generation_run(self) -> int:
-        # Imported lazily to avoid introducing orchestrator imports across the suite.
-        from src.gait_features.gait_feature_dataset_orchestrator import (
-            GaitFeatureDatasetOrchestrator,
+        # Imported lazily to avoid introducing gait_features imports across the suite.
+        from src.gait_features.orchestration.feature_generation_run_log import (
+            FeatureGenerationRunLog,
         )
 
-        orchestrator = GaitFeatureDatasetOrchestrator(db_manager=self.db_manager)
-        deleted_count, _ = orchestrator.rollback_last_run_features()
+        deleted_count, _ = FeatureGenerationRunLog(self.db_manager).rollback_last_run()
         return deleted_count
 
     @staticmethod

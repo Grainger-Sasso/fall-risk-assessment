@@ -6,7 +6,10 @@ from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
 from src.gait_features.contracts.extraction_result import GaitExtractionResult
 from src.gait_features.contracts.provenance import ExtractionProvenance
-from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
+from src.gait_features.orchestration.gait_feature_dataset_orchestrator import (
+    GaitFeatureDatasetOrchestrator,
+)
+from src.gait_features.pipeline.gait_extraction_pipeline import GaitExtractionPipeline
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.user.user_identifier import UserIdentifier
 from test.fixtures.synthetic_imu import minimal_mobgap_imu_data
@@ -41,12 +44,14 @@ class TestOrchestratorMobgap(unittest.TestCase):
 
         orchestrator = GaitFeatureDatasetOrchestrator(
             db_manager=db_manager,
-            extraction_backend=GaitExtractionBackendId.MOBGAP,
-            extraction_profile=ExtractionProfile.MOBGAP_HEALTHY,
-            extractor=extractor,
-            record_feature_builder=builder,
+            pipeline=GaitExtractionPipeline(
+                backend=GaitExtractionBackendId.MOBGAP,
+                profile=ExtractionProfile.MOBGAP_HEALTHY,
+                extractor=extractor,
+                record_feature_builder=builder,
+            ),
+            run_log=MagicMock(),
         )
-        orchestrator._write_last_run_summary = MagicMock()
         summary = orchestrator.generate_for_all_imu()
 
         extractor.extract.assert_called_once()

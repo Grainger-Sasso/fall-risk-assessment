@@ -39,7 +39,10 @@ from src.feature_validation.range_catalog import (
 from src.feature_validation.validation_service import ValidationRun, run_feature_validation
 from src.gait_features.config.extraction_backend import GaitExtractionBackendId
 from src.gait_features.config.extraction_profile import ExtractionProfile
-from src.gait_features.gait_feature_dataset_orchestrator import GaitFeatureDatasetOrchestrator
+from src.gait_features.orchestration.gait_feature_dataset_orchestrator import (
+    GaitFeatureDatasetOrchestrator,
+)
+from src.gait_features.pipeline.gait_extraction_pipeline import GaitExtractionPipeline
 from test.fixtures.assessment_database import (
     TempDatabaseContext,
     imu_identifier,
@@ -376,11 +379,11 @@ class TestFeatureValidationRunOnRealIndex(SkdhIntegrationTestCase):
             cls.feature_root = cls.context.root / "features"
             orchestrator = GaitFeatureDatasetOrchestrator(
                 db_manager=cls.context.db_manager,
-                treadmill_profile=True,
-                extraction_backend=GaitExtractionBackendId.SKDH,
-                extraction_profile=ExtractionProfile.TREADMILL,
+                pipeline=GaitExtractionPipeline.create(
+                    backend=GaitExtractionBackendId.SKDH,
+                    profile=ExtractionProfile.TREADMILL,
+                ),
             )
-            orchestrator._write_last_run_summary = lambda summary: None  # noqa: SLF001
             summary = orchestrator.generate_for_imu_ids(
                 imu_ids=[imu_identifier(item.imu_id) for item in cls.fixtures]
             )

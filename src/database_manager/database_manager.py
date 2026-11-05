@@ -40,6 +40,10 @@ class DatabaseManager:
         self.repository = metadata_repository
         self.io = io_router
 
+    @property
+    def sqlite_db_path(self) -> Path:
+        return self.repository.store.db_path
+
     def save_features(self, record_features: RecordFeatures) -> Path:
         source_id = record_features.feature_metadata.feature_identifier
         imu_id = record_features.feature_metadata.imu_data_identifier
