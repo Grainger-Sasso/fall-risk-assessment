@@ -54,7 +54,6 @@ class TestDatabaseGenerator(unittest.TestCase):
     def test_output_dirs_default_to_index_parent(self) -> None:
         db_manager = self.generator.generate_database(self.db_path)
 
-        self.assertEqual(db_manager.io.imu_output_dir, self.root)
         self.assertEqual(db_manager.io.feature_output_dir, self.root)
         self.assertEqual(db_manager.io.instrument_spec_output_dir, self.root)
 
@@ -66,7 +65,7 @@ class TestDatabaseGenerator(unittest.TestCase):
         )
 
         self.assertEqual(db_manager.io.feature_output_dir, feature_dir)
-        self.assertEqual(db_manager.io.imu_output_dir, self.root)
+        self.assertEqual(db_manager.io.instrument_spec_output_dir, self.root)
 
 
 if __name__ == "__main__":

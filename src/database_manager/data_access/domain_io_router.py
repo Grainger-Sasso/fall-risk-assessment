@@ -2,9 +2,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
-    IMUDataFileExporter,
-)
 from src.data_io.import_export.exporters.feature.feature_file_exporter import (
     FeatureFileExporter,
 )
@@ -37,15 +34,10 @@ class DomainIORouter:
     user_importer: UserDataImporter
     feature_importer: FeatureImporter
     instrument_spec_importer: InstrumentSpecificationImporter
-    imu_exporter: IMUDataFileExporter
     feature_exporter: FeatureFileExporter
     instrument_spec_exporter: InstrumentSpecificationFileExporter
-    imu_output_dir: Path
     feature_output_dir: Path
     instrument_spec_output_dir: Optional[Path] = None
-
-    def export_imu(self, imu_data: IMUData) -> Path:
-        return self.imu_exporter.export_data(self.imu_output_dir, imu_data)
 
     def export_features(self, record_features: RecordFeatures) -> Path:
         return self.feature_exporter.export_data(self.feature_output_dir, record_features)

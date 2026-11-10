@@ -1,9 +1,6 @@
 from pathlib import Path
 from typing import Optional
 
-from src.data_io.import_export.exporters.data.imu.imu_data_file_exporter import (
-    IMUDataFileExporter,
-)
 from src.data_io.import_export.exporters.feature.feature_file_exporter import (
     FeatureFileExporter,
 )
@@ -42,7 +39,6 @@ class DatabaseGenerator:
     def generate_database(
         self,
         sqlite_db_path: Path,
-        imu_output_dir: Optional[Path] = None,
         feature_output_dir: Optional[Path] = None,
         instrument_spec_output_dir: Optional[Path] = None,
         validate: bool = True,
@@ -59,10 +55,8 @@ class DatabaseGenerator:
             user_importer=UserDataImporter(),
             feature_importer=FeatureImporter(),
             instrument_spec_importer=InstrumentSpecificationImporter(),
-            imu_exporter=IMUDataFileExporter(),
             feature_exporter=FeatureFileExporter(),
             instrument_spec_exporter=InstrumentSpecificationFileExporter(),
-            imu_output_dir=(imu_output_dir or default_output_dir).resolve(),
             feature_output_dir=(feature_output_dir or default_output_dir).resolve(),
             instrument_spec_output_dir=(
                 instrument_spec_output_dir or default_output_dir
