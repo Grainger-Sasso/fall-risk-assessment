@@ -51,15 +51,6 @@ def parse_args() -> argparse.Namespace:
         help="Directory for feature payload exports. Defaults to the SQLite DB parent directory.",
     )
     parser.add_argument(
-        "--instrument-spec-output-dir",
-        type=Path,
-        default=None,
-        help=(
-            "Directory for instrument-specification payload exports. "
-            "Defaults to the SQLite DB parent directory."
-        ),
-    )
-    parser.add_argument(
         "--imu-ids",
         type=str,
         default="",
@@ -179,7 +170,6 @@ def main() -> None:
     db_manager = DatabaseGenerator().generate_database(
         args.sqlite_db_path,
         feature_output_dir=args.feature_output_dir,
-        instrument_spec_output_dir=args.instrument_spec_output_dir,
         # Cleanup and rollback exist to remove stale feature rows that validation rejects.
         validate=not (args.cleanup_features or args.rollback_last_run),
     )

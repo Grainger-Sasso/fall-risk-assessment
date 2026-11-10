@@ -55,7 +55,6 @@ class TestDatabaseGenerator(unittest.TestCase):
         db_manager = self.generator.generate_database(self.db_path)
 
         self.assertEqual(db_manager.io.feature_output_dir, self.root)
-        self.assertEqual(db_manager.io.instrument_spec_output_dir, self.root)
 
     def test_explicit_output_dirs_are_used(self) -> None:
         feature_dir = self.root / "features"
@@ -65,7 +64,6 @@ class TestDatabaseGenerator(unittest.TestCase):
         )
 
         self.assertEqual(db_manager.io.feature_output_dir, feature_dir)
-        self.assertEqual(db_manager.io.instrument_spec_output_dir, self.root)
 
 
 if __name__ == "__main__":

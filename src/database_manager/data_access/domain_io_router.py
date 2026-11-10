@@ -1,12 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from src.data_io.import_export.exporters.feature.feature_file_exporter import (
     FeatureFileExporter,
-)
-from src.data_io.import_export.exporters.instrument_specifications.instrument_specification_file_exporter import (
-    InstrumentSpecificationFileExporter,
 )
 from src.data_io.import_export.importers.data.imu.imu_data_importer import IMUDataImporter
 from src.data_io.import_export.importers.data.user.user_data_importer import UserDataImporter
@@ -35,19 +31,10 @@ class DomainIORouter:
     feature_importer: FeatureImporter
     instrument_spec_importer: InstrumentSpecificationImporter
     feature_exporter: FeatureFileExporter
-    instrument_spec_exporter: InstrumentSpecificationFileExporter
     feature_output_dir: Path
-    instrument_spec_output_dir: Optional[Path] = None
 
     def export_features(self, record_features: RecordFeatures) -> Path:
         return self.feature_exporter.export_data(self.feature_output_dir, record_features)
-
-    def export_instrument_spec(self, specifications: IMUSpecifications) -> Path:
-        if self.instrument_spec_output_dir is None:
-            raise ValueError("Instrument specification output directory is not configured")
-        return self.instrument_spec_exporter.export_data(
-            self.instrument_spec_output_dir, specifications
-        )
 
     def import_imu(self, identifier: IMUDataIdentifier, directory: Path) -> IMUData:
         data = self.imu_importer.import_data(directory)
