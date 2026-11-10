@@ -139,6 +139,22 @@ class TestVisualizationDataService(unittest.TestCase):
         self.assertEqual([item.value for item in self.service.list_imu_ids()], ["imu_1", "imu_2"])
         self.assertEqual([item.value for item in self.service.list_feature_ids()], ["feature_1"])
 
+    def test_list_imu_records_with_users(self):
+        self.db_manager.imu_ids = [
+            _FakeIdentifier("imu_3"),
+            _FakeIdentifier("imu_2"),
+            _FakeIdentifier("imu_1"),
+        ]
+        self.db_manager.user_for_imu = {
+            "imu_1": _FakeIdentifier("user_b"),
+            "imu_3": _FakeIdentifier("user_a"),
+        }
+        entries = self.service.list_imu_records_with_users()
+        self.assertEqual(
+            [(entry.imu_id.value, entry.user_id.value if entry.user_id else None) for entry in entries],
+            [("imu_3", "user_a"), ("imu_1", "user_b"), ("imu_2", None)],
+        )
+
     def test_load_user_for_imu(self):
         user = self.service.load_user_for_imu(_FakeIdentifier("imu_1"))
         self.assertIsNotNone(user)

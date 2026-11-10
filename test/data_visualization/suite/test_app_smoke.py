@@ -35,6 +35,12 @@ class TestVisualizationAppSmoke(unittest.TestCase):
             def list_imu_ids(self):
                 return []
 
+            def get_user_for_imu(self, imu_id):
+                return None
+
+            def list_imu_records_with_users(self):
+                return []
+
             def list_feature_ids(self):
                 return []
 
@@ -76,6 +82,47 @@ class TestVisualizationAppSmoke(unittest.TestCase):
         )
         panel = plugin.build_panel(QWidget(), context)
         self.assertIsNotNone(panel)
+        if QApplication.instance() is app:
+            app.quit()
+
+    def test_imu_plugin_lists_records_by_user(self):
+        from src.data_visualization.suite.services.visualization_data_service import (
+            IMURecordEntry,
+        )
+        from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+        from src.identifiers.user.user_identifier import UserIdentifier
+
+        entries = [
+            IMURecordEntry(IMUDataIdentifier("imu_b"), UserIdentifier("CO001")),
+            IMURecordEntry(IMUDataIdentifier("imu_a"), UserIdentifier("FL002")),
+            IMURecordEntry(IMUDataIdentifier("imu_c"), None),
+        ]
+        self.fake_service.list_imu_records_with_users = lambda: entries
+
+        app = QApplication.instance() or QApplication([])
+        plugin = self.IMURecordExplorerPlugin()
+        context = self.PluginContext(
+            data_service=self.fake_service,
+            selection_state=self.SelectionStateStore(),
+        )
+        parent = QWidget()
+        plugin.build_panel(parent, context)
+        selector = plugin.imu_selector
+
+        labels = [selector.itemText(i) for i in range(selector.count())]
+        self.assertEqual(
+            labels,
+            ["CO001  —  imu_b", "FL002  —  imu_a", "(no user)  —  imu_c"],
+        )
+        self.assertEqual(selector.itemData(0), "imu_b")
+
+        plugin.search_box.setText("fl002")
+        self.assertEqual(selector.count(), 1)
+        self.assertEqual(plugin._selected_imu_id().value, "imu_a")
+
+        plugin.search_box.setText("imu_c")
+        self.assertEqual(selector.count(), 1)
+        self.assertEqual(selector.itemText(0), "(no user)  —  imu_c")
         if QApplication.instance() is app:
             app.quit()
 

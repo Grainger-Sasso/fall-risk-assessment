@@ -21,6 +21,15 @@ from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
 from src.identifiers.instrument_specification.instrument_specification_identifier import (
     InstrumentSpecificationIdentifier,
 )
+from src.identifiers.user.user_identifier import UserIdentifier
+
+
+@dataclass
+class IMURecordEntry:
+    """An IMU record paired with the user it is linked to in the index."""
+
+    imu_id: IMUDataIdentifier
+    user_id: Optional[UserIdentifier]
 
 
 @dataclass
@@ -77,6 +86,21 @@ class VisualizationDataService:
 
     def list_imu_ids(self) -> List[IMUDataIdentifier]:
         return self.db_manager.list_imu_ids()
+
+    def list_imu_records_with_users(self) -> List[IMURecordEntry]:
+        """IMU records with their linked user, sorted by user then IMU ID; unlinked records last."""
+        entries = [
+            IMURecordEntry(imu_id=imu_id, user_id=self.db_manager.get_user_for_imu(imu_id))
+            for imu_id in self.list_imu_ids()
+        ]
+        return sorted(
+            entries,
+            key=lambda entry: (
+                entry.user_id is None,
+                entry.user_id.value if entry.user_id is not None else "",
+                entry.imu_id.value,
+            ),
+        )
 
     def list_feature_ids(self) -> List[FeatureIdentifier]:
         return self.db_manager.list_feature_ids()

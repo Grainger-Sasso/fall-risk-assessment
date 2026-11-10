@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
@@ -19,7 +19,10 @@ from PySide6.QtWidgets import (
 from src.data_model.data.imu.sensor_data import SensorData
 from src.data_visualization.suite.plots.imu_plot_engine import IMUPlotEngine
 from src.data_visualization.suite.plugins.base import PluginContext, VisualizationPlugin
+from src.data_visualization.suite.services.visualization_data_service import IMURecordEntry
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
+
+NO_USER_LABEL = "(no user)"
 
 
 class IMURecordExplorerPlugin(VisualizationPlugin):
@@ -28,7 +31,7 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
 
     def __init__(self) -> None:
         self._context: Optional[PluginContext] = None
-        self._imu_ids = []
+        self._imu_entries: List[IMURecordEntry] = []
         self._loaded_sensor_data: Optional[SensorData] = None
         self._loaded_imu_id: Optional[IMUDataIdentifier] = None
         self._figure = Figure(figsize=(10, 6))
@@ -51,7 +54,7 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
         layout = QVBoxLayout(panel)
 
         self.search_box = QLineEdit(panel)
-        self.search_box.setPlaceholderText("Filter IMU IDs")
+        self.search_box.setPlaceholderText("Filter by user or IMU ID")
         self.search_box.textChanged.connect(self._filter_imu_ids)
 
         self.imu_selector = QComboBox(panel)
@@ -120,24 +123,37 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
     def _load_imu_ids(self) -> None:
         if self._context is None:
             return
-        self._imu_ids = sorted(self._context.data_service.list_imu_ids(), key=lambda item: item.value)
-        self.imu_selector.blockSignals(True)
-        self.imu_selector.clear()
-        self.imu_selector.addItems([item.value for item in self._imu_ids])
-        self.imu_selector.blockSignals(False)
+        self._imu_entries = self._context.data_service.list_imu_records_with_users()
+        self._populate_selector(self._imu_entries)
         self._loaded_sensor_data = None
         self._loaded_imu_id = None
         self._clear_metadata()
         self._render_empty("Select an IMU record and click Load & Render")
 
-    def _filter_imu_ids(self, text: str) -> None:
-        filtered = [
-            item for item in self._imu_ids if text.lower().strip() in item.value.lower()
-        ]
+    def _populate_selector(self, entries: List[IMURecordEntry]) -> None:
         self.imu_selector.blockSignals(True)
         self.imu_selector.clear()
-        self.imu_selector.addItems([item.value for item in filtered])
+        for entry in entries:
+            self.imu_selector.addItem(self._entry_label(entry), entry.imu_id.value)
         self.imu_selector.blockSignals(False)
+
+    @staticmethod
+    def _entry_label(entry: IMURecordEntry) -> str:
+        user_label = entry.user_id.value if entry.user_id is not None else NO_USER_LABEL
+        return f"{user_label}  —  {entry.imu_id.value}"
+
+    def _selected_imu_id(self) -> Optional[IMUDataIdentifier]:
+        imu_value = self.imu_selector.currentData()
+        if not imu_value:
+            return None
+        return IMUDataIdentifier(imu_value)
+
+    def _filter_imu_ids(self, text: str) -> None:
+        query = text.lower().strip()
+        filtered = [
+            entry for entry in self._imu_entries if query in self._entry_label(entry).lower()
+        ]
+        self._populate_selector(filtered)
         if not filtered:
             self._loaded_sensor_data = None
             self._loaded_imu_id = None
@@ -145,8 +161,8 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
             self._render_empty("No records match filter")
             return
         if self._loaded_imu_id is not None:
-            selected_text = self.imu_selector.currentText().strip()
-            if selected_text and IMUDataIdentifier(selected_text) != self._loaded_imu_id:
+            selected_id = self._selected_imu_id()
+            if selected_id is not None and selected_id != self._loaded_imu_id:
                 self._loaded_sensor_data = None
                 self._loaded_imu_id = None
                 self._clear_metadata()
@@ -157,10 +173,9 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
     def _on_imu_selection_changed(self, index: int) -> None:
         if index < 0:
             return
-        selected_text = self.imu_selector.currentText().strip()
-        if not selected_text:
+        selected_id = self._selected_imu_id()
+        if selected_id is None:
             return
-        selected_id = IMUDataIdentifier(selected_text)
         if self._loaded_imu_id is not None and selected_id != self._loaded_imu_id:
             self._loaded_sensor_data = None
             self._loaded_imu_id = None
@@ -168,11 +183,11 @@ class IMURecordExplorerPlugin(VisualizationPlugin):
             self._render_empty("Selection changed. Click Load & Render to load this record.")
 
     def _load_and_render(self) -> None:
-        selected_text = self.imu_selector.currentText().strip()
-        if not selected_text:
+        selected_id = self._selected_imu_id()
+        if selected_id is None:
             self._render_empty("Select an IMU record first")
             return
-        self._select_imu(IMUDataIdentifier(selected_text))
+        self._select_imu(selected_id)
 
     def _select_imu(self, imu_id: IMUDataIdentifier) -> None:
         if self._context is None:
