@@ -317,7 +317,10 @@ class FallRiskAssessor:
                 continue
             quantiles = [point[0] for point in quantile_points]
             cutoffs = [point[1] for point in quantile_points]
+            # Clamp to the outermost stored quantiles rather than claiming
+            # 0th/100th percentile for out-of-cohort values.
             percentiles[name] = float(
-                np.interp(value, cutoffs, quantiles, left=0.0, right=1.0) * 100.0
+                np.interp(value, cutoffs, quantiles, left=quantiles[0], right=quantiles[-1])
+                * 100.0
             )
         return percentiles

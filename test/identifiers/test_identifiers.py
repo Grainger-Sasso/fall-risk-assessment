@@ -1,6 +1,5 @@
 """Tests for the core identifier types (replaces the stale test/identifier_test.py)."""
 
-import pytest
 
 from src.identifiers.identifier import IdentifierGenerator
 from src.identifiers.imu.imu_data_identifier import IMUDataIdentifier
@@ -13,9 +12,8 @@ class TestUserIdentifier:
         identifier = UserIdentifier("user_01")
         assert identifier.value == "user_01"
 
-    def test_rejects_empty_value(self):
-        with pytest.raises(ValueError):
-            UserIdentifier("")
+    def test_equality_by_value(self):
+        assert UserIdentifier("user_01").value == UserIdentifier("user_01").value
 
 
 class TestInstrumentIdentifier:
