@@ -89,8 +89,15 @@ def build_variant_dataset(
     variant: str,
     holdouts: List[str],
     stride_catalog: str = "skdh",
+    sample=None,
 ) -> EarlyFusionParticipantDataset:
-    sample = builder.build(stride_catalog=stride_catalog)
+    """Participant-level dataset for one aggregation variant.
+
+    ``sample`` lets callers that build several variants reuse one loaded
+    ClassificationDataset instead of re-reading every feature payload.
+    """
+    if sample is None:
+        sample = builder.build(stride_catalog=stride_catalog)
     common = [pid for pid in sample.common_participant_ids() if pid not in holdouts]
     stride = _aggregate(sample.stride, common, variant)
     epoch = _aggregate(sample.epoch, common, variant)
@@ -121,16 +128,54 @@ def main() -> None:
         "--fast-mode", action="store_true",
         help="Use reduced hyperparameter grids for a quicker comparison.",
     )
+    parser.add_argument(
+        "--variants",
+        type=str,
+        default=",".join(_AGGREGATORS),
+        help=f"Comma-separated subset of {list(_AGGREGATORS)} to run.",
+    )
+    parser.add_argument(
+        "--resume-report",
+        type=Path,
+        default=None,
+        help="Partial report from an interrupted run: variants it already "
+        "contains are skipped and new results are written back into it.",
+    )
     args = parser.parse_args()
     holdouts = [p.strip() for p in args.holdout_participants.split(",") if p.strip()]
+    variants = parse_variants(args.variants)
+    cv_config = {
+        "n_splits": args.n_splits,
+        "n_repeats": args.n_repeats,
+        "fast_mode": args.fast_mode,
+        "random_state": args.random_state,
+    }
+
+    if args.resume_report is not None:
+        report_path = Path(args.resume_report)
+        report = load_resumable_report(report_path, holdouts, cv_config)
+    else:
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        report_path = args.output_dir / f"aggregation_comparison_{timestamp}.json"
+        report = {
+            "holdout_participant_ids": holdouts,
+            "cv": cv_config,
+            "requested_variants": variants,
+            "variants": {},
+        }
+    results: Dict[str, object] = report["variants"]
+    pending = [variant for variant in variants if variant not in results]
+    for variant in variants:
+        if variant in results:
+            print(f"[aggregation-exp] {variant}: already in report, skipping")
 
     db_manager = DatabaseGenerator().generate_database(
         args.sqlite_db_path, validate=True
     )
     builder = ClassificationDatasetBuilder(db_manager=db_manager)
 
-    results: Dict[str, object] = {}
-    for variant in _AGGREGATORS:
+    for variant in pending:
         dataset = build_variant_dataset(builder, variant, holdouts)
         print(
             f"[aggregation-exp] {variant}: {dataset.n_participants} participants, "
@@ -142,6 +187,8 @@ def main() -> None:
             n_repeats=args.n_repeats,
             random_state=args.random_state,
             fast_mode=args.fast_mode,
+            verbose=True,
+            log=lambda message, variant=variant: print(f"[{variant}] {message}"),
         )
         y, p = nested.participant_level_probabilities(dataset.n_participants)
         ci = bootstrap_metric_ci(y, p, random_state=args.random_state)
@@ -156,26 +203,66 @@ def main() -> None:
             f"[aggregation-exp] {variant}: nested AUC={nested.roc_auc:.3f} "
             f"(95% CI {ci['ci_lower']:.3f}-{ci['ci_upper']:.3f})"
         )
+        # Persist after every variant so an interrupted run keeps finished work.
+        write_report(report_path, report, variants)
+        print(f"[aggregation-exp] saved {variant} -> {report_path}")
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    report_path = args.output_dir / f"aggregation_comparison_{timestamp}.json"
-    with report_path.open("w", encoding="utf-8") as handle:
-        json.dump(
-            {
-                "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-                "holdout_participant_ids": holdouts,
-                "cv": {
-                    "n_splits": args.n_splits,
-                    "n_repeats": args.n_repeats,
-                    "fast_mode": args.fast_mode,
-                },
-                "variants": results,
-            },
-            handle,
-            indent=2,
+    write_report(report_path, report, variants)
+    print(f"[aggregation-exp] report ({report['status']}): {report_path}")
+
+
+def parse_variants(raw: str) -> List[str]:
+    variants = [item.strip() for item in raw.split(",") if item.strip()]
+    unknown = [item for item in variants if item not in _AGGREGATORS]
+    if unknown or not variants:
+        raise SystemExit(
+            f"Unknown or empty --variants {unknown or raw!r}; "
+            f"choose from {list(_AGGREGATORS)}"
         )
-    print(f"[aggregation-exp] report: {report_path}")
+    return variants
+
+
+def load_resumable_report(
+    report_path: Path, holdouts: List[str], cv_config: Dict[str, object]
+) -> Dict[str, object]:
+    """Load a partial report, refusing to mix results from different setups."""
+    with Path(report_path).open("r", encoding="utf-8") as handle:
+        report = json.load(handle)
+    if report.get("holdout_participant_ids") != holdouts:
+        raise SystemExit(
+            "--resume-report holdouts differ from --holdout-participants; "
+            "results would not be comparable."
+        )
+    saved_cv = report.get("cv", {})
+    mismatched = {
+        key: (saved_cv.get(key), value)
+        for key, value in cv_config.items()
+        if key in saved_cv and saved_cv[key] != value
+    }
+    if mismatched:
+        raise SystemExit(
+            f"--resume-report CV settings differ (saved, requested): {mismatched}"
+        )
+    report.setdefault("variants", {})
+    return report
+
+
+def write_report(
+    report_path: Path, report: Dict[str, object], variants: List[str]
+) -> None:
+    done = report["variants"]
+    report["status"] = (
+        "complete" if all(variant in done for variant in variants) else "partial"
+    )
+    report["requested_variants"] = sorted(
+        set(report.get("requested_variants", [])) | set(variants),
+        key=list(_AGGREGATORS).index,
+    )
+    report["generated_at_utc"] = datetime.now(timezone.utc).isoformat()
+    tmp_path = Path(report_path).with_suffix(".json.tmp")
+    with tmp_path.open("w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2)
+    tmp_path.replace(report_path)
 
 
 if __name__ == "__main__":
