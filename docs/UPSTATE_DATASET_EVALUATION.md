@@ -198,7 +198,7 @@ README has the command. Repaired copies of the 21 defective files are in
 `E:\fafra_data\upstate\repaired\` (with `repair_report.json`); each opens at full length in
 unmodified `pygt3x`.
 
-**Converted data** (in `E:\fafra_data\assessment_database\`):
+**Converted data** (in `C:\fafra_data\assessment_database\`; converted on the external `E:` drive, then copied to the PC and its indexes re-rooted with `relocate_index`):
 
 | Dataset | Records | Index | Size |
 | --- | --- | --- | --- |

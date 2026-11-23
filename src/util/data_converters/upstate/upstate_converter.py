@@ -26,7 +26,7 @@ Run::
         --share-zip E:/fafra_data/upstate/Carapace_ActigraphDataShare.zip \\
         --demographics-xlsx E:/fafra_data/raw_data/2024_Upstate/upstate_data/demographics_2025_03_13.xlsx \\
         --risk-groups-xlsx "E:/fafra_data/raw_data/Upstate_2026/Carapace Risk Groups_Pilot for CSM 2026.xlsx" \\
-        --assessment-db-root E:/fafra_data/assessment_database
+        --assessment-db-root C:/fafra_data/assessment_database
 """
 
 import argparse

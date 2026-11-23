@@ -1,4 +1,4 @@
-"""Locate and load real participant records from the external assessment database."""
+"""Locate and load real participant records from the assessment database."""
 
 from __future__ import annotations
 
@@ -109,7 +109,7 @@ def assessment_database_errors(datasets: Tuple[str, ...] = DATASETS) -> List[str
     if not root.is_dir():
         return [
             f"Assessment database root is not accessible: {root} "
-            f"(mount the backup volume or set {ENV_ROOT})"
+            f"(set {ENV_ROOT} to the assessment_database folder)"
         ]
 
     errors: List[str] = []

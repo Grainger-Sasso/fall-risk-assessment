@@ -153,7 +153,17 @@ python -m pytest test
 
 The skdh backend requires Python ≥3.9; the optional mobgap backend requires
 Python ≥3.10. Integration tests that need the real assessment database locate
-it via `test/fixtures/assessment_fixture_catalog.json` (override the root with
-`FRA_ASSESSMENT_DATABASE_ROOT`).
+it via `test/fixtures/assessment_fixture_catalog.json`, which defaults to
+`C:/fafra_data/assessment_database`. Override the root with
+`FRA_ASSESSMENT_DATABASE_ROOT`.
+
+SQLite indexes store absolute record paths. After copying or moving a
+database, re-root its indexes:
+
+```bash
+python -m src.database_manager.relocate_index \
+    --from E:/fafra_data/assessment_database --to C:/fafra_data/assessment_database \
+    C:/fafra_data/assessment_database/sql_db_indexes      # add --dry-run to preview
+```
 
 Outputs of this pipeline are research artifacts, not medical diagnoses.

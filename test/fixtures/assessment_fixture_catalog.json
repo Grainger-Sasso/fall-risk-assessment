@@ -1,5 +1,5 @@
 {
-  "assessment_database_root": "/Volumes/Backup Plus/fafra_data/assessment_database",
+  "assessment_database_root": "C:/fafra_data/assessment_database",
   "ltmm": {
     "instrument_spec_dir": "instrument_specs/ltmm",
     "instrument_spec_id": "ltmm_labwalks_imu_spec_v1",
