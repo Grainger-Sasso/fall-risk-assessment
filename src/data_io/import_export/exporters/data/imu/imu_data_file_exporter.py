@@ -16,8 +16,9 @@ from src.identifiers.identifier import Identifier
 class IMUDataFileExporter(Exporter[IMUData]):
     sub_dir_name = "imu_data_"
 
-    def __init__(self):
-        file_builder = IMUDataFileBuilder()
+    def __init__(self, as_arrays: bool = False):
+        """as_arrays: see IMUDataFileBuilder; use it for multi-day recordings."""
+        file_builder = IMUDataFileBuilder(as_arrays=as_arrays)
         writer = HDF5FileWriter()
         suffix = "h5"
         super().__init__(file_builder, writer, suffix, IMUDataFileExporter.sub_dir_name)

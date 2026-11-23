@@ -46,6 +46,26 @@ record holding `imu_data.h5`, plus per-user `user_data.json` and
 `clinical_demographic_data.json` (with faller status), and instrument
 specification JSON.
 
+ActiGraph files can carry stray bytes in `log.bin` that make `pygt3x` return
+nothing or silently drop hours of data. `read_gt3x` repairs this in memory.
+`gt3x_log_repair` can also write repaired copies:
+
+```bash
+python -m src.util.data_converters.imu.gt3x.gt3x_log_repair \
+    --source .../Carapace_ActigraphDataShare.zip --output-dir .../repaired
+```
+
+The Upstate (Carapace) share converts, and is indexed, in one step. This writes
+`upstate` (4-day free-living) and `upstate_lab` (clinic session) datasets:
+
+```bash
+python -m src.util.data_converters.upstate.upstate_converter \
+    --share-zip .../Carapace_ActigraphDataShare.zip \
+    --demographics-xlsx .../demographics_2025_03_13.xlsx \
+    --risk-groups-xlsx ".../Carapace Risk Groups_Pilot for CSM 2026.xlsx" \
+    --assessment-db-root .../assessment_database --workers 3
+```
+
 ### 2. Index the database
 
 ```bash

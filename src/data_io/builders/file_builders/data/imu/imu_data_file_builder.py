@@ -1,5 +1,7 @@
 from typing import Any, Dict, List
 
+import numpy as np
+
 from src.data_io.builders.file_builders.file_builder import FileBuilder
 from src.data_io.formats.hdf5.hdf5_dataset import HDF5Dataset
 from src.data_io.formats.hdf5.hdf5_group import HDF5Group
@@ -32,13 +34,20 @@ class IMUDataFileBuilder(FileBuilder):
 
     version: str = "1.0"
 
-    def __init__(self) -> None:
+    def __init__(self, as_arrays: bool = False) -> None:
         """Initialize the IMU data file builder with mapping dictionaries.
+
+        Args:
+            as_arrays: Hand numpy arrays to the writer instead of Python lists.
+                The file written is the same, but multi-day recordings
+                (tens of millions of samples per axis) need several times less
+                memory and write much faster.
 
         Raises:
             ValueError: If mapping dictionaries are incomplete
         """
         super().__init__()
+        self.as_arrays = as_arrays
         self.model_to_file_sensor_type_map: Dict[SensorType, str] = {
             SensorType.ACCELEROMETER: IMUDataFields.ACCELEROMETER.value,
             SensorType.GYROSCOPE: IMUDataFields.GYROSCOPE.value,
@@ -142,18 +151,24 @@ class IMUDataFileBuilder(FileBuilder):
         ]
         # Build time dataset and add to sensor data subgroup items
         time: HDF5Dataset = HDF5Dataset(
-            name=IMUDataFields.TIME.value, data=sensor_data.time.tolist(), attributes={}
+            name=IMUDataFields.TIME.value,
+            data=self.__to_payload(sensor_data.time),
+            attributes={},
         )
         # Build idle mask dataset and add to sensor data subgroup items
         idle_mask: HDF5Dataset = HDF5Dataset(
-            name=IMUDataFields.IDLE_MASK.value, data=sensor_data.idle_mask.tolist(), attributes={}
+            name=IMUDataFields.IDLE_MASK.value,
+            data=self.__to_payload(sensor_data.idle_mask),
+            attributes={},
         )
         # Build data dataset and add to sensor data subgroup items
         sensor_axis_names: List[SensorAxis] = []
-        axis_data: List[List[Any]] = []
+        axis_data: List[Any] = []
         for axis in sensor_data.data:
             sensor_axis_names.append(axis.sensor_axis)
-            axis_data.append(axis.data.tolist())
+            axis_data.append(self.__to_payload(axis.data))
+        if self.as_arrays:
+            axis_data = np.vstack(axis_data)
         data_dataset: HDF5Dataset = HDF5Dataset(
             name=IMUDataFields.DATA.value,
             data=axis_data,
@@ -170,6 +185,10 @@ class IMUDataFileBuilder(FileBuilder):
             items=sensor_data_subgroup_items,
             attributes=sensor_data_subgroup_attributes,
         )
+
+    def __to_payload(self, values: Any) -> Any:
+        array = np.asarray(values)
+        return array if self.as_arrays else array.tolist()
 
     def __build_imu_metadata_attributes(
         self, imu_metadata: IMUMetadata
