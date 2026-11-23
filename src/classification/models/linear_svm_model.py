@@ -2,10 +2,13 @@ from typing import Dict
 
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVC
 
 from src.classification.models.base_classifier_model import BaseClassifierModel
+from src.classification.models.preprocessing import (
+    SVM_MAX_ITER,
+    DegenerateSafeRobustScaler,
+)
 
 
 class LinearSvmModel(BaseClassifierModel):
@@ -19,12 +22,13 @@ class LinearSvmModel(BaseClassifierModel):
         return Pipeline(
             steps=[
                 ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", RobustScaler()),
+                ("scaler", DegenerateSafeRobustScaler()),
                 (
                     "clf",
                     SVC(
                         kernel="linear",
                         probability=True,
+                        max_iter=SVM_MAX_ITER,
                         class_weight="balanced",
                         random_state=self.random_state,
                     ),

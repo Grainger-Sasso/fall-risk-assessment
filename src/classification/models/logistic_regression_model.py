@@ -3,9 +3,9 @@ from typing import Dict
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
 
 from src.classification.models.base_classifier_model import BaseClassifierModel
+from src.classification.models.preprocessing import DegenerateSafeRobustScaler
 
 
 class LogisticRegressionElasticNetModel(BaseClassifierModel):
@@ -20,7 +20,7 @@ class LogisticRegressionElasticNetModel(BaseClassifierModel):
         return Pipeline(
             steps=[
                 ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", RobustScaler()),
+                ("scaler", DegenerateSafeRobustScaler()),
                 (
                     "clf",
                     LogisticRegression(

@@ -3,9 +3,9 @@ from typing import Dict
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import RobustScaler
 
 from src.classification.models.base_classifier_model import BaseClassifierModel
+from src.classification.models.preprocessing import DegenerateSafeRobustScaler
 
 
 class RandomForestModel(BaseClassifierModel):
@@ -19,7 +19,7 @@ class RandomForestModel(BaseClassifierModel):
         return Pipeline(
             steps=[
                 ("imputer", SimpleImputer(strategy="median")),
-                ("scaler", RobustScaler()),
+                ("scaler", DegenerateSafeRobustScaler()),
                 (
                     "clf",
                     RandomForestClassifier(
